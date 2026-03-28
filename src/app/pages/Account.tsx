@@ -1,4 +1,5 @@
-import { User, Bell, Shield, Key, Database, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router";
+import { User, Bell, Shield, Key, Database, Trash2, LogOut } from "lucide-react";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
@@ -7,8 +8,11 @@ import { Label } from "../components/ui/label";
 import { Separator } from "../components/ui/separator";
 import { Switch } from "../components/ui/switch";
 import { useCurrentUser } from "../../hooks/useApi";
+import { useAuthStore } from "../../stores/authStore";
 
 export default function Account() {
+  const navigate = useNavigate();
+  const { clearToken } = useAuthStore();
   const { data: user, isLoading } = useCurrentUser();
 
   const name = user?.name ?? "";
@@ -195,6 +199,28 @@ export default function Account() {
                   Download all your conversations, assessments, and proof pages
                 </p>
               </div>
+            </div>
+          </Card>
+
+          {/* Sign Out */}
+          <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-6 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <LogOut className="h-5 w-5 text-[#717182]" />
+                <div>
+                  <h2 className="text-[15px]">Sign Out</h2>
+                  <p className="text-[13px] text-[#717182]">End your current session</p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  clearToken();
+                  navigate("/");
+                }}
+              >
+                Sign Out
+              </Button>
             </div>
           </Card>
 

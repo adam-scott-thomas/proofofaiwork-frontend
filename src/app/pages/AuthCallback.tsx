@@ -48,7 +48,7 @@ export default function AuthCallback() {
 
     authCallback.mutate(token, {
       onSuccess: () => {
-        navigate("/", { replace: true });
+        navigate("/dashboard", { replace: true });
       },
       onError: (err) => {
         setErrorMsg(

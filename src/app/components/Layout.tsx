@@ -1,35 +1,38 @@
 import { Link, useLocation, useNavigate, Outlet } from "react-router";
-import { 
-  LayoutDashboard, 
-  Upload, 
-  FolderKanban, 
-  MessageSquare, 
-  User, 
-  FileBarChart, 
+import {
+  LayoutDashboard,
+  Upload,
+  FolderKanban,
+  MessageSquare,
+  User,
+  FileBarChart,
   Globe,
   Search,
   Command,
   Settings,
+  LogOut,
 } from "lucide-react";
+import { useAuthStore } from "../../stores/authStore";
 import { Button } from "./ui/button";
 import { useState, useEffect } from "react";
 import { KeyboardShortcutsDialog } from "./KeyboardShortcutsDialog";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard, key: "d" },
-  { name: "Upload", href: "/upload", icon: Upload, key: "u" },
-  { name: "Projects", href: "/projects", icon: FolderKanban, key: "p" },
-  { name: "Conversations", href: "/conversations", icon: MessageSquare, key: "c" },
-  { name: "Assessments", href: "/assessments", icon: FileBarChart, key: "a" },
-  { name: "Work Profile", href: "/work-profile", icon: User, key: "w" },
-  { name: "Proof Pages", href: "/proof-pages", icon: Globe, key: "g" },
-  { name: "Search", href: "/search", icon: Search, key: "/" },
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, key: "d" },
+  { name: "Upload", href: "/dashboard/upload", icon: Upload, key: "u" },
+  { name: "Projects", href: "/dashboard/projects", icon: FolderKanban, key: "p" },
+  { name: "Conversations", href: "/dashboard/conversations", icon: MessageSquare, key: "c" },
+  { name: "Assessments", href: "/dashboard/assessments", icon: FileBarChart, key: "a" },
+  { name: "Work Profile", href: "/dashboard/work-profile", icon: User, key: "w" },
+  { name: "Proof Pages", href: "/dashboard/proof-pages", icon: Globe, key: "g" },
+  { name: "Search", href: "/dashboard/search", icon: Search, key: "/" },
 ];
 
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const { clearToken } = useAuthStore();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -54,7 +57,7 @@ export default function Layout() {
         const target = e.target as HTMLElement;
         if (target.tagName !== "INPUT" && target.tagName !== "TEXTAREA") {
           e.preventDefault();
-          navigate("/search");
+          navigate("/dashboard/search");
         }
       }
     };
@@ -107,10 +110,21 @@ export default function Layout() {
           <Button
             variant="ghost"
             className="w-full justify-start text-[13px] text-[#717182]"
-            onClick={() => navigate("/account")}
+            onClick={() => navigate("/dashboard/account")}
           >
             <Settings className="mr-3 h-4 w-4" />
             Account & Settings
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-[13px] text-red-500 hover:text-red-600 hover:bg-red-50"
+            onClick={() => {
+              clearToken();
+              navigate("/");
+            }}
+          >
+            <LogOut className="mr-3 h-4 w-4" />
+            Sign Out
           </Button>
         </div>
       </aside>

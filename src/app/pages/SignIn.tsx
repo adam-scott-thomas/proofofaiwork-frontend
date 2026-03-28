@@ -28,7 +28,7 @@ export default function SignIn() {
 
   useEffect(() => {
     if (isAuthenticated()) {
-      const from = (location.state as any)?.from?.pathname || "/";
+      const from = (location.state as any)?.from?.pathname || "/dashboard";
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, navigate, location]);

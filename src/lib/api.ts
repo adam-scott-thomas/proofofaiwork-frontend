@@ -1,4 +1,7 @@
-const API_BASE = "/api/v1";
+import { useAuthStore } from "../stores/authStore";
+
+const API_HOST = import.meta.env.VITE_API_URL || "";
+const API_BASE = API_HOST ? `${API_HOST}/api/v1` : "/api/v1";
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem("poaw-token");
@@ -9,6 +12,13 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   };
 
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+
+  if (res.status === 401) {
+    useAuthStore.getState().clearToken();
+    window.location.href = "/sign-in";
+    throw new Error("Unauthorized");
+  }
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || err.message || `${res.status}`);

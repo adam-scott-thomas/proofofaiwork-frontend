@@ -1,5 +1,7 @@
 import { createBrowserRouter } from "react-router";
 import Layout from "./components/Layout";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import UploadPool from "./pages/UploadPool";
 import Projects from "./pages/Projects";
@@ -18,11 +20,23 @@ import AuthCallback from "./pages/AuthCallback";
 import Upload from "./pages/Upload";
 import Processing from "./pages/Processing";
 import Results from "./pages/Results";
+import { createElement } from "react";
+
+// Helper to wrap a component with ProtectedRoute
+function protect(Component: React.ComponentType) {
+  return () => createElement(ProtectedRoute, null, createElement(Component));
+}
 
 export const router = createBrowserRouter([
+  // Public landing page
   {
     path: "/",
-    Component: Layout,
+    Component: Landing,
+  },
+  // Authenticated dashboard (sidebar layout)
+  {
+    path: "/dashboard",
+    Component: protect(Layout),
     children: [
       { index: true, Component: Dashboard },
       { path: "upload", Component: UploadPool },
