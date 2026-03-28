@@ -101,38 +101,48 @@ export default function Dashboard() {
             </Button>
           </div>
 
-          {/* Three Scores */}
-          <div className="grid grid-cols-3 gap-8">
-            <div className="border-r border-[rgba(0,0,0,0.06)] pr-8">
+          {/* Four Scores */}
+          <div className="grid grid-cols-4 gap-6">
+            <div className="border-r border-[rgba(0,0,0,0.06)] pr-6">
               <div className="mb-2 text-[13px] text-[#717182]">Human Leadership</div>
-              <div className="mb-1 text-6xl tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--score-hls)' }}>
+              <div className="mb-1 text-5xl tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--score-hls)' }}>
                 {hls}%
               </div>
               <div className="text-[13px] text-[#717182]">leadership score</div>
             </div>
 
-            <div className="border-r border-[rgba(0,0,0,0.06)] pr-8">
+            <div className="border-r border-[rgba(0,0,0,0.06)] pr-6">
               <div className="mb-2 text-[13px] text-[#717182]">AI Execution Load</div>
-              <div className="mb-1 text-6xl tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--score-execution)' }}>
+              <div className="mb-1 text-5xl tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--score-execution)' }}>
                 {(ael * 100).toFixed(0)}%
               </div>
-              <div className="text-[13px] text-[#717182]">delegation rate</div>
+              <div className="text-[13px] text-[#717182]">AI-generated output</div>
             </div>
 
-            <div>
-              <div className="mb-2 text-[13px] text-[#717182]">Amplified Capabilities</div>
-              <div className="mb-1 text-6xl tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--score-cai)' }}>
+            <div className="border-r border-[rgba(0,0,0,0.06)] pr-6">
+              <div className="mb-2 text-[13px] text-[#717182]">Amplified</div>
+              <div className="mb-1 text-5xl tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--score-cai)' }}>
                 {workProfile?.amplified_capabilities ?? cai}x
               </div>
               <div className="text-[13px] text-[#717182]">existing skills boosted</div>
+            </div>
+
+            <div>
+              <div className="mb-2 text-[13px] text-[#717182]">Unlocked</div>
+              <div className="mb-1 text-5xl tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: '#10B981' }}>
+                +{workProfile?.unlocked_capabilities?.count ?? 0}
+              </div>
+              <div className="text-[13px] text-[#717182]">new domains via AI</div>
               {(workProfile?.unlocked_capabilities?.count ?? 0) > 0 && (
-                <div className="mt-3 rounded-sm bg-[#F5F5F7] px-3 py-2">
-                  <div className="text-[13px] font-semibold">
-                    +{workProfile.unlocked_capabilities.count} new domains unlocked
-                  </div>
-                  <div className="text-[12px] text-[#717182]">
-                    {workProfile.unlocked_capabilities.domains?.map((d: any) => d.name).join(", ")}
-                  </div>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {workProfile.unlocked_capabilities.domains?.slice(0, 4).map((d: any) => (
+                    <span key={d.name} className="rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] text-emerald-700 capitalize">
+                      {d.name.replace("_", " ")}
+                    </span>
+                  ))}
+                  {(workProfile.unlocked_capabilities.domains?.length ?? 0) > 4 && (
+                    <span className="text-[11px] text-[#717182]">+{workProfile.unlocked_capabilities.domains.length - 4} more</span>
+                  )}
                 </div>
               )}
             </div>
