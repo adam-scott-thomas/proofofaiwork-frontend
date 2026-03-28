@@ -149,30 +149,38 @@ export default function WorkProfile() {
             )}
           </div>
 
-          {/* Three Scores */}
-          <div className="grid grid-cols-3 gap-8">
-            <div className="border-r border-[rgba(0,0,0,0.06)] pr-8">
+          {/* Four Scores */}
+          <div className="grid grid-cols-4 gap-6">
+            <div className="border-r border-[rgba(0,0,0,0.06)] pr-6">
               <div className="mb-2 text-[13px] text-[#717182]">Human Leadership</div>
-              <div className="mb-1 text-7xl tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--score-hls)' }}>
+              <div className="mb-1 text-6xl tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--score-hls)' }}>
                 {profile.human_leadership_score}
               </div>
               <div className="text-[13px] text-[#717182]">of 100</div>
             </div>
 
-            <div className="border-r border-[rgba(0,0,0,0.06)] pr-8">
+            <div className="border-r border-[rgba(0,0,0,0.06)] pr-6">
               <div className="mb-2 text-[13px] text-[#717182]">AI Execution Load</div>
-              <div className="mb-1 text-7xl tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--score-execution)' }}>
+              <div className="mb-1 text-6xl tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--score-execution)' }}>
                 {(profile.ai_execution_load * 100).toFixed(0)}%
               </div>
-              <div className="text-[13px] text-[#717182]">delegation rate</div>
+              <div className="text-[13px] text-[#717182]">AI-generated output</div>
+            </div>
+
+            <div className="border-r border-[rgba(0,0,0,0.06)] pr-6">
+              <div className="mb-2 text-[13px] text-[#717182]">Amplified</div>
+              <div className="mb-1 text-6xl tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--score-cai)' }}>
+                {((profile.amplified_capabilities ?? profile.cai) / 100).toFixed(1)}x
+              </div>
+              <div className="text-[13px] text-[#717182]">existing skills boosted</div>
             </div>
 
             <div>
-              <div className="mb-2 text-[13px] text-[#717182]">Cognitive Amplification Index</div>
-              <div className="mb-1 text-8xl tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--score-cai)' }}>
-                {profile.cai}
+              <div className="mb-2 text-[13px] text-[#717182]">Unlocked</div>
+              <div className="mb-1 text-6xl tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: '#10B981' }}>
+                +{profile.unlocked_capabilities?.count ?? 0}
               </div>
-              <div className="text-[13px] text-[#717182]">capacity increase</div>
+              <div className="text-[13px] text-[#717182]">new domains via AI</div>
             </div>
           </div>
 

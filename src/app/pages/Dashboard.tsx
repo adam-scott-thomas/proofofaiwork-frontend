@@ -122,9 +122,16 @@ export default function Dashboard() {
             <div className="border-r border-[rgba(0,0,0,0.06)] pr-6">
               <div className="mb-2 text-[13px] text-[#717182]">Amplified</div>
               <div className="mb-1 text-5xl tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--score-cai)' }}>
-                {workProfile?.amplified_capabilities ?? cai}x
+                {((workProfile?.amplified_capabilities ?? cai) / 100).toFixed(1)}x
               </div>
               <div className="text-[13px] text-[#717182]">existing skills boosted</div>
+              <div className="mt-2 flex flex-wrap gap-1">
+                {["business strategy", "product mgmt", "writing", "legal", "project mgmt"].map((s) => (
+                  <span key={s} className="rounded bg-blue-50 px-1.5 py-0.5 text-[11px] text-blue-700">
+                    {s}
+                  </span>
+                ))}
+              </div>
             </div>
 
             <div>
