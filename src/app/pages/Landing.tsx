@@ -15,6 +15,11 @@ export default function Landing() {
           Proof<span className="text-blue-400">Of</span>AI<span className="text-blue-400">Work</span>
         </div>
         <div className="flex items-center gap-4">
+          <Link to="/methodology">
+            <Button variant="ghost" className="text-gray-400 hover:text-white">
+              Methodology
+            </Button>
+          </Link>
           <Link to={isAuthenticated() ? "/student" : "/sign-in?next=/student"}>
             <Button variant="ghost" className="text-gray-400 hover:text-white">
               <GraduationCap className="w-4 h-4 mr-1.5" />
@@ -185,13 +190,17 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Trust */}
+      {/* Trust + Methodology */}
       <section className="container mx-auto px-6 py-16 text-center">
-        <div className="flex flex-wrap justify-center gap-8 text-sm text-gray-500">
+        <div className="flex flex-wrap justify-center gap-8 text-sm text-gray-500 mb-6">
           <div className="flex items-center gap-2"><Shield className="w-4 h-4" /> Evidence-backed scoring</div>
           <div className="flex items-center gap-2"><Zap className="w-4 h-4" /> Adversarial integrity checks</div>
           <div className="flex items-center gap-2"><TrendingUp className="w-4 h-4" /> Longitudinal maturity tracking</div>
         </div>
+        <Link to="/methodology" className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm transition-colors">
+          Read our open scoring methodology — every formula, weight, and threshold published
+          <ArrowRight className="w-4 h-4" />
+        </Link>
       </section>
 
       {/* CTA */}

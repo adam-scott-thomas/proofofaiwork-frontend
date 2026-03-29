@@ -25,6 +25,7 @@ import Results from "./pages/Results";
 import StudentSubmit from "./pages/StudentSubmit";
 import StudentProcessing from "./pages/StudentProcessing";
 import StudentResults from "./pages/StudentResults";
+import Methodology from "./pages/Methodology";
 import { createElement } from "react";
 
 // Helper to wrap a component with ProtectedRoute
@@ -79,6 +80,11 @@ export const router = createBrowserRouter([
   {
     path: "/p/:slug",
     Component: PublicProofPage,
+  },
+  // Methodology (public, no auth)
+  {
+    path: "/methodology",
+    Component: Methodology,
   },
   // Auth pages (no sidebar)
   {
