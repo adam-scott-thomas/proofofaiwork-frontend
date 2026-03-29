@@ -312,10 +312,10 @@ export default function StudentSubmit() {
         <CardContent className="p-6">
           <div className="mb-1 flex items-center gap-2">
             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-100 text-[12px] font-bold text-purple-600">2</div>
-            <h2 className="text-[15px] font-medium text-[#030213]">What you turned in</h2>
+            <h2 className="text-[15px] font-medium text-[#030213]">What will be turned in</h2>
             <span className="text-[12px] text-[#717182]">optional</span>
           </div>
-          <p className="mb-4 text-[12px] text-[#717182]">Your final paper, code, or deliverable — so we can compare it against the AI conversation</p>
+          <p className="mb-4 text-[12px] text-[#717182]">Your final paper, code, or deliverable — so we can compare it against the AI conversation and measure your contribution</p>
 
           <div className="mb-4 flex gap-2">
             <button onClick={() => setDeliverableMode("file")} disabled={isSubmitting}
