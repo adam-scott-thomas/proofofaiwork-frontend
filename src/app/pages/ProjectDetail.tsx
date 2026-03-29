@@ -34,7 +34,7 @@ export default function ProjectDetail() {
       <div className="min-h-screen">
         <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
           <div className="px-8 py-6">
-            <Link to="/projects">
+            <Link to="/dashboard/projects">
               <Button variant="ghost" size="sm" className="-ml-3">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Projects
@@ -65,7 +65,7 @@ export default function ProjectDetail() {
       <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
         <div className="px-8 py-6">
           <div className="mb-4">
-            <Link to="/projects">
+            <Link to="/dashboard/projects">
               <Button variant="ghost" size="sm" className="-ml-3">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Projects

@@ -182,7 +182,7 @@ export default function Dashboard() {
 
           {/* Action Button */}
           <div className="mt-6 border-t border-[rgba(0,0,0,0.06)] pt-6">
-            <Link to="/work-profile">
+            <Link to="/dashboard/work-profile">
               <Button size="sm">View Full Work Profile</Button>
             </Link>
           </div>
@@ -271,25 +271,25 @@ export default function Dashboard() {
               <h3 className="text-[15px]">Quick Actions</h3>
             </div>
             <div className="space-y-2 p-4">
-              <Link to="/upload">
+              <Link to="/dashboard/upload/new">
                 <Button variant="outline" className="w-full justify-start" size="sm">
                   <Upload className="mr-2 h-4 w-4" />
                   Upload Conversations
                 </Button>
               </Link>
-              <Link to="/projects">
+              <Link to="/dashboard/projects">
                 <Button variant="outline" className="w-full justify-start" size="sm">
                   <FileText className="mr-2 h-4 w-4" />
                   Create Project
                 </Button>
               </Link>
-              <Link to="/assessments">
+              <Link to="/dashboard/assessments">
                 <Button variant="outline" className="w-full justify-start" size="sm">
                   <ClipboardList className="mr-2 h-4 w-4" />
                   Run Assessment
                 </Button>
               </Link>
-              <Link to="/proof-pages">
+              <Link to="/dashboard/proof-pages">
                 <Button variant="outline" className="w-full justify-start" size="sm">
                   <Globe className="mr-2 h-4 w-4" />
                   Publish Proof Page
@@ -297,7 +297,7 @@ export default function Dashboard() {
               </Link>
             </div>
             <div className="border-t border-[rgba(0,0,0,0.06)] p-4">
-              <Link to="/upload">
+              <Link to="/dashboard/upload">
                 <Button className="w-full" size="sm">
                   View Upload Pool
                 </Button>

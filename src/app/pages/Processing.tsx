@@ -1,59 +1,46 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams, Link, useNavigate } from "react-router";
-import {
-  ArrowLeft,
-  Loader2,
-  CheckCircle2,
-  XCircle,
-  User,
-  Bot,
-} from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "../../lib/api";
+import { useParams, useNavigate, Link } from "react-router";
+import { Loader2, CheckCircle2, XCircle, User, Bot, RefreshCw, Clock, ArrowLeft } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiFetch, apiPost } from "../../lib/api";
+import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 
-// The 8 dimensions, grouped
-const HUMAN_DIMENSIONS = [
-  { key: "clarity", label: "Clarity", desc: "Stating objectives clearly" },
-  { key: "context", label: "Context", desc: "Framing the problem" },
-  { key: "constraint_quality", label: "Constraints", desc: "Setting precise bounds" },
-  { key: "iteration_discipline", label: "Iteration", desc: "Refining with feedback" },
-];
-
-const AI_DIMENSIONS = [
-  { key: "verification_habit", label: "Verification", desc: "Checking AI output" },
-  { key: "output_judgment", label: "Judgment", desc: "Accept/reject decisions" },
-  { key: "workflow_efficiency", label: "Workflow", desc: "Task decomposition" },
-  { key: "risk_awareness", label: "Risk Awareness", desc: "Security & edge cases" },
-];
-
-type AssessmentStatus =
-  | "pending"
-  | "parsing"
-  | "normalizing"
-  | "gating"
-  | "evaluating"
-  | "aggregating"
-  | "complete"
-  | "partial"
-  | "failed"
-  | "stale";
+type Status =
+  | "pending" | "parsing" | "normalizing" | "gating"
+  | "evaluating" | "aggregating" | "complete" | "partial" | "failed";
 
 interface LiveObservation {
   dimension: string;
   score: number | null;
   label: string | null;
   summary: string | null;
-  confidence_label: string | null;
   skipped: boolean;
-  skip_reason: string | null;
 }
 
-interface LiveData {
-  status: string;
-  total_dimensions: number;
-  observations: LiveObservation[];
-}
+const STEP_LABELS: Record<string, string> = {
+  pending: "Queued — waiting for a worker...",
+  parsing: "Reading your conversation",
+  normalizing: "Structuring the data",
+  gating: "Checking what we can evaluate",
+  evaluating: "Scoring your work",
+  aggregating: "Compiling results",
+  complete: "Done!",
+  partial: "Done!",
+};
+
+const STEP_ORDER: Status[] = ["pending", "parsing", "normalizing", "gating", "evaluating", "aggregating", "complete"];
+
+const DIMENSION_LABELS: Record<string, { label: string; desc: string; side: "you" | "ai" }> = {
+  clarity: { label: "Clarity", desc: "How clearly you stated what you needed", side: "you" },
+  context: { label: "Context", desc: "How well you framed the problem", side: "you" },
+  constraint_quality: { label: "Constraints", desc: "How precisely you set boundaries", side: "you" },
+  iteration_discipline: { label: "Iteration", desc: "How you refined AI output", side: "you" },
+  verification_habit: { label: "Verification", desc: "Whether you checked AI's work", side: "ai" },
+  output_judgment: { label: "Judgment", desc: "Your accept/reject decisions", side: "ai" },
+  workflow_efficiency: { label: "Workflow", desc: "How you decomposed the task", side: "ai" },
+  risk_awareness: { label: "Risk awareness", desc: "Attention to edge cases", side: "ai" },
+};
 
 function scoreColor(score: number | null): string {
   if (score === null) return "bg-gray-200";
@@ -62,428 +49,304 @@ function scoreColor(score: number | null): string {
   return "bg-red-400";
 }
 
-function DimensionBar({
-  dim,
-  observation,
-  isNew,
-}: {
-  dim: { key: string; label: string; desc: string };
-  observation: LiveObservation | undefined;
-  isNew: boolean;
-}) {
-  const score = observation?.score ?? null;
-  const skipped = observation?.skipped ?? false;
-  const evaluated = observation !== undefined;
-
-  return (
-    <div
-      className={`flex items-center gap-3 p-3 rounded-lg transition-all duration-700 ${
-        isNew
-          ? "bg-blue-50 ring-2 ring-blue-300"
-          : evaluated
-          ? "bg-white"
-          : "bg-gray-50"
-      }`}
-    >
-      <div className="w-28 flex-shrink-0">
-        <p className={`text-sm font-semibold ${evaluated ? "text-foreground" : "text-gray-400"}`}>
-          {dim.label}
-        </p>
-        <p className="text-xs text-muted-foreground">{dim.desc}</p>
-      </div>
-
-      <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
-        {evaluated && !skipped && score !== null && (
-          <div
-            className={`h-full rounded-full transition-all duration-1000 ease-out ${scoreColor(score)}`}
-            style={{ width: `${Math.round(score * 100)}%` }}
-          />
-        )}
-      </div>
-
-      <div className="w-12 text-right flex-shrink-0">
-        {skipped ? (
-          <span className="text-xs text-gray-400">skip</span>
-        ) : evaluated && score !== null ? (
-          <span
-            className={`text-sm font-bold ${
-              score >= 0.7
-                ? "text-emerald-600"
-                : score >= 0.4
-                ? "text-amber-600"
-                : "text-red-600"
-            }`}
-          >
-            {Math.round(score * 100)}%
-          </span>
-        ) : (
-          <Loader2 className="w-4 h-4 text-gray-300 animate-spin ml-auto" />
-        )}
-      </div>
-    </div>
-  );
-}
-
-function LiveDimensions({
-  assessmentId,
-  isEvaluating,
-}: {
-  assessmentId: string;
-  isEvaluating: boolean;
-}) {
-  const [liveData, setLiveData] = useState<LiveData | null>(null);
-  const [newDims, setNewDims] = useState<Set<string>>(new Set());
-
-  const poll = useCallback(async () => {
-    try {
-      const data = await apiFetch<LiveData>(`/assessments/${assessmentId}/live-observations`);
-      setLiveData((prev) => {
-        const prevCount = prev?.observations.length ?? 0;
-        const newCount = data.observations.length;
-        if (newCount > prevCount) {
-          const newKeys = new Set(
-            data.observations.slice(prevCount).map((o) => o.dimension)
-          );
-          setNewDims(newKeys);
-          setTimeout(() => setNewDims(new Set()), 2000);
-        }
-        return data;
-      });
-    } catch {
-      // ignore polling errors
-    }
-  }, [assessmentId]);
-
-  useEffect(() => {
-    if (!isEvaluating) return;
-    poll();
-    const interval = setInterval(poll, 2000);
-    return () => clearInterval(interval);
-  }, [isEvaluating, poll]);
-
-  // Poll once on mount for non-evaluating stages (aggregating/complete)
-  useEffect(() => {
-    if (!isEvaluating) poll();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const observationMap = new Map(
-    (liveData?.observations ?? []).map((o) => [o.dimension, o])
-  );
-
-  const humanScores = HUMAN_DIMENSIONS
-    .map((d) => observationMap.get(d.key)?.score)
-    .filter((s): s is number => s !== null && s !== undefined);
-  const aiScores = AI_DIMENSIONS
-    .map((d) => observationMap.get(d.key)?.score)
-    .filter((s): s is number => s !== null && s !== undefined);
-
-  const humanAvg =
-    humanScores.length > 0
-      ? Math.round((humanScores.reduce((a, b) => a + b, 0) / humanScores.length) * 100)
-      : null;
-  const aiAvg =
-    aiScores.length > 0
-      ? Math.round((aiScores.reduce((a, b) => a + b, 0) / aiScores.length) * 100)
-      : null;
-
-  const evaluated = liveData?.observations.length ?? 0;
-  const total = liveData?.total_dimensions ?? 8;
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {evaluated} / {total} dimensions evaluated
-        </p>
-        {evaluated > 0 && (
-          <div className="flex gap-4 text-sm">
-            {humanAvg !== null && (
-              <span className="flex items-center gap-1">
-                <User className="w-3.5 h-3.5" />
-                <span className="font-semibold">{humanAvg}%</span>
-              </span>
-            )}
-            {aiAvg !== null && (
-              <span className="flex items-center gap-1">
-                <Bot className="w-3.5 h-3.5" />
-                <span className="font-semibold">{aiAvg}%</span>
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Human skills */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <User className="w-4 h-4 text-blue-600" />
-          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            Your Prompting Skills
-            {humanAvg !== null && (
-              <span className="ml-2 text-blue-600 normal-case">{humanAvg}%</span>
-            )}
-          </h4>
-        </div>
-        <div className="space-y-2">
-          {HUMAN_DIMENSIONS.map((dim) => (
-            <DimensionBar
-              key={dim.key}
-              dim={dim}
-              observation={observationMap.get(dim.key)}
-              isNew={newDims.has(dim.key)}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* AI collaboration */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <Bot className="w-4 h-4 text-purple-600" />
-          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            AI Collaboration Quality
-            {aiAvg !== null && (
-              <span className="ml-2 text-purple-600 normal-case">{aiAvg}%</span>
-            )}
-          </h4>
-        </div>
-        <div className="space-y-2">
-          {AI_DIMENSIONS.map((dim) => (
-            <DimensionBar
-              key={dim.key}
-              dim={dim}
-              observation={observationMap.get(dim.key)}
-              isNew={newDims.has(dim.key)}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const PIPELINE_STEPS: Array<{ status: AssessmentStatus; label: string; description: string }> = [
-  { status: "pending", label: "Pending", description: "Queued for processing" },
-  { status: "parsing", label: "Parsing", description: "Reading and structuring input files" },
-  { status: "normalizing", label: "Normalizing", description: "Extracting conversation structure" },
-  { status: "gating", label: "Gating", description: "Determining assessment scope" },
-];
-
-function ProcessingSteps({ currentStatus }: { currentStatus: AssessmentStatus }) {
-  const currentIndex = PIPELINE_STEPS.findIndex((s) => s.status === currentStatus);
-
-  return (
-    <div className="space-y-3">
-      {PIPELINE_STEPS.map((step, index) => {
-        const isComplete = index < currentIndex;
-        const isCurrent = index === currentIndex;
-
-        return (
-          <div
-            key={step.status}
-            className={`flex items-start gap-4 p-3 rounded-lg transition-colors ${
-              isCurrent
-                ? "bg-blue-50 border-2 border-blue-200"
-                : isComplete
-                ? "bg-green-50 border border-green-200"
-                : "bg-gray-50 border border-gray-200"
-            }`}
-          >
-            <div className="flex-shrink-0 mt-0.5">
-              {isComplete && (
-                <div className="w-6 h-6 rounded-full bg-green-600 flex items-center justify-center">
-                  <CheckCircle2 className="w-4 h-4 text-white" />
-                </div>
-              )}
-              {isCurrent && <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />}
-              {!isComplete && !isCurrent && (
-                <div className="w-6 h-6 rounded-full bg-gray-300" />
-              )}
-            </div>
-            <div>
-              <h4
-                className={`font-semibold ${
-                  isCurrent
-                    ? "text-blue-900"
-                    : isComplete
-                    ? "text-green-900"
-                    : "text-gray-500"
-                }`}
-              >
-                {step.label}
-              </h4>
-              <p
-                className={`text-sm ${
-                  isCurrent
-                    ? "text-blue-700"
-                    : isComplete
-                    ? "text-green-700"
-                    : "text-gray-500"
-                }`}
-              >
-                {step.description}
-              </p>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 export default function Processing() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [observations, setObservations] = useState<LiveObservation[]>([]);
+  const [newDims, setNewDims] = useState<Set<string>>(new Set());
+  const [elapsed, setElapsed] = useState(0);
 
-  const {
-    data: assessment,
-    isLoading,
-    error,
-  } = useQuery({
+  const { data: assessment } = useQuery({
     queryKey: ["assessment", id],
     queryFn: () => apiFetch<any>(`/assessments/${id}`),
     enabled: !!id,
     refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      if (status === "complete" || status === "partial" || status === "failed") return false;
+      const s = query.state.data?.status;
+      if (s === "complete" || s === "partial" || s === "failed") return false;
       return 3000;
     },
   });
 
+  const rerunMutation = useMutation({
+    mutationFn: () => apiPost<any>(`/assessments/${id}/rerun`, {}),
+  });
+
+  // Elapsed timer
   useEffect(() => {
-    if (assessment) {
-      if (assessment.status === "complete" || assessment.status === "partial") {
-        const timer = setTimeout(() => {
-          navigate(`/assessment/${id}/results`, { replace: true });
-        }, 3000);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [assessment, id, navigate]);
+    const timer = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
-  const BackLink = () => (
-    <Link
-      to="/"
-      className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-    >
-      <ArrowLeft className="w-4 h-4" />
-      Back to Dashboard
-    </Link>
-  );
+  // Poll live observations
+  const poll = useCallback(async () => {
+    if (!id) return;
+    try {
+      const data = await apiFetch<{ observations: LiveObservation[] }>(`/assessments/${id}/live-observations`);
+      setObservations((prev) => {
+        if (data.observations.length > prev.length) {
+          const newKeys = new Set(data.observations.slice(prev.length).map((o) => o.dimension));
+          setNewDims(newKeys);
+          setTimeout(() => setNewDims(new Set()), 2000);
+        }
+        return data.observations;
+      });
+    } catch { /* ignore */ }
+  }, [id]);
 
-  if (isLoading || !assessment) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-white border-b border-gray-200">
-          <div className="container mx-auto px-6 py-4">
-            <BackLink />
-          </div>
-        </header>
-        <main className="container mx-auto px-6 py-12">
-          <div className="max-w-4xl mx-auto text-center">
-            <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading assessment...</p>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-white border-b border-gray-200">
-          <div className="container mx-auto px-6 py-4">
-            <BackLink />
-          </div>
-        </header>
-        <main className="container mx-auto px-6 py-12">
-          <div className="max-w-4xl mx-auto text-center">
-            <XCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-foreground mb-2">Assessment Not Found</h1>
-            <p className="text-muted-foreground">
-              {error instanceof Error ? error.message : "This assessment could not be loaded."}
-            </p>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  const status: AssessmentStatus = assessment.status;
-  const isEvaluatingOrLater = ["evaluating", "aggregating", "complete", "partial"].includes(status);
+  const status: Status = assessment?.status ?? "pending";
   const isDone = status === "complete" || status === "partial";
+  const isProcessing = !isDone && status !== "failed";
+  const isStuck = status === "pending" && elapsed > 120;
+
+  // Fake progress: advance steps on a timer so the UI feels alive
+  const STEP_TIMINGS = [0, 3, 7, 12, 18];
+  const fakeStepIdx = isDone
+    ? STEP_ORDER.length - 1
+    : Math.min(
+        STEP_TIMINGS.filter((t) => elapsed >= t).length,
+        STEP_ORDER.length - 2,
+      );
+  const displayStatus = isDone ? "complete" : STEP_ORDER[Math.min(fakeStepIdx, STEP_ORDER.length - 1)];
+
+  useEffect(() => {
+    if (!isProcessing && !isDone) return;
+    poll();
+    const interval = setInterval(poll, 2500);
+    return () => clearInterval(interval);
+  }, [isProcessing, isDone, poll]);
+
+  // Redirect to results when done
+  useEffect(() => {
+    if (isDone) {
+      const timer = setTimeout(() => navigate(`/dashboard/assessment/${id}/results`, { replace: true }), 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [isDone, id, navigate]);
+
+  if (status === "failed") {
+    const isParseFail = assessment?.failure_stage === "parse";
+    return (
+      <div className="min-h-screen">
+        <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
+          <div className="px-8 py-6">
+            <Link to="/dashboard" className="inline-flex items-center gap-2 text-[13px] text-[#717182] hover:text-[#030213] transition-colors">
+              <ArrowLeft className="h-3.5 w-3.5" /> Back to Dashboard
+            </Link>
+          </div>
+        </header>
+        <div className="p-8">
+          <div className="mx-auto max-w-2xl py-12 text-center">
+            <XCircle className="mx-auto mb-4 h-12 w-12 text-red-500" />
+            <h1 className="mb-2 text-xl font-medium text-[#030213]">
+              {isParseFail ? "We couldn't read your file" : "Evaluation failed"}
+            </h1>
+            <p className="mb-6 text-[14px] text-[#717182]">
+              {assessment?.failure_reason || "Something went wrong."}
+            </p>
+            <div className="flex justify-center gap-3">
+              {isParseFail ? (
+                <Link to="/dashboard/upload/new">
+                  <Button>Upload a different file</Button>
+                </Link>
+              ) : (
+                <Button
+                  onClick={() => rerunMutation.mutate()}
+                  disabled={rerunMutation.isPending}
+                >
+                  {rerunMutation.isPending ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Retrying...</>
+                  ) : (
+                    <><RefreshCw className="mr-2 h-4 w-4" /> Try again</>
+                  )}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const yourDims = observations.filter((o) => DIMENSION_LABELS[o.dimension]?.side === "you");
+  const aiDims = observations.filter((o) => DIMENSION_LABELS[o.dimension]?.side === "ai");
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200">
-        <div className="container mx-auto px-6 py-4">
-          <BackLink />
+    <div className="min-h-screen">
+      {/* Header */}
+      <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
+        <div className="px-8 py-6">
+          <Link to="/dashboard" className="mb-3 inline-flex items-center gap-2 text-[13px] text-[#717182] hover:text-[#030213] transition-colors">
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to Dashboard
+          </Link>
+          <h1 className="text-xl tracking-tight">
+            {isDone ? "Assessment Complete" : "Processing Assessment"}
+          </h1>
+          <p className="mt-1 text-[13px] text-[#717182]">
+            Assessment {id?.slice(0, 8)}...
+          </p>
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-12">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-foreground mb-3">
-              {isDone ? "Assessment Complete" : "Processing Your Assessment"}
-            </h1>
-            <p className="text-muted-foreground">
-              Assessment ID: {assessment.id.slice(0, 8)}...
-            </p>
+      <div className="p-8">
+        <div className="mx-auto max-w-2xl">
+          {/* Status header */}
+          <div className="mb-8 text-center">
+            {isDone ? (
+              <>
+                <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-green-500" />
+                <h2 className="text-lg font-medium text-[#030213]">Analysis complete</h2>
+                <p className="mt-1 text-[13px] text-[#717182]">Taking you to your results...</p>
+              </>
+            ) : (
+              <>
+                <Loader2 className="mx-auto mb-3 h-10 w-10 animate-spin text-blue-500" />
+                <h2 className="text-lg font-medium text-[#030213]">
+                  {STEP_LABELS[displayStatus] || "Processing..."}
+                </h2>
+                <p className="mt-1 text-[13px] text-[#717182]">
+                  {elapsed < 10 && "This usually takes 30\u201360 seconds"}
+                  {elapsed >= 10 && elapsed < 60 && `${elapsed}s elapsed`}
+                  {elapsed >= 60 && `${Math.floor(elapsed / 60)}m ${elapsed % 60}s elapsed`}
+                </p>
+              </>
+            )}
           </div>
 
-          {/* Live dimensions — evaluating and beyond */}
-          {isEvaluatingOrLater && (
-            <Card className="shadow-xl border border-gray-200 mb-8">
-              <CardContent className="p-8">
-                <LiveDimensions
-                  assessmentId={assessment.id}
-                  isEvaluating={status === "evaluating"}
-                />
-                {isDone && (
-                  <p className="text-center text-sm text-muted-foreground mt-6">
-                    Redirecting to full results...
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Pipeline steps — before evaluation */}
-          {!isEvaluatingOrLater && (
-            <Card className="shadow-xl border border-gray-200 mb-8">
-              <CardContent className="p-12">
-                <div className="flex flex-col items-center mb-8">
-                  <Loader2 className="w-16 h-16 text-blue-600 animate-spin mb-4" />
-                  <h2 className="text-2xl font-semibold text-foreground mb-2">
-                    Preparing Assessment
-                  </h2>
+          {/* Pipeline progress steps */}
+          {isProcessing && (
+            <Card className="mb-6 border border-[rgba(0,0,0,0.08)] bg-white shadow-sm">
+              <CardContent className="p-6">
+                <div className="space-y-2">
+                  {STEP_ORDER.slice(0, -1).map((step, i) => {
+                    const isActive = i === fakeStepIdx;
+                    const isComplete = i < fakeStepIdx;
+                    return (
+                      <div key={step} className="flex items-center gap-3">
+                        <div className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold ${
+                          isComplete ? "bg-emerald-100 text-emerald-700" :
+                          isActive ? "bg-blue-100 text-blue-700" :
+                          "bg-[#F5F5F7] text-[#717182]"
+                        }`}>
+                          {isComplete ? <CheckCircle2 className="h-3.5 w-3.5" /> :
+                           isActive ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> :
+                           i + 1}
+                        </div>
+                        <span className={`text-[13px] ${
+                          isActive ? "font-medium text-[#030213]" :
+                          isComplete ? "text-emerald-700" :
+                          "text-[#717182]"
+                        }`}>
+                          {STEP_LABELS[step]?.replace("...", "") || step}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
-                <ProcessingSteps currentStatus={status} />
               </CardContent>
             </Card>
           )}
 
-          {/* Evaluating / aggregating indicator */}
-          {status === "evaluating" && (
-            <div className="text-center">
-              <div className="inline-flex items-center gap-2 text-blue-600">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Evaluating dimensions...</span>
-              </div>
-            </div>
+          {/* Stuck warning */}
+          {isStuck && !rerunMutation.isPending && (
+            <Card className="mb-6 border border-amber-200 bg-amber-50 shadow-sm">
+              <CardContent className="p-5 flex items-start gap-3">
+                <Clock className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-[14px] font-medium text-amber-900">Taking longer than expected</p>
+                  <p className="mt-1 text-[13px] text-amber-700">
+                    The evaluation queue is busy. Your submission is in line and will be processed shortly.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-shrink-0 border-amber-300"
+                  onClick={() => rerunMutation.mutate()}
+                  disabled={rerunMutation.isPending}
+                >
+                  <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                  Retry
+                </Button>
+              </CardContent>
+            </Card>
           )}
-          {status === "aggregating" && (
-            <div className="text-center">
-              <div className="inline-flex items-center gap-2 text-blue-600">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Compiling final profile...</span>
-              </div>
+
+          {/* Dimension scores (appear during evaluation) */}
+          {observations.length > 0 && (
+            <div className="space-y-6">
+              {yourDims.length > 0 && (
+                <Card className="border border-[rgba(0,0,0,0.08)] bg-white shadow-sm">
+                  <CardContent className="p-6">
+                    <div className="mb-4 flex items-center gap-2">
+                      <User className="h-4 w-4 text-blue-600" />
+                      <h2 className="text-[14px] font-medium text-[#030213]">Your contribution</h2>
+                    </div>
+                    <div className="space-y-3">
+                      {yourDims.map((obs) => {
+                        const dim = DIMENSION_LABELS[obs.dimension];
+                        const isNew = newDims.has(obs.dimension);
+                        return (
+                          <div key={obs.dimension} className={`rounded-lg p-3 transition-all duration-700 ${isNew ? "bg-blue-50 ring-1 ring-blue-200" : "bg-[#FAFAFA]"}`}>
+                            <div className="mb-1.5 flex items-baseline justify-between">
+                              <span className="text-[13px] font-medium text-[#030213]">{dim?.label ?? obs.dimension}</span>
+                              {obs.score !== null && !obs.skipped && (
+                                <span className={`text-[13px] font-medium ${obs.score >= 0.7 ? "text-emerald-600" : obs.score >= 0.4 ? "text-amber-600" : "text-red-600"}`}>
+                                  {Math.round(obs.score * 100)}%
+                                </span>
+                              )}
+                            </div>
+                            {obs.score !== null && !obs.skipped && (
+                              <div className="h-1.5 overflow-hidden rounded-full bg-gray-200">
+                                <div className={`h-full rounded-full transition-all duration-1000 ${scoreColor(obs.score)}`} style={{ width: `${Math.round(obs.score * 100)}%` }} />
+                              </div>
+                            )}
+                            <p className="mt-1 text-[11px] text-[#717182]">{dim?.desc}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {aiDims.length > 0 && (
+                <Card className="border border-[rgba(0,0,0,0.08)] bg-white shadow-sm">
+                  <CardContent className="p-6">
+                    <div className="mb-4 flex items-center gap-2">
+                      <Bot className="h-4 w-4 text-purple-600" />
+                      <h2 className="text-[14px] font-medium text-[#030213]">How you used AI</h2>
+                    </div>
+                    <div className="space-y-3">
+                      {aiDims.map((obs) => {
+                        const dim = DIMENSION_LABELS[obs.dimension];
+                        const isNew = newDims.has(obs.dimension);
+                        return (
+                          <div key={obs.dimension} className={`rounded-lg p-3 transition-all duration-700 ${isNew ? "bg-purple-50 ring-1 ring-purple-200" : "bg-[#FAFAFA]"}`}>
+                            <div className="mb-1.5 flex items-baseline justify-between">
+                              <span className="text-[13px] font-medium text-[#030213]">{dim?.label ?? obs.dimension}</span>
+                              {obs.score !== null && !obs.skipped && (
+                                <span className={`text-[13px] font-medium ${obs.score >= 0.7 ? "text-emerald-600" : obs.score >= 0.4 ? "text-amber-600" : "text-red-600"}`}>
+                                  {Math.round(obs.score * 100)}%
+                                </span>
+                              )}
+                            </div>
+                            {obs.score !== null && !obs.skipped && (
+                              <div className="h-1.5 overflow-hidden rounded-full bg-gray-200">
+                                <div className={`h-full rounded-full transition-all duration-1000 ${scoreColor(obs.score)}`} style={{ width: `${Math.round(obs.score * 100)}%` }} />
+                              </div>
+                            )}
+                            <p className="mt-1 text-[11px] text-[#717182]">{dim?.desc}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }

@@ -22,7 +22,7 @@ export default function ConversationDetail() {
       <div className="min-h-screen">
         <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
           <div className="px-8 py-6">
-            <Link to="/conversations">
+            <Link to="/dashboard/conversations">
               <Button variant="ghost" size="sm" className="-ml-3">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Conversations
@@ -49,7 +49,7 @@ export default function ConversationDetail() {
       <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
         <div className="px-8 py-6">
           <div className="mb-4">
-            <Link to="/conversations">
+            <Link to="/dashboard/conversations">
               <Button variant="ghost" size="sm" className="-ml-3">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Conversations

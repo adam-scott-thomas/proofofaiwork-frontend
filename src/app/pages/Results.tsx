@@ -1,272 +1,307 @@
-import { useParams, Link, useNavigate } from "react-router";
+import { useState } from "react";
+import { useParams, Link } from "react-router";
 import {
-  ArrowLeft,
-  FileText,
-  Clock,
   CheckCircle2,
   AlertCircle,
-  XCircle,
   Loader2,
-  Download,
+  User,
+  Bot,
   Share2,
+  ExternalLink,
+  Copy,
   TrendingUp,
   TrendingDown,
-  Minus,
+  XCircle,
+  Download,
+  ArrowLeft,
 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiFetch } from "../../lib/api";
+import { apiFetch, apiPost } from "../../lib/api";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
-import { Badge } from "../components/ui/badge";
 
-type AssessmentStatus =
-  | "pending"
-  | "parsing"
-  | "normalizing"
-  | "gating"
-  | "evaluating"
-  | "aggregating"
-  | "complete"
-  | "partial"
-  | "failed"
-  | "stale";
-
-const PROCESSING_STATUSES: AssessmentStatus[] = [
-  "pending",
-  "parsing",
-  "normalizing",
-  "gating",
-  "evaluating",
-  "aggregating",
-];
-
-const STATUS_CONFIG: Record<
-  AssessmentStatus,
-  { icon: React.ElementType; color: string; label: string; spinning: boolean }
-> = {
-  pending: { icon: Clock, color: "bg-gray-100 text-gray-700 border-gray-200", label: "Pending", spinning: false },
-  parsing: { icon: Loader2, color: "bg-blue-100 text-blue-700 border-blue-200", label: "Parsing", spinning: true },
-  normalizing: { icon: Loader2, color: "bg-blue-100 text-blue-700 border-blue-200", label: "Normalizing", spinning: true },
-  gating: { icon: Loader2, color: "bg-blue-100 text-blue-700 border-blue-200", label: "Gating", spinning: true },
-  evaluating: { icon: Loader2, color: "bg-blue-100 text-blue-700 border-blue-200", label: "Evaluating", spinning: true },
-  aggregating: { icon: Loader2, color: "bg-blue-100 text-blue-700 border-blue-200", label: "Aggregating", spinning: true },
-  partial: { icon: AlertCircle, color: "bg-yellow-100 text-yellow-700 border-yellow-200", label: "Partial", spinning: false },
-  complete: { icon: CheckCircle2, color: "bg-green-100 text-green-700 border-green-200", label: "Complete", spinning: false },
-  failed: { icon: XCircle, color: "bg-red-100 text-red-700 border-red-200", label: "Failed", spinning: false },
-  stale: { icon: AlertCircle, color: "bg-gray-100 text-gray-700 border-gray-200", label: "Stale", spinning: false },
+const DIMENSION_LABELS: Record<string, { label: string; side: "you" | "ai" }> = {
+  clarity: { label: "Clarity of direction", side: "you" },
+  context: { label: "Problem framing", side: "you" },
+  constraint_quality: { label: "Setting constraints", side: "you" },
+  iteration_discipline: { label: "Iterating on output", side: "you" },
+  verification_habit: { label: "Checking AI's work", side: "ai" },
+  output_judgment: { label: "Accept/reject decisions", side: "ai" },
+  workflow_efficiency: { label: "Task decomposition", side: "ai" },
+  risk_awareness: { label: "Edge case awareness", side: "ai" },
 };
 
-function scoreColor(score: number): string {
-  if (score >= 0.7) return "bg-emerald-500";
-  if (score >= 0.4) return "bg-amber-400";
-  return "bg-red-400";
-}
+function ScoreBar({ score, label }: { score: number; label: string }) {
+  const color = score >= 0.7 ? "bg-emerald-500" : score >= 0.4 ? "bg-amber-400" : "bg-red-400";
+  const textColor = score >= 0.7 ? "text-emerald-700" : score >= 0.4 ? "text-amber-700" : "text-red-700";
 
-function scoreTextColor(score: number): string {
-  if (score >= 0.7) return "text-emerald-700";
-  if (score >= 0.4) return "text-amber-700";
-  return "text-red-700";
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-40 flex-shrink-0 text-[13px] text-[#3A3A3A]">{label}</span>
+      <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-200">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.round(score * 100)}%` }} />
+      </div>
+      <span className={`w-10 flex-shrink-0 text-right text-[13px] font-medium ${textColor}`}>
+        {Math.round(score * 100)}%
+      </span>
+    </div>
+  );
 }
 
 export default function Results() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const [published, setPublished] = useState(false);
+  const [proofUrl, setProofUrl] = useState("");
+  const [copied, setCopied] = useState(false);
 
-  const {
-    data: assessment,
-    isLoading: assessmentLoading,
-    error: assessmentError,
-  } = useQuery({
+  const { data: assessment, isLoading: assessmentLoading } = useQuery({
     queryKey: ["assessment", id],
     queryFn: () => apiFetch<any>(`/assessments/${id}`),
     enabled: !!id,
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      if (status === "complete" || status === "partial" || status === "failed") return false;
-      return 5000;
+  });
+
+  const { data: results, isLoading: resultsLoading } = useQuery({
+    queryKey: ["assessment-results", id],
+    queryFn: () => apiFetch<any>(`/assessments/${id}/results`),
+    enabled: !!id && (assessment?.status === "complete" || assessment?.status === "partial"),
+  });
+
+  const publishMutation = useMutation({
+    mutationFn: async () => {
+      const page = await apiPost<any>("/proof-pages", {
+        assessment_id: id,
+        headline: "AI Work Report",
+        visibility: "link",
+      });
+      await apiPost<any>(`/proof-pages/${page.id}/publish`, {});
+      return page;
+    },
+    onSuccess: (page) => {
+      const slug = page.slug || page.public_token;
+      const url = `${window.location.origin}/p/${slug}`;
+      setProofUrl(url);
+      setPublished(true);
     },
   });
 
-  const isComplete = assessment?.status === "complete" || assessment?.status === "partial";
-
-  const {
-    data: results,
-    isLoading: resultsLoading,
-    error: resultsError,
-  } = useQuery({
-    queryKey: ["assessment-results", id],
-    queryFn: () => apiFetch<any>(`/assessments/${id}/results`),
-    enabled: !!id && isComplete,
-  });
-
   const downloadMutation = useMutation({
-    mutationFn: async ({ format }: { format: "json" | "pdf" }) => {
-      const blob = await fetch(`/api/v1/assessments/${id}/download?format=${format}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("poaw-token") ?? ""}`,
-        },
+    mutationFn: async () => {
+      const blob = await fetch(`/api/v1/assessments/${id}/download?format=json`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("poaw-token") ?? ""}` },
       }).then((r) => r.blob());
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `assessment-${id?.slice(0, 8)}.${format}`;
+      a.download = `assessment-${id?.slice(0, 8)}.json`;
       a.click();
       URL.revokeObjectURL(url);
     },
   });
 
-  const BackLink = () => (
-    <Link
-      to="/"
-      className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-    >
-      <ArrowLeft className="w-4 h-4" />
-      Back to Dashboard
-    </Link>
-  );
+  const handleCopy = () => {
+    navigator.clipboard.writeText(proofUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
-  if (assessmentLoading || !assessment) {
+  if (assessmentLoading || resultsLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-white border-b border-gray-200">
-          <div className="container mx-auto px-6 py-4">
-            <BackLink />
+      <div className="min-h-screen">
+        <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
+          <div className="px-8 py-6">
+            <Link to="/dashboard" className="inline-flex items-center gap-2 text-[13px] text-[#717182] hover:text-[#030213] transition-colors">
+              <ArrowLeft className="h-3.5 w-3.5" /> Back to Dashboard
+            </Link>
           </div>
         </header>
-        <main className="container mx-auto px-6 py-12">
-          <div className="max-w-4xl mx-auto text-center">
-            <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading assessment...</p>
+        <div className="p-8">
+          <div className="py-16 text-center">
+            <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-blue-500" />
+            <p className="text-[14px] text-[#717182]">Loading your results...</p>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
 
-  if (assessmentError || resultsError) {
+  if (!results) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-white border-b border-gray-200">
-          <div className="container mx-auto px-6 py-4">
-            <BackLink />
+      <div className="min-h-screen">
+        <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
+          <div className="px-8 py-6">
+            <Link to="/dashboard" className="inline-flex items-center gap-2 text-[13px] text-[#717182] hover:text-[#030213] transition-colors">
+              <ArrowLeft className="h-3.5 w-3.5" /> Back to Dashboard
+            </Link>
           </div>
         </header>
-        <main className="container mx-auto px-6 py-12">
-          <div className="max-w-4xl mx-auto text-center">
-            <XCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-foreground mb-2">Assessment Not Found</h1>
-            <p className="text-muted-foreground">
-              {assessmentError instanceof Error
-                ? assessmentError.message
-                : "This assessment could not be loaded."}
-            </p>
+        <div className="p-8">
+          <div className="py-16 text-center">
+            <XCircle className="mx-auto mb-3 h-8 w-8 text-red-500" />
+            <p className="text-[14px] text-[#717182]">Results not available yet. Please try again later.</p>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
 
-  const status: AssessmentStatus = assessment.status;
-  const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.stale;
-  const StatusIcon = config.icon;
-  const isProcessing = PROCESSING_STATUSES.includes(status);
+  const observations = results.observations || [];
+  const yourObs = observations.filter((o: any) => !o.skipped && o.score != null && DIMENSION_LABELS[o.dimension]?.side === "you");
+  const aiObs = observations.filter((o: any) => !o.skipped && o.score != null && DIMENSION_LABELS[o.dimension]?.side === "ai");
+
+  const yourAvg = yourObs.length > 0
+    ? Math.round(yourObs.reduce((s: number, o: any) => s + o.score, 0) / yourObs.length * 100)
+    : null;
+  const aiAvg = aiObs.length > 0
+    ? Math.round(aiObs.reduce((s: number, o: any) => s + o.score, 0) / aiObs.length * 100)
+    : null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
-        <div className="container mx-auto px-6 py-4">
-          <BackLink />
+    <div className="min-h-screen">
+      {/* Header */}
+      <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
+        <div className="px-8 py-6">
+          <Link to="/dashboard" className="mb-3 inline-flex items-center gap-2 text-[13px] text-[#717182] hover:text-[#030213] transition-colors">
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to Dashboard
+          </Link>
+          <h1 className="text-xl tracking-tight">Assessment Results</h1>
+          <p className="mt-1 text-[13px] text-[#717182]">
+            Assessment {id?.slice(0, 8)} — {results.dimensions_evaluated ?? 0} dimensions evaluated
+          </p>
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-12">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold text-foreground mb-2">Assessment Results</h1>
-            <p className="text-muted-foreground">
-              Assessment ID: {assessment.id.slice(0, 8)}...
-            </p>
-          </div>
-
-          {/* Status Badge */}
-          <div className={`rounded-2xl border p-6 ${config.color}`}>
-            <div className="flex items-center gap-3">
-              <StatusIcon className={`w-6 h-6 ${config.spinning ? "animate-spin" : ""}`} />
-              <div>
-                <p className="font-semibold">Status: {config.label}</p>
-                {assessment.completed_at && (
-                  <p className="text-sm opacity-80">
-                    Completed: {new Date(assessment.completed_at).toLocaleString()}
-                  </p>
-                )}
-                {assessment.started_at && !assessment.completed_at && (
-                  <p className="text-sm opacity-80">
-                    Started: {new Date(assessment.started_at).toLocaleString()}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* In progress */}
-          {isProcessing && (
-            <Card className="mt-6 border border-gray-200">
-              <CardContent className="p-8 text-center">
-                <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-                <h2 className="text-xl font-semibold text-foreground mb-2">
-                  Assessment in Progress
-                </h2>
-                <p className="text-muted-foreground mb-4">
-                  Status: <span className="capitalize">{status}</span>
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  This page will automatically update when the assessment is complete.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Failed */}
-          {status === "failed" && (
-            <Card className="mt-6 border border-red-200">
-              <CardContent className="p-8">
-                <div className="flex items-center gap-3 mb-4">
-                  <XCircle className="w-8 h-8 text-destructive" />
-                  <h2 className="text-xl font-semibold text-foreground">Assessment Failed</h2>
+      <div className="p-8">
+        <div className="mx-auto max-w-3xl">
+          {/* Summary scores */}
+          <div className="mb-6 grid grid-cols-2 gap-4">
+            <Card className="border border-[rgba(0,0,0,0.08)] bg-white shadow-sm">
+              <CardContent className="p-5">
+                <div className="mb-1 flex items-center gap-2">
+                  <User className="h-4 w-4 text-blue-600" />
+                  <span className="text-[13px] text-[#717182]">Your contribution</span>
                 </div>
-                {assessment.failure_reason && (
-                  <p className="text-destructive mb-4">{assessment.failure_reason}</p>
-                )}
-                <p className="text-sm text-muted-foreground">
-                  Please try uploading your file again or contact support if the issue persists.
-                </p>
+                <div className="text-3xl font-medium tracking-tight" style={{ color: "var(--score-hls, #2563eb)" }}>
+                  {yourAvg !== null ? `${yourAvg}%` : "\u2014"}
+                </div>
+                <p className="mt-1 text-[11px] text-[#717182]">How well you directed the AI</p>
               </CardContent>
             </Card>
+
+            <Card className="border border-[rgba(0,0,0,0.08)] bg-white shadow-sm">
+              <CardContent className="p-5">
+                <div className="mb-1 flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-purple-600" />
+                  <span className="text-[13px] text-[#717182]">AI collaboration quality</span>
+                </div>
+                <div className="text-3xl font-medium tracking-tight" style={{ color: "var(--score-cai, #7c3aed)" }}>
+                  {aiAvg !== null ? `${aiAvg}%` : "\u2014"}
+                </div>
+                <p className="mt-1 text-[11px] text-[#717182]">How effectively you used AI</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Detailed scores */}
+          <Card className="mb-6 border border-[rgba(0,0,0,0.08)] bg-white shadow-sm">
+            <CardContent className="p-6">
+              <h2 className="mb-4 text-[15px] font-medium text-[#030213]">Detailed breakdown</h2>
+
+              {yourObs.length > 0 && (
+                <div className="mb-5">
+                  <div className="mb-3 flex items-center gap-2">
+                    <User className="h-3.5 w-3.5 text-blue-600" />
+                    <span className="text-[12px] font-medium uppercase tracking-wider text-[#717182]">
+                      Your direction
+                    </span>
+                  </div>
+                  <div className="space-y-2.5">
+                    {yourObs.map((obs: any) => (
+                      <ScoreBar
+                        key={obs.dimension}
+                        score={obs.score}
+                        label={DIMENSION_LABELS[obs.dimension]?.label ?? obs.dimension}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {aiObs.length > 0 && (
+                <div>
+                  <div className="mb-3 flex items-center gap-2">
+                    <Bot className="h-3.5 w-3.5 text-purple-600" />
+                    <span className="text-[12px] font-medium uppercase tracking-wider text-[#717182]">
+                      AI collaboration
+                    </span>
+                  </div>
+                  <div className="space-y-2.5">
+                    {aiObs.map((obs: any) => (
+                      <ScoreBar
+                        key={obs.dimension}
+                        score={obs.score}
+                        label={DIMENSION_LABELS[obs.dimension]?.label ?? obs.dimension}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Strengths & weaknesses */}
+          {(results.strengths?.length > 0 || results.weaknesses?.length > 0) && (
+            <div className="mb-6 grid grid-cols-2 gap-4">
+              {results.strengths?.length > 0 && (
+                <Card className="border border-[rgba(0,0,0,0.08)] bg-white shadow-sm">
+                  <CardContent className="p-5">
+                    <div className="mb-3 flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-emerald-600" />
+                      <span className="text-[13px] font-medium text-[#030213]">Strengths</span>
+                    </div>
+                    <ul className="space-y-2">
+                      {results.strengths.map((s: any, i: number) => (
+                        <li key={i} className="flex items-start gap-2 text-[13px] text-[#3A3A3A]">
+                          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-emerald-500" />
+                          <span>{typeof s === "string" ? s : s?.summary || s?.text || JSON.stringify(s)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+              {results.weaknesses?.length > 0 && (
+                <Card className="border border-[rgba(0,0,0,0.08)] bg-white shadow-sm">
+                  <CardContent className="p-5">
+                    <div className="mb-3 flex items-center gap-2">
+                      <TrendingDown className="h-4 w-4 text-amber-600" />
+                      <span className="text-[13px] font-medium text-[#030213]">Areas for growth</span>
+                    </div>
+                    <ul className="space-y-2">
+                      {results.weaknesses.map((w: any, i: number) => (
+                        <li key={i} className="flex items-start gap-2 text-[13px] text-[#3A3A3A]">
+                          <AlertCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-amber-500" />
+                          <span>{typeof w === "string" ? w : w?.summary || w?.text || JSON.stringify(w)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           )}
 
-          {/* Uploaded Files */}
-          {assessment.uploads && assessment.uploads.length > 0 && (
-            <Card className="mt-6 border border-gray-200">
-              <CardContent className="p-6">
-                <h2 className="text-xl font-semibold text-foreground mb-4">Uploaded Files</h2>
-                <div className="space-y-3">
-                  {assessment.uploads.map((upload: any) => (
+          {/* Signals */}
+          {results.signals && results.signals.length > 0 && (
+            <Card className="mb-6 border border-[rgba(0,0,0,0.08)] bg-white shadow-sm">
+              <CardContent className="p-5">
+                <h3 className="mb-3 text-[14px] font-medium text-[#030213]">Your AI Work Style</h3>
+                <div className="flex flex-wrap gap-2">
+                  {results.signals.map((signal: any, i: number) => (
                     <div
-                      key={upload.id}
-                      className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg"
+                      key={i}
+                      className="px-3 py-1.5 bg-[#F5F5F7] rounded-full text-[12px] font-medium text-[#030213]"
                     >
-                      <FileText className="w-8 h-8 text-gray-400" />
-                      <div className="flex-1">
-                        <p className="font-semibold text-foreground">{upload.file_name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {(upload.file_size_bytes / 1024 / 1024).toFixed(2)} MB •{" "}
-                          {upload.file_type.toUpperCase()}
-                        </p>
-                      </div>
-                      {upload.evidence_class && (
-                        <Badge variant="secondary">Class {upload.evidence_class}</Badge>
-                      )}
+                      {typeof signal === "string" ? signal : signal.label ?? signal.key ?? JSON.stringify(signal)}
                     </div>
                   ))}
                 </div>
@@ -274,237 +309,124 @@ export default function Results() {
             </Card>
           )}
 
-          {/* Full results */}
-          {isComplete && results && !resultsLoading && (
-            <>
-              {/* Overall Confidence */}
-              <Card className="mt-6 border border-gray-200">
-                <CardContent className="p-8">
-                  <div className="text-center mb-6">
-                    <h2 className="text-2xl font-bold text-foreground mb-4">
-                      Overall Confidence
-                    </h2>
-                    {results.overall_confidence && (
-                      <div
-                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-lg font-semibold ${
-                          results.overall_confidence === "high"
-                            ? "bg-green-100 text-green-700"
-                            : results.overall_confidence === "moderate"
-                            ? "bg-yellow-100 text-yellow-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
-                      >
-                        {results.overall_confidence === "high" && <CheckCircle2 className="w-5 h-5" />}
-                        {results.overall_confidence === "moderate" && <AlertCircle className="w-5 h-5" />}
-                        {results.overall_confidence === "low" && <XCircle className="w-5 h-5" />}
-                        <span className="capitalize">{results.overall_confidence} Confidence</span>
-                      </div>
-                    )}
-                    {results.overall_confidence_score != null && (
-                      <p className="text-3xl font-bold text-foreground mt-4">
-                        {Math.round(results.overall_confidence_score * 100)}%
-                      </p>
-                    )}
+          {/* What this means */}
+          <Card className="mb-6 border border-blue-100 bg-blue-50 shadow-sm">
+            <CardContent className="p-5">
+              <h3 className="mb-2 text-[14px] font-medium text-blue-900">What does this mean?</h3>
+              <p className="text-[13px] leading-relaxed text-blue-800">
+                {yourAvg !== null && yourAvg >= 70
+                  ? "Your scores show you actively directed the AI \u2014 setting goals, providing context, and making decisions about what to keep or change. The AI was a tool you controlled, not the other way around."
+                  : yourAvg !== null && yourAvg >= 40
+                  ? "Your scores show a mix \u2014 you directed some parts of the work but also accepted AI output without much revision in other areas. Consider being more specific about what you need and reviewing AI output more critically."
+                  : "Your scores suggest the AI did most of the heavy lifting. To improve, try giving the AI more specific instructions, breaking tasks into smaller pieces, and critically reviewing what it produces."
+                }
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Publish section */}
+          {!published ? (
+            <Card className="mb-6 border border-[rgba(0,0,0,0.08)] bg-white shadow-sm">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-100">
+                    <Share2 className="h-5 w-5 text-blue-600" />
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4 pt-6 border-t border-gray-200">
-                    <div className="text-center">
-                      <p className="text-sm text-muted-foreground mb-1">Dimensions Evaluated</p>
-                      <p className="text-2xl font-bold text-foreground">
-                        {results.dimensions_evaluated ?? 0}
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm text-muted-foreground mb-1">Dimensions Skipped</p>
-                      <p className="text-2xl font-bold text-foreground">
-                        {results.dimensions_skipped ?? 0}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Observations with score bars */}
-              {results.observations && results.observations.length > 0 && (
-                <Card className="mt-6 border border-gray-200">
-                  <CardContent className="p-6">
-                    <h2 className="text-xl font-semibold text-foreground mb-4">
-                      Detailed Observations
-                    </h2>
-                    <div className="space-y-4">
-                      {results.observations.map((obs: any, index: number) => (
-                        <div
-                          key={index}
-                          className="p-4 bg-gray-50 rounded-lg border border-gray-200"
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <h3 className="font-semibold text-foreground capitalize">
-                              {obs.dimension.replace(/_/g, " ")}
-                            </h3>
-                            {obs.label && (
-                              <div
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-medium ${
-                                  obs.label === "strong"
-                                    ? "bg-green-100 text-green-700"
-                                    : obs.label === "mixed"
-                                    ? "bg-yellow-100 text-yellow-700"
-                                    : "bg-red-100 text-red-700"
-                                }`}
-                              >
-                                {obs.label === "strong" && <TrendingUp className="w-4 h-4" />}
-                                {obs.label === "mixed" && <Minus className="w-4 h-4" />}
-                                {obs.label === "weak" && <TrendingDown className="w-4 h-4" />}
-                                <span className="capitalize">{obs.label}</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Score bar */}
-                          {obs.score != null && !obs.skipped && (
-                            <div className="flex items-center gap-3 mb-2">
-                              <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full transition-all ${scoreColor(obs.score)}`}
-                                  style={{ width: `${Math.round(obs.score * 100)}%` }}
-                                />
-                              </div>
-                              <span className={`text-sm font-bold w-10 text-right ${scoreTextColor(obs.score)}`}>
-                                {Math.round(obs.score * 100)}%
-                              </span>
-                            </div>
-                          )}
-
-                          {obs.summary && (
-                            <p className="text-sm text-muted-foreground mb-1">{obs.summary}</p>
-                          )}
-                          {obs.confidence_label && (
-                            <p className="text-xs text-muted-foreground">
-                              Confidence: <span className="capitalize">{obs.confidence_label}</span>
-                            </p>
-                          )}
-                          {obs.skipped && obs.skip_reason && (
-                            <p className="text-sm text-muted-foreground italic">
-                              Skipped: {obs.skip_reason}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Signals */}
-              {results.signals && results.signals.length > 0 && (
-                <Card className="mt-6 border border-border">
-                  <CardContent className="p-6">
-                    <h2 className="text-xl font-semibold text-foreground mb-1">
-                      Your AI Work Style
-                    </h2>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Patterns derived from how you work with AI
+                  <div className="flex-1">
+                    <h3 className="mb-1 text-[15px] font-medium text-[#030213]">
+                      Share your results
+                    </h3>
+                    <p className="mb-4 text-[13px] text-[#717182]">
+                      Publish a shareable proof page that anyone can view \u2014 no account needed.
+                      Shows your scores, the evidence trail, and how you used AI.
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      {results.signals.map((signal: any, i: number) => (
-                        <div
-                          key={i}
-                          className="px-3 py-1.5 bg-gray-100 rounded-full text-sm font-medium text-foreground"
-                        >
-                          {typeof signal === "string" ? signal : signal.label ?? signal.key ?? JSON.stringify(signal)}
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Strengths */}
-              {results.strengths && results.strengths.length > 0 && (
-                <Card className="mt-6 border border-gray-200">
-                  <CardContent className="p-6">
-                    <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-                      <TrendingUp className="w-5 h-5 text-green-600" />
-                      Strengths
-                    </h2>
-                    <ul className="space-y-2">
-                      {results.strengths.map((strength: string, index: number) => (
-                        <li key={index} className="flex items-start gap-2 text-foreground">
-                          <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                          <span>{strength}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Weaknesses */}
-              {results.weaknesses && results.weaknesses.length > 0 && (
-                <Card className="mt-6 border border-gray-200">
-                  <CardContent className="p-6">
-                    <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-                      <TrendingDown className="w-5 h-5 text-destructive" />
-                      Areas for Growth
-                    </h2>
-                    <ul className="space-y-2">
-                      {results.weaknesses.map((weakness: string, index: number) => (
-                        <li key={index} className="flex items-start gap-2 text-foreground">
-                          <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
-                          <span>{weakness}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Recommendations */}
-              {results.recommendations && results.recommendations.length > 0 && (
-                <div className="mt-6 bg-blue-50 rounded-2xl border border-blue-200 p-6">
-                  <h2 className="text-xl font-semibold text-foreground mb-4">
-                    Recommendations
-                  </h2>
-                  <ul className="space-y-2">
-                    {results.recommendations.map((rec: string, index: number) => (
-                      <li key={index} className="flex items-start gap-2 text-foreground">
-                        <span className="text-blue-600 mt-0.5">•</span>
-                        <span>{rec}</span>
-                      </li>
-                    ))}
-                  </ul>
+                    <Button
+                      onClick={() => publishMutation.mutate()}
+                      disabled={publishMutation.isPending}
+                    >
+                      {publishMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Publishing...
+                        </>
+                      ) : (
+                        <>
+                          <Share2 className="mr-2 h-4 w-4" />
+                          Publish proof page
+                        </>
+                      )}
+                    </Button>
+                    {publishMutation.isError && (
+                      <p className="mt-2 text-[13px] text-red-600">
+                        Failed to publish. Please try again.
+                      </p>
+                    )}
+                  </div>
                 </div>
-              )}
-
-              {/* Actions */}
-              <div className="mt-8 flex flex-wrap gap-4">
-                <Button
-                  className="flex-1 min-w-[200px]"
-                  onClick={() => navigate(`/proof/create/${id}`)}
-                >
-                  <Share2 className="w-5 h-5" />
-                  Create Proof Page
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={downloadMutation.isPending}
-                  onClick={() => downloadMutation.mutate({ format: "json" })}
-                >
-                  <Download className="w-5 h-5" />
-                  Download JSON
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={downloadMutation.isPending}
-                  onClick={() => downloadMutation.mutate({ format: "pdf" })}
-                >
-                  <Download className="w-5 h-5" />
-                  Download PDF
-                </Button>
-              </div>
-            </>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="mb-6 border border-green-200 bg-green-50 shadow-sm">
+              <CardContent className="p-6">
+                <div className="mb-3 flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  <h3 className="text-[15px] font-medium text-green-900">Published!</h3>
+                </div>
+                <p className="mb-4 text-[13px] text-green-800">
+                  Send this link to anyone. They can view your AI work report without creating an account.
+                </p>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 rounded-md border border-green-300 bg-white px-3 py-2">
+                    <p className="truncate font-mono text-[13px] text-[#030213]">{proofUrl}</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleCopy}>
+                    {copied ? (
+                      <>
+                        <CheckCircle2 className="mr-1.5 h-3.5 w-3.5 text-green-600" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="mr-1.5 h-3.5 w-3.5" />
+                        Copy
+                      </>
+                    )}
+                  </Button>
+                  <a href={proofUrl} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" size="sm">
+                      <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                      Open
+                    </Button>
+                  </a>
+                </div>
+              </CardContent>
+            </Card>
           )}
+
+          {/* Secondary actions */}
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadMutation.mutate()}
+              disabled={downloadMutation.isPending}
+            >
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              Download JSON
+            </Button>
+            <Link to="/dashboard/upload/new">
+              <Button variant="outline" size="sm">
+                Upload more conversations
+              </Button>
+            </Link>
+            <Link to="/dashboard">
+              <Button variant="outline" size="sm">
+                Back to Dashboard
+              </Button>
+            </Link>
+          </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
