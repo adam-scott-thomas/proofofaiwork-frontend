@@ -40,6 +40,14 @@ export default function StudentLayout() {
       <main className="mx-auto max-w-3xl px-6 py-10">
         <Outlet />
       </main>
+
+      {/* Footer */}
+      <footer className="border-t border-[rgba(0,0,0,0.08)] py-6">
+        <div className="mx-auto max-w-3xl px-6 flex justify-between text-[12px] text-[#717182]">
+          <a href="mailto:support@proofofaiwork.com" className="hover:text-[#030213] transition-colors">support@proofofaiwork.com</a>
+          <Link to="/methodology" className="hover:text-[#030213] transition-colors">How scoring works</Link>
+        </div>
+      </footer>
     </div>
   );
 }

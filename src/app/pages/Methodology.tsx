@@ -283,7 +283,8 @@ export default function Methodology() {
 
         {/* Footer */}
         <div className="border-t border-[rgba(0,0,0,0.08)] pt-6 text-center text-[13px] text-[#717182]">
-          ProofOfAIWork — proofofaiwork.com — Adam Thomas LLC
+          <div className="mb-1">ProofOfAIWork — proofofaiwork.com — Adam Thomas LLC</div>
+          <a href="mailto:support@proofofaiwork.com" className="text-blue-600 hover:underline">support@proofofaiwork.com</a>
         </div>
       </div>
     </div>

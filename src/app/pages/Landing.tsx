@@ -225,7 +225,11 @@ export default function Landing() {
       {/* Footer */}
       <footer className="border-t border-gray-800 py-8">
         <div className="container mx-auto px-6 text-center text-sm text-gray-600">
-          ProofOfAIWork — Adam Thomas LLC
+          <div className="mb-2">ProofOfAIWork — Adam Thomas LLC</div>
+          <div className="flex justify-center gap-6">
+            <Link to="/methodology" className="text-gray-500 hover:text-gray-400 transition-colors">Methodology</Link>
+            <a href="mailto:support@proofofaiwork.com" className="text-gray-500 hover:text-gray-400 transition-colors">support@proofofaiwork.com</a>
+          </div>
         </div>
       </footer>
     </div>
