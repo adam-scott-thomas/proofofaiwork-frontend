@@ -12,7 +12,7 @@ export default function Landing() {
       {/* Nav */}
       <header className="container mx-auto px-6 py-6 flex items-center justify-between">
         <div className="text-xl font-bold tracking-tight">
-          Proof<span className="text-blue-400">Of</span>AI<span className="text-blue-400">Work</span>
+          Proof<span className="text-blue-400">of</span>AI<span className="text-blue-400">Work</span>
         </div>
         <div className="flex items-center gap-4">
           <Link to="/methodology">
@@ -225,7 +225,7 @@ export default function Landing() {
       {/* Footer */}
       <footer className="border-t border-gray-800 py-8">
         <div className="container mx-auto px-6 text-center text-sm text-gray-600">
-          <div className="mb-2">ProofOfAIWork — Adam Thomas LLC</div>
+          <div className="mb-2">ProofofAIWork — Adam Thomas LLC</div>
           <div className="flex justify-center gap-6">
             <Link to="/methodology" className="text-gray-500 hover:text-gray-400 transition-colors">Methodology</Link>
             <a href="mailto:support@proofofaiwork.com" className="text-gray-500 hover:text-gray-400 transition-colors">support@proofofaiwork.com</a>

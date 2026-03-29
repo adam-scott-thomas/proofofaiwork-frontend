@@ -145,7 +145,7 @@ const TripleScoreCard = forwardRef<HTMLDivElement, { data: ShareDialogProps["dat
       {/* Header */}
       <div className="relative mb-6">
         <div className="mb-1 text-[10px] uppercase tracking-[0.2em] text-[#717182]">
-          PROOF OF AI WORK
+          PROOF of AI WORK
         </div>
         <h2 className="text-2xl tracking-tight" style={{ fontFamily: "var(--font-serif)" }}>
           {data.name}
@@ -229,7 +229,7 @@ const SingleScoreCard = forwardRef<HTMLDivElement, { data: ShareDialogProps["dat
         {/* Header */}
         <div className="mb-auto">
           <div className="mb-2 text-[11px] uppercase tracking-[0.2em] text-[#6B46C1]">
-            PROOF OF AI WORK
+            PROOF of AI WORK
           </div>
           <h2 className="mb-1 text-3xl tracking-tight" style={{ fontFamily: "var(--font-serif)" }}>
             {data.name}

@@ -13,7 +13,7 @@ export default function Methodology() {
             Back to home
           </Link>
           <div className="text-[14px] font-medium tracking-tight">
-            Proof<span className="text-blue-600">Of</span>AI<span className="text-blue-600">Work</span>
+            Proof<span className="text-blue-600">of</span>AI<span className="text-blue-600">Work</span>
           </div>
         </div>
       </header>
@@ -27,11 +27,11 @@ export default function Methodology() {
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-[#030213]">Educator Guide & Scoring Methodology</h1>
-              <p className="text-[14px] text-[#717182]">Version 2.0.0 — ProofOfAIWork Evaluation Engine</p>
+              <p className="text-[14px] text-[#717182]">Version 2.0.0 — ProofofAIWork Evaluation Engine</p>
             </div>
           </div>
           <p className="text-[15px] leading-relaxed text-[#3A3A3A]">
-            This document describes exactly how ProofOfAIWork scores AI-assisted student work.
+            This document describes exactly how ProofofAIWork scores AI-assisted student work.
             The scoring model, weights, and thresholds are published here so educators can evaluate
             the system's methodology independently.
           </p>
@@ -283,7 +283,7 @@ export default function Methodology() {
 
         {/* Footer */}
         <div className="border-t border-[rgba(0,0,0,0.08)] pt-6 text-center text-[13px] text-[#717182]">
-          <div className="mb-1">ProofOfAIWork — proofofaiwork.com — Adam Thomas LLC</div>
+          <div className="mb-1">ProofofAIWork — proofofaiwork.com — Adam Thomas LLC</div>
           <a href="mailto:support@proofofaiwork.com" className="text-blue-600 hover:underline">support@proofofaiwork.com</a>
         </div>
       </div>

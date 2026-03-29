@@ -114,7 +114,7 @@ export default function SignIn() {
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <Link to="/" className="inline-block">
-              <h1 className="text-3xl font-bold text-foreground mb-2">ProofOfAIWork</h1>
+              <h1 className="text-3xl font-bold text-foreground mb-2">ProofofAIWork</h1>
             </Link>
             <p className="text-muted-foreground">
               {nextUrl.startsWith("/student")

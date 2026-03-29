@@ -15,7 +15,7 @@ export default function StudentLayout() {
           <Link to="/student" className="flex items-center gap-2">
             <GraduationCap className="h-5 w-5 text-blue-600" />
             <span className="text-[15px] tracking-tight">
-              Proof<span className="text-blue-600">Of</span>AI<span className="text-blue-600">Work</span>
+              Proof<span className="text-blue-600">of</span>AI<span className="text-blue-600">Work</span>
               <span className="ml-1.5 text-[11px] text-[#717182]">for students</span>
             </span>
           </Link>
