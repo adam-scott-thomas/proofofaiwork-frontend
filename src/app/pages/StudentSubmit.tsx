@@ -18,7 +18,7 @@ import { Card, CardContent } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Progress } from "../components/ui/progress";
 
-const CONVO_EXTENSIONS = ["txt", "json", "zip", "jsonl"] as const;
+const CONVO_EXTENSIONS = ["txt", "json", "zip", "jsonl", "md"] as const;
 const DELIVERABLE_EXTENSIONS = ["txt", "pdf", "docx", "doc", "md", "py", "js", "ts", "jsx", "tsx", "html", "css", "java", "c", "cpp", "zip"] as const;
 type ConvoExt = (typeof CONVO_EXTENSIONS)[number];
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -227,7 +227,7 @@ export default function StudentSubmit() {
                   <span className="inline-flex items-center gap-2 rounded-md bg-[#030213] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#1a1a2e]">
                     <UploadIcon className="h-3.5 w-3.5" /> Choose files
                   </span>
-                  <input type="file" accept=".txt,.json,.zip,.jsonl" multiple
+                  <input type="file" accept=".txt,.json,.zip,.jsonl,.md" multiple
                     onChange={(e) => { const s = Array.from(e.target.files ?? []); if (s.length) addConvoFiles(s); e.target.value = ""; }} className="hidden" />
                 </label>
               </div>
