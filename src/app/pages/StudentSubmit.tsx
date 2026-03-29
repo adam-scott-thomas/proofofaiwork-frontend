@@ -85,7 +85,8 @@ export default function StudentSubmit() {
   const hasConvo = convoMode === "file" ? convoFiles.length > 0 : convoPastedText.trim().length > 20;
 
   // Helper: upload a list of files, return their upload_ids
-  const uploadFiles = async (filesToUpload: File[], progressBase: number, progressRange: number): Promise<string[]> => {
+  // triggerParse: true for conversation files (need parsing), false for deliverables (just store)
+  const uploadFiles = async (filesToUpload: File[], progressBase: number, progressRange: number, triggerParse: boolean = true): Promise<string[]> => {
     const ids: string[] = [];
     for (let i = 0; i < filesToUpload.length; i++) {
       const file = filesToUpload[i];
@@ -105,7 +106,6 @@ export default function StudentSubmit() {
         xhr.open("PUT", presign.presigned_url);
         const token = localStorage.getItem("poaw-token");
         if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-        // Don't set Content-Type — let FormData set multipart boundary
         xhr.upload.onprogress = (e) => {
           if (e.lengthComputable) setProgress(Math.round(fileBase + (e.loaded / e.total) * fileRange));
         };
@@ -116,7 +116,10 @@ export default function StudentSubmit() {
         xhr.send(formData);
       });
 
-      await completeMutation.mutateAsync({ upload_id: presign.upload_id });
+      // Only trigger parsing for conversation files, not deliverables
+      if (triggerParse) {
+        await completeMutation.mutateAsync({ upload_id: presign.upload_id });
+      }
       ids.push(String(presign.upload_id));
     }
     return ids;
@@ -163,12 +166,12 @@ export default function StudentSubmit() {
       const convoProgressRange = (convoToUpload.length / totalFiles) * 60;
       const delivProgressRange = (delivToUpload.length / totalFiles) * 60;
 
-      // Upload conversations (0% → convoRange%)
-      const convoIds = await uploadFiles(convoToUpload, 0, convoProgressRange);
+      // Upload conversations (0% → convoRange%) — trigger parsing
+      const convoIds = await uploadFiles(convoToUpload, 0, convoProgressRange, true);
 
-      // Upload deliverables (convoRange% → 60%)
+      // Upload deliverables (convoRange% → 60%) — store only, no parsing
       const delivIds = delivToUpload.length > 0
-        ? await uploadFiles(delivToUpload, convoProgressRange, delivProgressRange)
+        ? await uploadFiles(delivToUpload, convoProgressRange, delivProgressRange, false)
         : [];
 
       setProgress(65);
