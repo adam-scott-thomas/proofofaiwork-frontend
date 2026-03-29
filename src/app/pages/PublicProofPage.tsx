@@ -1,332 +1,250 @@
-import { ExternalLink, Shield, CheckCircle2, Calendar, User as UserIcon } from "lucide-react";
+import { useParams } from "react-router";
+import { useQuery } from "@tanstack/react-query";
+import { Shield, Calendar, Loader2, AlertCircle } from "lucide-react";
 import { Badge } from "../components/ui/badge";
-import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 
-const mockPublicProof = {
-  projectName: "Backend Architecture Migration",
-  userName: "Alex Chen",
-  userHandle: "@alexchen",
-  evaluatedAt: "2026-03-20T14:32:00Z",
-  slug: "backend-arch-migration-alex-chen",
-  
-  workProfile: {
-    human_leadership_score: 89,
-    hls_dimensions: {
-      goal_origination: 94,
-      constraint_setting: 90,
-      decision_control: 87,
-      correction_pressure: 83,
-      strategic_pivots: 92,
-      final_ownership: 88,
-    },
-    ai_execution_load: 0.71,
-    cai: 456,
-    cai_dimensions: {
-      complexity_ceiling: 91,
-      iteration_depth: 93,
-      velocity: 85,
-      domain_span: 79,
-      throughput: 88,
-      leverage_maturity: 91,
-    },
-    confidence: "high" as const,
-    archetype: {
-      primary: "Architect",
-      secondary: ["Craftsman"],
-    },
-    narrative: "Demonstrates exceptional technical leadership in complex system migration. Strong pattern of breaking down architectural decisions into clear constraints while delegating implementation details. Shows sophisticated understanding of distributed systems patterns and event-driven architecture. Leadership style balances strategic vision with tactical execution oversight. Velocity metrics indicate 2.8x faster completion compared to baseline while maintaining complexity ceiling in 91st percentile.",
-  },
-  
-  evidence: {
-    rejected_drafts: 52,
-    constructive_revisions: 89,
-    strategic_pivots: 14,
-    validated_domains: ["system-architecture", "microservices", "event-driven", "devops"],
-    velocity_days: 7.8,
-    velocity_baseline_days: 21.8,
-    complexity_percentile: 91,
-    accepted_artifacts: 38,
-  },
-  
-  integrity: {
-    verified: true,
-    hashChain: "sha256:a3f5...2c9d",
-    timestamp: "2026-03-24T14:05:00Z",
-  },
-  
-  projectDescription: "Migration from monolithic architecture to microservices with event-driven patterns using Kafka, implementing circuit breakers, observability, and zero-downtime deployment strategies.",
-  conversationCount: 18,
-  turnCount: 342,
+const DIMENSION_LABELS: Record<string, { label: string; desc: string }> = {
+  clarity: { label: "Clarity of direction", desc: "How clearly the user stated what they needed" },
+  context: { label: "Problem framing", desc: "Background and context provided" },
+  constraint_quality: { label: "Setting constraints", desc: "Boundaries and requirements set" },
+  iteration_discipline: { label: "Iterating on output", desc: "How the user refined AI output" },
+  verification_habit: { label: "Checking AI's work", desc: "Testing and validating output" },
+  output_judgment: { label: "Accept/reject decisions", desc: "Evaluating output quality" },
+  workflow_efficiency: { label: "Task decomposition", desc: "Breaking work into steps" },
+  risk_awareness: { label: "Edge case awareness", desc: "Considering what could go wrong" },
 };
 
-function DimensionBar({ label, value }: { label: string; value: number }) {
-  return (
-    <div>
-      <div className="mb-2 flex items-center justify-between text-[13px]">
-        <span className="text-[#3A3A3A]">{label}</span>
-        <span className="font-mono text-[#717182]">{value}/100</span>
-      </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-[#F5F5F7]">
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-[#6B46C1] to-[#8B5CF6]"
-          style={{ width: `${value}%` }}
-        />
-      </div>
-    </div>
-  );
+function scoreColor(score: number): string {
+  if (score >= 0.7) return "bg-emerald-500";
+  if (score >= 0.4) return "bg-amber-400";
+  return "bg-red-400";
+}
+
+function scoreTextColor(score: number): string {
+  if (score >= 0.7) return "text-emerald-600";
+  if (score >= 0.4) return "text-amber-600";
+  return "text-red-600";
 }
 
 export default function PublicProofPage() {
+  const { slug } = useParams<{ slug: string }>();
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["public-proof", slug],
+    queryFn: async () => {
+      const res = await fetch(`/api/v1/p/${slug}`);
+      if (!res.ok) throw new Error("Proof page not found");
+      return res.json();
+    },
+    enabled: !!slug,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3">
+        <AlertCircle className="h-10 w-10 text-red-400" />
+        <h1 className="text-xl font-medium">Proof page not found</h1>
+        <p className="text-sm text-gray-500">This link may have expired or been unpublished.</p>
+      </div>
+    );
+  }
+
+  const observations = data.observations || [];
+  const trustPanel = data.trust_panel || {};
+  const headline = data.headline || "AI Work Report";
+  const publishedAt = data.published_at;
+
+  // Split observations into scored and skipped
+  const scored = observations.filter((o: any) => o.score !== null && !o.skipped);
+  const avgScore = scored.length > 0
+    ? scored.reduce((sum: number, o: any) => sum + o.score, 0) / scored.length
+    : 0;
+
+  // Group into "your direction" vs "AI collaboration"
+  const directionDims = ["clarity", "context", "constraint_quality", "iteration_discipline"];
+  const collabDims = ["verification_habit", "output_judgment", "workflow_efficiency", "risk_awareness"];
+
+  const directionObs = observations.filter((o: any) => directionDims.includes(o.dimension));
+  const collabObs = observations.filter((o: any) => collabDims.includes(o.dimension));
+
+  // Strengths and weaknesses
+  const strengths = scored.filter((o: any) => o.score >= 0.7);
+  const weaknesses = scored.filter((o: any) => o.score < 0.4);
+
   return (
     <div className="min-h-screen bg-[#FAFAFA]">
       {/* Header */}
       <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
-        <div className="mx-auto max-w-5xl px-8 py-6">
-          <div className="mb-4 flex items-center gap-2 text-[13px] text-[#717182]">
+        <div className="mx-auto max-w-3xl px-8 py-6">
+          <div className="mb-3 flex items-center gap-2 text-[13px] text-[#717182]">
             <span>Proof of AI Work</span>
-            <span>•</span>
-            <span className="font-mono">poaw.io/p/{mockPublicProof.slug}</span>
+            <span>-</span>
+            <span>Student Report</span>
           </div>
-          <div className="flex items-start justify-between gap-6">
-            <div className="flex-1">
-              <h1 className="mb-2 text-2xl tracking-tight">{mockPublicProof.projectName}</h1>
-              <div className="mb-3 flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <UserIcon className="h-4 w-4 text-[#717182]" />
-                  <span className="text-[14px]">{mockPublicProof.userName}</span>
-                  <span className="text-[13px] text-[#717182]">{mockPublicProof.userHandle}</span>
-                </div>
-                <span className="text-[#717182]">•</span>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-[#717182]" />
-                  <span className="text-[13px] text-[#717182]">
-                    {new Date(mockPublicProof.evaluatedAt).toLocaleDateString('en-US', {
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })}
-                  </span>
-                </div>
+          <h1 className="mb-2 text-2xl tracking-tight">{headline}</h1>
+          <div className="flex items-center gap-4">
+            {publishedAt && (
+              <div className="flex items-center gap-2 text-[13px] text-[#717182]">
+                <Calendar className="h-4 w-4" />
+                {new Date(publishedAt).toLocaleDateString("en-US", {
+                  month: "long", day: "numeric", year: "numeric",
+                })}
               </div>
-              <p className="text-[14px] text-[#717182] leading-relaxed">
-                {mockPublicProof.projectDescription}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200">
-                <CheckCircle2 className="mr-1 h-3 w-3" />
-                {mockPublicProof.workProfile.confidence.toUpperCase()} CONFIDENCE
-              </Badge>
-              {mockPublicProof.integrity.verified && (
-                <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
-                  <Shield className="mr-1 h-3 w-3" />
-                  VERIFIED
-                </Badge>
-              )}
-            </div>
+            )}
+            <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
+              <Shield className="mr-1 h-3 w-3" />
+              {trustPanel.dimensions_evaluated || scored.length} of 8 dimensions evaluated
+            </Badge>
           </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-5xl px-8 py-12">
-        {/* Three Scores - The Money Shot */}
-        <Card className="mb-12 border border-[rgba(0,0,0,0.08)] bg-white p-10 shadow-sm">
-          <div className="mb-2 text-center text-[13px] uppercase tracking-wider text-[#717182]">
-            AI Work Profile
+      <div className="mx-auto max-w-3xl px-8 py-10">
+        {/* Overall Score */}
+        <Card className="mb-8 border border-[rgba(0,0,0,0.08)] bg-white p-8 shadow-sm text-center">
+          <div className="text-[13px] uppercase tracking-wider text-[#717182] mb-2">Overall Score</div>
+          <div className={`text-6xl font-bold mb-1 ${scoreTextColor(avgScore)}`}>
+            {Math.round(avgScore * 100)}%
           </div>
-          <div className="grid grid-cols-3 gap-12">
-            <div className="text-center">
-              <div className="mb-3 text-[13px] text-[#717182]">Human Leadership Score</div>
-              <div className="mb-2 text-8xl tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--score-hls)' }}>
-                {mockPublicProof.workProfile.human_leadership_score}
-              </div>
-              <div className="text-[13px] text-[#717182]">of 100</div>
-            </div>
-
-            <div className="border-x border-[rgba(0,0,0,0.06)] text-center">
-              <div className="mb-3 text-[13px] text-[#717182]">AI Execution Load</div>
-              <div className="mb-2 text-8xl tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--score-execution)' }}>
-                {(mockPublicProof.workProfile.ai_execution_load * 100).toFixed(0)}%
-              </div>
-              <div className="text-[13px] text-[#717182]">delegation rate</div>
-            </div>
-
-            <div className="text-center">
-              <div className="mb-3 text-[13px] text-[#717182]">Cognitive Amplification Index</div>
-              <div className="mb-2 text-9xl tracking-tight" style={{ fontFamily: 'var(--font-serif)', color: 'var(--score-cai)' }}>
-                {mockPublicProof.workProfile.cai}
-              </div>
-              <div className="text-[13px] text-[#717182]">capacity increase</div>
-            </div>
-          </div>
-
-          {/* Archetype */}
-          <div className="mt-10 flex items-center justify-center gap-3 border-t border-[rgba(0,0,0,0.06)] pt-8">
-            <div className="text-[13px] uppercase tracking-wider text-[#717182]">Archetype</div>
-            <div className="rounded-sm bg-[#F5F5F7] px-4 py-2 font-mono text-[15px] tracking-tight">
-              {mockPublicProof.workProfile.archetype.primary}
-            </div>
-            {mockPublicProof.workProfile.archetype.secondary.map((arch) => (
-              <div key={arch} className="rounded-sm bg-[#F5F5F7] px-4 py-2 font-mono text-[15px] tracking-tight text-[#717182]">
-                {arch}
-              </div>
-            ))}
+          <div className="text-[13px] text-[#717182]">
+            across {scored.length} evaluated dimension{scored.length !== 1 ? "s" : ""}
           </div>
         </Card>
 
-        {/* Narrative Interpretation */}
-        <Card className="mb-12 border border-[rgba(0,0,0,0.08)] bg-white p-8 shadow-sm">
-          <div className="mb-4 text-[13px] uppercase tracking-wider text-[#717182]">
-            What We Observed
-          </div>
-          <p className="text-[16px] leading-relaxed text-[#3A3A3A]">
-            {mockPublicProof.workProfile.narrative}
-          </p>
-        </Card>
-
-        {/* Evidence Grid */}
-        <Card className="mb-12 border border-[rgba(0,0,0,0.08)] bg-white p-8 shadow-sm">
-          <div className="mb-6 text-[13px] uppercase tracking-wider text-[#717182]">
-            Evidence Trail
-          </div>
-          <div className="grid grid-cols-4 gap-6">
-            <div>
-              <div className="mb-1 text-[11px] uppercase tracking-wider text-[#717182]">
-                Rejected Drafts
-              </div>
-              <div className="text-3xl tracking-tight">{mockPublicProof.evidence.rejected_drafts}</div>
-            </div>
-            <div>
-              <div className="mb-1 text-[11px] uppercase tracking-wider text-[#717182]">
-                Constructive Revisions
-              </div>
-              <div className="text-3xl tracking-tight">{mockPublicProof.evidence.constructive_revisions}</div>
-            </div>
-            <div>
-              <div className="mb-1 text-[11px] uppercase tracking-wider text-[#717182]">
-                Strategic Pivots
-              </div>
-              <div className="text-3xl tracking-tight">{mockPublicProof.evidence.strategic_pivots}</div>
-            </div>
-            <div>
-              <div className="mb-1 text-[11px] uppercase tracking-wider text-[#717182]">
-                Accepted Artifacts
-              </div>
-              <div className="text-3xl tracking-tight">{mockPublicProof.evidence.accepted_artifacts}</div>
-            </div>
-            <div>
-              <div className="mb-1 text-[11px] uppercase tracking-wider text-[#717182]">
-                Velocity (Days)
-              </div>
-              <div className="text-3xl tracking-tight">{mockPublicProof.evidence.velocity_days}</div>
-            </div>
-            <div>
-              <div className="mb-1 text-[11px] uppercase tracking-wider text-[#717182]">
-                Baseline (Days)
-              </div>
-              <div className="text-3xl tracking-tight">{mockPublicProof.evidence.velocity_baseline_days}</div>
-            </div>
-            <div>
-              <div className="mb-1 text-[11px] uppercase tracking-wider text-[#717182]">
-                Complexity Percentile
-              </div>
-              <div className="text-3xl tracking-tight">{mockPublicProof.evidence.complexity_percentile}th</div>
-            </div>
-            <div>
-              <div className="mb-1 text-[11px] uppercase tracking-wider text-[#717182]">
-                Conversations
-              </div>
-              <div className="text-3xl tracking-tight">{mockPublicProof.conversationCount}</div>
-            </div>
-          </div>
-          <div className="mt-8 border-t border-[rgba(0,0,0,0.06)] pt-6">
-            <div className="mb-3 text-[11px] uppercase tracking-wider text-[#717182]">
-              Validated Domains
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {mockPublicProof.evidence.validated_domains.map((domain) => (
-                <Badge key={domain} variant="outline" className="border-[rgba(0,0,0,0.08)] font-mono text-[13px] px-3 py-1">
-                  {domain}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        </Card>
-
-        {/* Dimension Breakdowns */}
-        <div className="grid grid-cols-2 gap-6 mb-12">
-          {/* HLS Dimensions */}
-          <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-6 shadow-sm">
-            <div className="mb-4 text-[13px] uppercase tracking-wider text-[#717182]">
-              Human Leadership Dimensions
-            </div>
+        {/* Direction Dimensions */}
+        {directionObs.length > 0 && (
+          <Card className="mb-6 border border-[rgba(0,0,0,0.08)] bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-[14px] font-medium text-[#030213]">How the student directed the AI</h2>
             <div className="space-y-4">
-              <DimensionBar label="Goal Origination" value={mockPublicProof.workProfile.hls_dimensions.goal_origination} />
-              <DimensionBar label="Constraint Setting" value={mockPublicProof.workProfile.hls_dimensions.constraint_setting} />
-              <DimensionBar label="Decision Control" value={mockPublicProof.workProfile.hls_dimensions.decision_control} />
-              <DimensionBar label="Correction Pressure" value={mockPublicProof.workProfile.hls_dimensions.correction_pressure} />
-              <DimensionBar label="Strategic Pivots" value={mockPublicProof.workProfile.hls_dimensions.strategic_pivots} />
-              <DimensionBar label="Final Ownership" value={mockPublicProof.workProfile.hls_dimensions.final_ownership} />
-            </div>
-          </Card>
-
-          {/* CAI Dimensions */}
-          <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-6 shadow-sm">
-            <div className="mb-4 text-[13px] uppercase tracking-wider text-[#717182]">
-              CAI Dimensions
-            </div>
-            <div className="space-y-4">
-              <DimensionBar label="Complexity Ceiling" value={mockPublicProof.workProfile.cai_dimensions.complexity_ceiling} />
-              <DimensionBar label="Iteration Depth" value={mockPublicProof.workProfile.cai_dimensions.iteration_depth} />
-              <DimensionBar label="Velocity" value={mockPublicProof.workProfile.cai_dimensions.velocity} />
-              <DimensionBar label="Domain Span" value={mockPublicProof.workProfile.cai_dimensions.domain_span} />
-              <DimensionBar label="Throughput" value={mockPublicProof.workProfile.cai_dimensions.throughput} />
-              <DimensionBar label="Leverage Maturity" value={mockPublicProof.workProfile.cai_dimensions.leverage_maturity} />
-            </div>
-          </Card>
-        </div>
-
-        {/* Integrity Verification */}
-        <Card className="border border-blue-200 bg-blue-50 p-6 shadow-sm">
-          <div className="flex items-start gap-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-100 flex-shrink-0">
-              <Shield className="h-5 w-5 text-blue-700" />
-            </div>
-            <div className="flex-1">
-              <h3 className="mb-2 text-[15px] text-blue-900">Integrity Verification</h3>
-              <p className="mb-3 text-[13px] text-blue-800">
-                This proof page is cryptographically verified and timestamped. All conversation data
-                has been hashed and recorded in an immutable chain.
-              </p>
-              <div className="flex items-center gap-4">
-                <div>
-                  <div className="text-[11px] uppercase tracking-wider text-blue-700">Hash Chain</div>
-                  <div className="font-mono text-[12px] text-blue-900">{mockPublicProof.integrity.hashChain}</div>
-                </div>
-                <div>
-                  <div className="text-[11px] uppercase tracking-wider text-blue-700">Timestamp</div>
-                  <div className="font-mono text-[12px] text-blue-900">
-                    {new Date(mockPublicProof.integrity.timestamp).toISOString()}
+              {directionObs.map((obs: any) => {
+                const dim = DIMENSION_LABELS[obs.dimension];
+                const score = obs.score ?? 0;
+                const skipped = obs.skipped;
+                return (
+                  <div key={obs.dimension}>
+                    <div className="mb-1.5 flex items-baseline justify-between">
+                      <div>
+                        <span className="text-[13px] font-medium text-[#030213]">{dim?.label ?? obs.dimension}</span>
+                        <span className="ml-2 text-[11px] text-[#717182]">{dim?.desc}</span>
+                      </div>
+                      {!skipped && (
+                        <span className={`text-[13px] font-medium ${scoreTextColor(score)}`}>
+                          {Math.round(score * 100)}%
+                        </span>
+                      )}
+                    </div>
+                    {!skipped && (
+                      <div className="h-1.5 overflow-hidden rounded-full bg-gray-200">
+                        <div className={`h-full rounded-full ${scoreColor(score)}`} style={{ width: `${Math.round(score * 100)}%` }} />
+                      </div>
+                    )}
+                    {obs.summary && (
+                      <p className="mt-1 text-[11px] text-[#717182]">{obs.summary}</p>
+                    )}
                   </div>
-                </div>
-              </div>
+                );
+              })}
             </div>
-            <Button variant="outline" size="sm">
-              <ExternalLink className="mr-2 h-4 w-4" />
-              Verify
-            </Button>
+          </Card>
+        )}
+
+        {/* Collaboration Dimensions */}
+        {collabObs.length > 0 && (
+          <Card className="mb-6 border border-[rgba(0,0,0,0.08)] bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-[14px] font-medium text-[#030213]">How the student used AI</h2>
+            <div className="space-y-4">
+              {collabObs.map((obs: any) => {
+                const dim = DIMENSION_LABELS[obs.dimension];
+                const score = obs.score ?? 0;
+                const skipped = obs.skipped;
+                return (
+                  <div key={obs.dimension}>
+                    <div className="mb-1.5 flex items-baseline justify-between">
+                      <div>
+                        <span className="text-[13px] font-medium text-[#030213]">{dim?.label ?? obs.dimension}</span>
+                        <span className="ml-2 text-[11px] text-[#717182]">{dim?.desc}</span>
+                      </div>
+                      {!skipped && (
+                        <span className={`text-[13px] font-medium ${scoreTextColor(score)}`}>
+                          {Math.round(score * 100)}%
+                        </span>
+                      )}
+                    </div>
+                    {!skipped && (
+                      <div className="h-1.5 overflow-hidden rounded-full bg-gray-200">
+                        <div className={`h-full rounded-full ${scoreColor(score)}`} style={{ width: `${Math.round(score * 100)}%` }} />
+                      </div>
+                    )}
+                    {obs.summary && (
+                      <p className="mt-1 text-[11px] text-[#717182]">{obs.summary}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        )}
+
+        {/* Strengths & Weaknesses */}
+        {(strengths.length > 0 || weaknesses.length > 0) && (
+          <Card className="mb-6 border border-[rgba(0,0,0,0.08)] bg-white p-6 shadow-sm">
+            {strengths.length > 0 && (
+              <div className="mb-4">
+                <h3 className="mb-2 text-[13px] font-medium text-emerald-700">Strengths</h3>
+                <ul className="space-y-1">
+                  {strengths.map((o: any) => (
+                    <li key={o.dimension} className="text-[13px] text-[#3A3A3A]">
+                      <span className="font-medium">{DIMENSION_LABELS[o.dimension]?.label ?? o.dimension}:</span>{" "}
+                      {o.summary}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {weaknesses.length > 0 && (
+              <div>
+                <h3 className="mb-2 text-[13px] font-medium text-red-700">Areas for growth</h3>
+                <ul className="space-y-1">
+                  {weaknesses.map((o: any) => (
+                    <li key={o.dimension} className="text-[13px] text-[#3A3A3A]">
+                      <span className="font-medium">{DIMENSION_LABELS[o.dimension]?.label ?? o.dimension}:</span>{" "}
+                      {o.summary}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </Card>
+        )}
+
+        {/* Sample Size / Trust */}
+        <Card className="border border-blue-200 bg-blue-50 p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <Shield className="h-5 w-5 text-blue-700 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="mb-1 text-[14px] font-medium text-blue-900">Verification</h3>
+              <p className="text-[13px] text-blue-800">
+                This report was generated by Proof of AI Work from uploaded conversation data.
+                {trustPanel.dimensions_evaluated > 0 && (
+                  <> {trustPanel.dimensions_evaluated} dimensions were evaluated using AI-assisted scoring.</>
+                )}
+              </p>
+            </div>
           </div>
         </Card>
 
         {/* Footer */}
-        <div className="mt-12 border-t border-[rgba(0,0,0,0.08)] pt-8 text-center">
-          <p className="mb-3 text-[13px] text-[#717182]">
-            This proof page was generated by Proof of AI Work
-          </p>
-          <Button variant="outline">
-            Learn More About PoAW
-          </Button>
+        <div className="mt-10 border-t border-[rgba(0,0,0,0.08)] pt-6 text-center text-[13px] text-[#717182]">
+          ProofofAIWork - proofofaiwork.com
         </div>
       </div>
     </div>
