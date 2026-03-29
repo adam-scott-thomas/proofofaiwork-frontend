@@ -118,27 +118,33 @@ export default function StudentProcessing() {
   const currentStepIdx = STEP_ORDER.indexOf(status);
 
   if (status === "failed") {
+    const isParseFail = assessment?.failure_stage === "parse";
     return (
       <div className="py-12 text-center">
         <XCircle className="mx-auto mb-4 h-12 w-12 text-red-500" />
-        <h1 className="mb-2 text-xl font-medium text-[#030213]">Evaluation failed</h1>
+        <h1 className="mb-2 text-xl font-medium text-[#030213]">
+          {isParseFail ? "We couldn't read your file" : "Evaluation failed"}
+        </h1>
         <p className="mb-6 text-[14px] text-[#717182]">
-          {assessment?.failure_reason || "Something went wrong. Please try uploading again."}
+          {assessment?.failure_reason || "Something went wrong."}
         </p>
         <div className="flex justify-center gap-3">
-          <Button
-            onClick={() => rerunMutation.mutate()}
-            disabled={rerunMutation.isPending}
-          >
-            {rerunMutation.isPending ? (
-              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Retrying...</>
-            ) : (
-              <><RefreshCw className="mr-2 h-4 w-4" /> Try again</>
-            )}
-          </Button>
-          <Link to="/student">
-            <Button variant="outline">Upload different file</Button>
-          </Link>
+          {isParseFail ? (
+            <Link to="/student">
+              <Button>Upload a different file</Button>
+            </Link>
+          ) : (
+            <Button
+              onClick={() => rerunMutation.mutate()}
+              disabled={rerunMutation.isPending}
+            >
+              {rerunMutation.isPending ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Retrying...</>
+              ) : (
+                <><RefreshCw className="mr-2 h-4 w-4" /> Try again</>
+              )}
+            </Button>
+          )}
         </div>
       </div>
     );

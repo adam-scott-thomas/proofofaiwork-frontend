@@ -11,8 +11,8 @@ import {
   X,
   Type,
 } from "lucide-react";
-import { usePresignUpload, useCompleteUpload } from "../../hooks/useApi";
-import { apiFetch, apiPost } from "../../lib/api";
+import { usePresignUpload } from "../../hooks/useApi";
+import { apiPost } from "../../lib/api";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -53,7 +53,6 @@ export default function StudentSubmit() {
   const [delivIsDragging, setDelivIsDragging] = useState(false);
 
   const presignMutation = usePresignUpload();
-  const completeMutation = useCompleteUpload();
 
   const validateFile = (f: File, allowedExts: readonly string[]): string | null => {
     if (f.size > MAX_FILE_SIZE) return `${f.name} is too large (${(f.size / 1024 / 1024).toFixed(1)} MB). Maximum is 10 MB.`;
@@ -84,51 +83,18 @@ export default function StudentSubmit() {
 
   const hasConvo = convoMode === "file" ? convoFiles.length > 0 : convoPastedText.trim().length > 20;
 
-  // Tracks the assessment_id created by the `complete` endpoint
-  let lastAssessmentId: string | null = null;
-
-  // Helper: upload a list of files, return their upload_ids
-  // triggerParse: true for conversation files (need parsing), false for deliverables (just store)
-  const uploadFiles = async (filesToUpload: File[], progressBase: number, progressRange: number, triggerParse: boolean = true): Promise<string[]> => {
-    const ids: string[] = [];
-    for (let i = 0; i < filesToUpload.length; i++) {
-      const file = filesToUpload[i];
-      const fileBase = progressBase + (i / filesToUpload.length) * progressRange;
-      const fileRange = progressRange / filesToUpload.length;
-
-      const ext = file.name.split(".").pop()?.toLowerCase() || "txt";
-      const presign = await presignMutation.mutateAsync({
-        file_name: file.name,
-        file_type: ext,
-        file_size_bytes: file.size,
-        allow_data_use: false,
-      });
-
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("PUT", presign.presigned_url);
-        const token = localStorage.getItem("poaw-token");
-        if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) setProgress(Math.round(fileBase + (e.loaded / e.total) * fileRange));
-        };
-        xhr.onload = () => (xhr.status < 300 ? resolve() : reject(new Error(`Upload failed: ${xhr.status}`)));
-        xhr.onerror = () => reject(new Error("Network error during upload"));
-        const formData = new FormData();
-        formData.append("file", file);
-        xhr.send(formData);
-      });
-
-      // Only trigger parsing for conversation files, not deliverables
-      if (triggerParse) {
-        const completeResult = await completeMutation.mutateAsync({ upload_id: presign.upload_id });
-        if (completeResult?.assessment_id) {
-          lastAssessmentId = completeResult.assessment_id;
-        }
-      }
-      ids.push(String(presign.upload_id));
-    }
-    return ids;
+  const uploadFileToServer = async (presignedUrl: string, file: File): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", presignedUrl);
+      const token = localStorage.getItem("poaw-token");
+      if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      xhr.onload = () => (xhr.status < 300 ? resolve() : reject(new Error(`Upload failed: ${xhr.status}`)));
+      xhr.onerror = () => reject(new Error("Network error during upload"));
+      const formData = new FormData();
+      formData.append("file", file);
+      xhr.send(formData);
+    });
   };
 
   const handleSubmit = useCallback(async () => {
@@ -136,93 +102,75 @@ export default function StudentSubmit() {
 
     const hasDeliverable = deliverableMode === "file" ? deliverableFiles.length > 0 : deliverablePastedText.trim().length > 20;
 
-    const taskContext = [
-      className.trim() && `Class: ${className.trim()}`,
-      `Assignment: ${assignmentName.trim()}`,
-      aiTools.trim() && `AI tools used: ${aiTools.trim()}`,
-      description.trim() && `Description: ${description.trim()}`,
-      hasDeliverable && `[DELIVERABLE ATTACHED — final submitted work included for authorship comparison]`,
-    ].filter(Boolean).join("\n");
-
     setStep("uploading");
     setProgress(0);
 
     try {
-      // Build conversation file list
-      let convoToUpload: File[];
+      // Build conversation file
+      let convoFile: File;
       if (convoMode === "paste") {
         const blob = new Blob([convoPastedText], { type: "text/plain" });
-        convoToUpload = [new File([blob], "pasted-conversation.txt", { type: "text/plain" })];
+        convoFile = new File([blob], "pasted-conversation.txt", { type: "text/plain" });
       } else {
-        convoToUpload = convoFiles;
+        convoFile = convoFiles[0]; // Use first conversation file
       }
 
-      // Build deliverable file list
-      let delivToUpload: File[] = [];
+      // Upload deliverable files (just store, no complete)
+      const delivIds: string[] = [];
       if (hasDeliverable) {
+        let delivFiles: File[];
         if (deliverableMode === "paste") {
           const blob = new Blob([deliverablePastedText], { type: "text/plain" });
-          delivToUpload = [new File([blob], "final-deliverable.txt", { type: "text/plain" })];
+          delivFiles = [new File([blob], "final-deliverable.txt", { type: "text/plain" })];
         } else {
-          delivToUpload = deliverableFiles;
+          delivFiles = deliverableFiles;
+        }
+        for (const df of delivFiles) {
+          const ext = df.name.split(".").pop()?.toLowerCase() || "txt";
+          const presign = await presignMutation.mutateAsync({
+            file_name: df.name, file_type: ext, file_size_bytes: df.size, allow_data_use: false,
+          });
+          await uploadFileToServer(presign.presigned_url, df);
+          delivIds.push(String(presign.upload_id));
+          setProgress((p) => Math.min(p + 15, 40));
         }
       }
 
-      const totalFiles = convoToUpload.length + delivToUpload.length;
-      const convoProgressRange = (convoToUpload.length / totalFiles) * 60;
-      const delivProgressRange = (delivToUpload.length / totalFiles) * 60;
+      setProgress(45);
 
-      // Upload conversations (0% → convoRange%) — trigger parsing
-      const convoIds = await uploadFiles(convoToUpload, 0, convoProgressRange, true);
+      // Upload conversation file
+      const ext = convoFile.name.split(".").pop()?.toLowerCase() || "txt";
+      const presign = await presignMutation.mutateAsync({
+        file_name: convoFile.name, file_type: ext, file_size_bytes: convoFile.size, allow_data_use: false,
+      });
+      await uploadFileToServer(presign.presigned_url, convoFile);
+      setProgress(70);
 
-      // Upload deliverables (convoRange% → 60%) — store only, no parsing
-      const delivIds = delivToUpload.length > 0
-        ? await uploadFiles(delivToUpload, convoProgressRange, delivProgressRange, false)
-        : [];
+      // Build task_context with all assignment info
+      const taskContext = [
+        className.trim() && `Class: ${className.trim()}`,
+        `Assignment: ${assignmentName.trim()}`,
+        aiTools.trim() && `AI tools used: ${aiTools.trim()}`,
+        description.trim() && `Description: ${description.trim()}`,
+        delivIds.length > 0 && `[DELIVERABLE_UPLOAD_IDS: ${delivIds.join(",")}]`,
+      ].filter(Boolean).join("\n");
 
-      setProgress(65);
-
-      // Poll parse status for last conversation upload
-      const lastConvoId = convoIds[convoIds.length - 1];
-      const parseStart = Date.now();
-      let parsed = false;
-      for (let i = 0; i < 300; i++) {
-        await new Promise((r) => setTimeout(r, 1000));
-        try {
-          const status = await apiFetch<{ status: string; conversations_found: number; conversations_parsed: number }>(
-            `/uploads/parse-status/${lastConvoId}`
-          );
-          const found = status.conversations_found || 0;
-          const done = status.conversations_parsed || 0;
-          setProgress(65 + (found > 0 ? Math.round((done / found) * 30) : 0));
-          if (status.status === "complete") { parsed = true; break; }
-          if (status.status === "failed") throw new Error("Parsing failed. Please try a different file.");
-        } catch (e) {
-          if (e instanceof Error && e.message.includes("Parsing failed")) throw e;
-        }
-        if (Date.now() - parseStart > 5 * 60 * 1000) break;
-      }
-      if (!parsed) setProgress(95);
-
-      setStep("creating");
-      setProgress(96);
-
-      const assessmentId = lastAssessmentId;
-      if (!assessmentId) throw new Error("No assessment created. Please try again.");
-
-      // Dispatch the evaluation — this is the reliable path (API → Celery, not background thread)
-      await apiPost<any>(`/assessments/${assessmentId}/dispatch`, {});
+      // Complete — creates assessment, dispatches parse+evaluate in worker
+      const complete = await apiPost<{ upload_id: string; assessment_id: string; status: string }>(
+        "/uploads/complete",
+        { upload_id: presign.upload_id, task_context: taskContext }
+      );
 
       setProgress(100);
       setStep("done");
 
-      setTimeout(() => navigate(`/student/processing/${assessmentId}`), 800);
+      setTimeout(() => navigate(`/student/processing/${complete.assessment_id}`), 800);
 
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : "Something went wrong. Please try again.");
       setStep("error");
     }
-  }, [convoFiles, convoPastedText, convoMode, deliverableFiles, deliverablePastedText, deliverableMode, className, assignmentName, aiTools, description, hasConvo, presignMutation, completeMutation, navigate]);
+  }, [convoFiles, convoPastedText, convoMode, deliverableFiles, deliverablePastedText, deliverableMode, className, assignmentName, aiTools, description, hasConvo, presignMutation, navigate]);
 
   const isSubmitting = step === "uploading" || step === "creating";
   const canSubmit = hasConvo && assignmentName.trim() && !isSubmitting;
@@ -470,9 +418,8 @@ export default function StudentSubmit() {
             <div className="mb-3 flex items-center gap-2">
               <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
               <p className="text-[14px] font-medium text-blue-900">
-                {step === "uploading" && progress < 60 && "Uploading your conversations..."}
-                {step === "uploading" && progress >= 60 && "Parsing conversations..."}
-                {step === "creating" && "Starting evaluation..."}
+                {step === "uploading" && progress < 70 && "Uploading your files..."}
+                {step === "uploading" && progress >= 70 && "Submitting for analysis..."}
               </p>
             </div>
             <Progress value={progress} className="h-2" />
