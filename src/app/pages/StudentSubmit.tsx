@@ -106,13 +106,23 @@ export default function StudentSubmit() {
     setProgress(0);
 
     try {
-      // Build conversation file
+      // Build conversation file — merge multiple files into one if needed
       let convoFile: File;
       if (convoMode === "paste") {
         const blob = new Blob([convoPastedText], { type: "text/plain" });
         convoFile = new File([blob], "pasted-conversation.txt", { type: "text/plain" });
+      } else if (convoFiles.length === 1) {
+        convoFile = convoFiles[0];
       } else {
-        convoFile = convoFiles[0]; // Use first conversation file
+        // Multiple files: read all and concatenate with separators
+        const parts: string[] = [];
+        for (const f of convoFiles) {
+          const text = await f.text();
+          parts.push(`\n\n--- ${f.name} ---\n\n${text}`);
+        }
+        const merged = parts.join("\n");
+        const blob = new Blob([merged], { type: "text/plain" });
+        convoFile = new File([blob], `merged_${convoFiles.length}_conversations.txt`, { type: "text/plain" });
       }
 
       // Upload deliverable files (just store, no complete)
