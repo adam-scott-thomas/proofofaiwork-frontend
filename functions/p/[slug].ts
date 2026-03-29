@@ -66,6 +66,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     }
 
     const pageUrl = `https://proofofaiwork.com/p/${slug}`;
+    const ogImageUrl = `https://api.proofofaiwork.com/api/v1/p/${slug}/og.png`;
     const title = headline.length > 70 ? headline.slice(0, 67) + "..." : headline;
 
     const html = `<!DOCTYPE html>
@@ -81,11 +82,15 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   <meta property="og:description" content="${esc(description)}" />
   <meta property="og:url" content="${esc(pageUrl)}" />
   <meta property="og:site_name" content="Proof of AI Work" />
+  <meta property="og:image" content="${esc(ogImageUrl)}" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
 
-  <!-- Twitter -->
-  <meta name="twitter:card" content="summary" />
+  <!-- Twitter / X -->
+  <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${esc(title)}" />
   <meta name="twitter:description" content="${esc(description)}" />
+  <meta name="twitter:image" content="${esc(ogImageUrl)}" />
 
   <meta http-equiv="refresh" content="0;url=${esc(pageUrl)}" />
 </head>

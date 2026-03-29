@@ -87,7 +87,7 @@ export default function PublicProofPage() {
             <span>-</span>
             <span>Student Report</span>
           </div>
-          <h1 className="mb-2 text-2xl tracking-tight">{headline}</h1>
+          <h1 className="mb-3 text-4xl md:text-5xl font-bold tracking-tight">{headline}</h1>
           <div className="flex items-center gap-4">
             {publishedAt && (
               <div className="flex items-center gap-2 text-[13px] text-[#717182]">
