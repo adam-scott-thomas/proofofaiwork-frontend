@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate, useLocation } from "react-router";
+import { Link, useNavigate, useLocation, useSearchParams } from "react-router";
 import { Mail, ArrowLeft, Loader2 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiFetch } from "../../lib/api";
@@ -23,19 +23,28 @@ export default function SignIn() {
   const [sent, setSent] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { isAuthenticated } = useAuthStore();
   const requestMagicLink = useRequestMagicLink();
 
+  // Where to redirect after auth
+  const nextUrl = searchParams.get("next")
+    || (location.state as any)?.from?.pathname
+    || "/dashboard";
+
   useEffect(() => {
     if (isAuthenticated()) {
-      const from = (location.state as any)?.from?.pathname || "/dashboard";
-      navigate(from, { replace: true });
+      navigate(nextUrl, { replace: true });
     }
-  }, [isAuthenticated, navigate, location]);
+  }, [isAuthenticated, navigate, nextUrl]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Store redirect target so AuthCallback can pick it up after the email roundtrip
+      if (nextUrl !== "/dashboard") {
+        localStorage.setItem("poaw-auth-redirect", nextUrl);
+      }
       await requestMagicLink.mutateAsync({ email });
       setSent(true);
     } catch (error) {
@@ -108,7 +117,10 @@ export default function SignIn() {
               <h1 className="text-3xl font-bold text-foreground mb-2">ProofOfAIWork</h1>
             </Link>
             <p className="text-muted-foreground">
-              Sign in to build verifiable proof of your AI work
+              {nextUrl.startsWith("/student")
+                ? "Sign in to submit your work for analysis"
+                : "Sign in to build verifiable proof of your AI work"
+              }
             </p>
           </div>
 

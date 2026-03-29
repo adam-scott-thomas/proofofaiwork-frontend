@@ -1,5 +1,6 @@
 import { createBrowserRouter } from "react-router";
 import Layout from "./components/Layout";
+import StudentLayout from "./components/StudentLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
@@ -20,6 +21,9 @@ import AuthCallback from "./pages/AuthCallback";
 import Upload from "./pages/Upload";
 import Processing from "./pages/Processing";
 import Results from "./pages/Results";
+import StudentSubmit from "./pages/StudentSubmit";
+import StudentProcessing from "./pages/StudentProcessing";
+import StudentResults from "./pages/StudentResults";
 import { createElement } from "react";
 
 // Helper to wrap a component with ProtectedRoute
@@ -33,7 +37,22 @@ export const router = createBrowserRouter([
     path: "/",
     Component: Landing,
   },
-  // Authenticated dashboard (sidebar layout)
+  // ──────────────────────────────────────────
+  // Student flow (simplified, no sidebar)
+  // ──────────────────────────────────────────
+  {
+    path: "/student",
+    Component: protect(StudentLayout),
+    children: [
+      { index: true, Component: StudentSubmit },
+      { path: "submit", Component: StudentSubmit },
+      { path: "processing/:id", Component: StudentProcessing },
+      { path: "results/:id", Component: StudentResults },
+    ],
+  },
+  // ──────────────────────────────────────────
+  // Professional dashboard (sidebar layout)
+  // ──────────────────────────────────────────
   {
     path: "/dashboard",
     Component: protect(Layout),

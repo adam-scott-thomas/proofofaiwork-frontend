@@ -31,6 +31,13 @@ export default function AuthCallback() {
   const token = params.get("token");
   const error = params.get("error");
 
+  // Read stored redirect target (set by SignIn page when ?next= is present)
+  const getRedirectTarget = () => {
+    const stored = localStorage.getItem("poaw-auth-redirect");
+    localStorage.removeItem("poaw-auth-redirect");
+    return stored || "/dashboard";
+  };
+
   useEffect(() => {
     if (error) {
       setErrorMsg(
@@ -48,7 +55,7 @@ export default function AuthCallback() {
 
     authCallback.mutate(token, {
       onSuccess: () => {
-        navigate("/dashboard", { replace: true });
+        navigate(getRedirectTarget(), { replace: true });
       },
       onError: (err) => {
         setErrorMsg(
