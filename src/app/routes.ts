@@ -14,6 +14,7 @@ import Assessments from "./pages/Assessments";
 import ProofPages from "./pages/ProofPages";
 import Search from "./pages/Search";
 import Account from "./pages/Account";
+import Billing from "./pages/Billing";
 import PublicProofPage from "./pages/PublicProofPage";
 import NotFound from "./pages/NotFound";
 import SignIn from "./pages/SignIn";
@@ -71,6 +72,7 @@ export const router = createBrowserRouter([
       { path: "proof-pages", Component: ProofPages },
       { path: "search", Component: Search },
       { path: "account", Component: Account },
+      { path: "billing", Component: Billing },
     ],
   },
   // Public proof pages (no sidebar)

@@ -11,6 +11,7 @@ import {
   Command,
   Settings,
   LogOut,
+  CreditCard,
 } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { Button } from "./ui/button";
@@ -106,6 +107,14 @@ export default function Layout() {
           >
             <Command className="mr-3 h-4 w-4" />
             Keyboard Shortcuts
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-[13px] text-[#717182]"
+            onClick={() => navigate("/dashboard/billing")}
+          >
+            <CreditCard className="mr-3 h-4 w-4" />
+            Billing & Plan
           </Button>
           <Button
             variant="ghost"

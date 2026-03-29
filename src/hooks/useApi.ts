@@ -132,3 +132,24 @@ export const useTriggerEvaluation = () =>
     mutationFn: (projectId: string) =>
       apiPost<any>(`/work-profile/evaluate?project_id=${projectId}`, {}),
   });
+
+// Billing
+export const useBilling = () =>
+  useAuthQuery(["billing"], () => apiFetch<any>("/payments/billing"));
+
+export const useSaveCard = () =>
+  useMutation({ mutationFn: (body: any) => apiPost<any>("/payments/save-card", body) });
+
+export const useCharge = () =>
+  useMutation({ mutationFn: (body: any) => apiPost<any>("/payments/charge", body) });
+
+export const useSubscribe = () =>
+  useMutation({ mutationFn: (body: any) => apiPost<any>("/payments/subscribe", body) });
+
+export const useSetModelTier = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (tier: string) => apiPost<any>(`/payments/set-model-tier?tier=${tier}`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["billing"] }),
+  });
+};
