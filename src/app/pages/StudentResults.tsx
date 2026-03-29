@@ -235,10 +235,10 @@ export default function StudentResults() {
                   <span className="text-[13px] font-medium text-[#030213]">Strengths</span>
                 </div>
                 <ul className="space-y-2">
-                  {results.strengths.map((s: string, i: number) => (
+                  {results.strengths.map((s: any, i: number) => (
                     <li key={i} className="flex items-start gap-2 text-[13px] text-[#3A3A3A]">
                       <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-emerald-500" />
-                      <span>{s}</span>
+                      <span>{typeof s === "string" ? s : s?.summary || s?.text || JSON.stringify(s)}</span>
                     </li>
                   ))}
                 </ul>
@@ -253,10 +253,10 @@ export default function StudentResults() {
                   <span className="text-[13px] font-medium text-[#030213]">Areas for growth</span>
                 </div>
                 <ul className="space-y-2">
-                  {results.weaknesses.map((w: string, i: number) => (
+                  {results.weaknesses.map((w: any, i: number) => (
                     <li key={i} className="flex items-start gap-2 text-[13px] text-[#3A3A3A]">
                       <AlertCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-amber-500" />
-                      <span>{w}</span>
+                      <span>{typeof w === "string" ? w : w?.summary || w?.text || JSON.stringify(w)}</span>
                     </li>
                   ))}
                 </ul>
