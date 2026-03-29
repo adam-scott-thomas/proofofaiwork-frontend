@@ -8,6 +8,8 @@ import {
   Loader2,
   GraduationCap,
   ArrowRight,
+  X,
+  Type,
 } from "lucide-react";
 import { usePresignUpload, useCompleteUpload } from "../../hooks/useApi";
 import { apiFetch, apiPost } from "../../lib/api";
@@ -21,12 +23,15 @@ type AllowedExt = (typeof ALLOWED_EXTENSIONS)[number];
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 type SubmitStep = "form" | "uploading" | "creating" | "done" | "error";
+type InputMode = "file" | "paste";
 
 export default function StudentSubmit() {
   const navigate = useNavigate();
 
   // Form state
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [pastedText, setPastedText] = useState("");
+  const [inputMode, setInputMode] = useState<InputMode>("file");
   const [className, setClassName] = useState("");
   const [assignmentName, setAssignmentName] = useState("");
   const [aiTools, setAiTools] = useState("");
@@ -42,24 +47,30 @@ export default function StudentSubmit() {
   const completeMutation = useCompleteUpload();
 
   const validateFile = (f: File): string | null => {
-    if (f.size > MAX_FILE_SIZE) return `File too large (${(f.size / 1024 / 1024).toFixed(1)} MB). Maximum is 10 MB.`;
-    if (f.size === 0) return "File is empty.";
+    if (f.size > MAX_FILE_SIZE) return `${f.name} is too large (${(f.size / 1024 / 1024).toFixed(1)} MB). Maximum is 10 MB.`;
+    if (f.size === 0) return `${f.name} is empty.`;
     const ext = f.name.split(".").pop()?.toLowerCase();
     if (!ext || !ALLOWED_EXTENSIONS.includes(ext as AllowedExt))
-      return `Unsupported file type. Upload a ${ALLOWED_EXTENSIONS.join(", ")} export from ChatGPT or Claude.`;
+      return `${f.name}: unsupported file type. Upload ${ALLOWED_EXTENSIONS.join(", ")} exports.`;
     return null;
   };
 
-  const handleFile = (f: File) => {
-    const err = validateFile(f);
-    if (err) {
-      setErrorMsg(err);
-      setStep("error");
-      return;
+  const addFiles = (newFiles: File[]) => {
+    for (const f of newFiles) {
+      const err = validateFile(f);
+      if (err) {
+        setErrorMsg(err);
+        setStep("error");
+        return;
+      }
     }
-    setFile(f);
+    setFiles((prev) => [...prev, ...newFiles]);
     setErrorMsg("");
     setStep("form");
+  };
+
+  const removeFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
@@ -67,12 +78,14 @@ export default function StudentSubmit() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    const f = e.dataTransfer.files[0];
-    if (f) handleFile(f);
+    const dropped = Array.from(e.dataTransfer.files);
+    if (dropped.length > 0) addFiles(dropped);
   };
 
+  const hasInput = inputMode === "file" ? files.length > 0 : pastedText.trim().length > 20;
+
   const handleSubmit = useCallback(async () => {
-    if (!file || !assignmentName.trim()) return;
+    if (!hasInput || !assignmentName.trim()) return;
 
     const taskContext = [
       className.trim() && `Class: ${className.trim()}`,
@@ -85,42 +98,63 @@ export default function StudentSubmit() {
     setProgress(0);
 
     try {
-      // 1. Presign
-      const ext = file.name.split(".").pop()?.toLowerCase() as AllowedExt;
-      const presign = await presignMutation.mutateAsync({
-        file_name: file.name,
-        file_type: ext,
-        file_size_bytes: file.size,
-        allow_data_use: false,
-      });
+      // Build file list — if paste mode, convert text to a .txt file
+      let filesToUpload: File[];
+      if (inputMode === "paste") {
+        const blob = new Blob([pastedText], { type: "text/plain" });
+        filesToUpload = [new File([blob], "pasted-conversation.txt", { type: "text/plain" })];
+      } else {
+        filesToUpload = files;
+      }
 
-      // 2. Upload to S3
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("PUT", presign.presigned_url);
-        xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 60));
-        };
-        xhr.onload = () => (xhr.status < 300 ? resolve() : reject(new Error(`Upload failed: ${xhr.status}`)));
-        xhr.onerror = () => reject(new Error("Network error during upload"));
-        xhr.send(file);
-      });
+      const totalFiles = filesToUpload.length;
+      const uploadIds: string[] = [];
+
+      for (let i = 0; i < totalFiles; i++) {
+        const file = filesToUpload[i];
+        const fileProgressBase = (i / totalFiles) * 60;
+        const fileProgressRange = 60 / totalFiles;
+
+        // 1. Presign
+        const ext = file.name.split(".").pop()?.toLowerCase() as AllowedExt;
+        const presign = await presignMutation.mutateAsync({
+          file_name: file.name,
+          file_type: ext,
+          file_size_bytes: file.size,
+          allow_data_use: false,
+        });
+
+        // 2. Upload to S3
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open("PUT", presign.presigned_url);
+          xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+              setProgress(Math.round(fileProgressBase + (e.loaded / e.total) * fileProgressRange));
+            }
+          };
+          xhr.onload = () => (xhr.status < 300 ? resolve() : reject(new Error(`Upload failed: ${xhr.status}`)));
+          xhr.onerror = () => reject(new Error("Network error during upload"));
+          xhr.send(file);
+        });
+
+        // 3. Complete upload (triggers parsing)
+        await completeMutation.mutateAsync({ upload_id: presign.upload_id });
+        uploadIds.push(String(presign.upload_id));
+      }
 
       setProgress(65);
 
-      // 3. Complete upload (triggers parsing)
-      await completeMutation.mutateAsync({ upload_id: presign.upload_id });
-
-      // 4. Poll parse status
-      const uploadId = String(presign.upload_id);
+      // 4. Poll parse status for the last upload (good enough indicator)
+      const lastUploadId = uploadIds[uploadIds.length - 1];
       const parseStart = Date.now();
       let parsed = false;
       for (let i = 0; i < 300; i++) {
         await new Promise((r) => setTimeout(r, 1000));
         try {
           const status = await apiFetch<{ status: string; conversations_found: number; conversations_parsed: number }>(
-            `/uploads/parse-status/${uploadId}`
+            `/uploads/parse-status/${lastUploadId}`
           );
           const found = status.conversations_found || 0;
           const done = status.conversations_parsed || 0;
@@ -135,16 +169,15 @@ export default function StudentSubmit() {
         if (Date.now() - parseStart > 5 * 60 * 1000) break;
       }
       if (!parsed) {
-        // Proceed anyway — some files parse quickly
         setProgress(95);
       }
 
       setStep("creating");
       setProgress(96);
 
-      // 5. Create assessment with task_context
+      // 5. Create assessment with ALL upload_ids
       const assessment = await apiPost<{ id: string; status: string }>("/assessments", {
-        upload_ids: [presign.upload_id],
+        upload_ids: uploadIds,
         task_context: taskContext,
       });
 
@@ -160,10 +193,10 @@ export default function StudentSubmit() {
       setErrorMsg(error instanceof Error ? error.message : "Something went wrong. Please try again.");
       setStep("error");
     }
-  }, [file, className, assignmentName, aiTools, description, presignMutation, completeMutation, navigate]);
+  }, [files, pastedText, inputMode, className, assignmentName, aiTools, description, hasInput, presignMutation, completeMutation, navigate]);
 
   const isSubmitting = step === "uploading" || step === "creating";
-  const canSubmit = file && assignmentName.trim() && !isSubmitting;
+  const canSubmit = hasInput && assignmentName.trim() && !isSubmitting;
 
   return (
     <div>
@@ -176,75 +209,127 @@ export default function StudentSubmit() {
           <h1 className="text-xl tracking-tight">Submit your work</h1>
         </div>
         <p className="text-[14px] leading-relaxed text-[#717182]">
-          Upload the AI conversation you used for your assignment. We'll analyze how much
-          was your direction versus AI output, so you can prove your contribution to
-          your professor.
+          Upload the AI conversations you used for your assignment, or paste the text directly.
+          We'll analyze how much was your direction versus AI output.
         </p>
       </div>
 
-      {/* Upload zone */}
+      {/* Input mode tabs */}
       <Card className="mb-6 border border-[rgba(0,0,0,0.08)] bg-white shadow-sm">
         <CardContent className="p-6">
-          <label className="mb-2 block text-[13px] font-medium text-[#030213]">
-            AI conversation export <span className="text-red-500">*</span>
-          </label>
-
-          {!file ? (
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              className={`cursor-pointer rounded-xl border-2 border-dashed p-8 text-center transition-all ${
-                isDragging
-                  ? "border-blue-400 bg-blue-50"
-                  : "border-[rgba(0,0,0,0.12)] hover:border-[rgba(0,0,0,0.2)]"
+          <div className="mb-4 flex gap-2">
+            <button
+              onClick={() => setInputMode("file")}
+              disabled={isSubmitting}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors ${
+                inputMode === "file"
+                  ? "bg-[#030213] text-white"
+                  : "bg-[#F5F5F7] text-[#717182] hover:bg-[#EAEAED]"
               }`}
             >
-              <UploadIcon className="mx-auto mb-3 h-8 w-8 text-[#717182]" />
-              <p className="mb-1 text-[14px] text-[#030213]">Drop your file here or click to browse</p>
-              <p className="mb-4 text-[12px] text-[#717182]">
-                JSON, JSONL, ZIP, or TXT export from ChatGPT or Claude
-              </p>
-              <label className="cursor-pointer">
-                <span className="inline-flex items-center gap-2 rounded-md bg-[#030213] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#1a1a2e]">
-                  <UploadIcon className="h-4 w-4" />
-                  Choose file
-                </span>
-                <input
-                  type="file"
-                  accept=".txt,.json,.zip,.jsonl"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleFile(f);
-                  }}
-                  className="hidden"
-                />
-              </label>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3 rounded-lg border border-[rgba(0,0,0,0.08)] bg-[#F5F5F7] p-4">
-              <FileText className="h-8 w-8 flex-shrink-0 text-blue-600" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[14px] font-medium text-[#030213]">{file.name}</p>
-                <p className="text-[12px] text-[#717182]">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-              </div>
-              {!isSubmitting && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => { setFile(null); setStep("form"); setErrorMsg(""); }}
-                  className="text-[12px] text-[#717182]"
-                >
-                  Remove
-                </Button>
-              )}
-            </div>
-          )}
+              <UploadIcon className="h-3.5 w-3.5" />
+              Upload files
+            </button>
+            <button
+              onClick={() => setInputMode("paste")}
+              disabled={isSubmitting}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors ${
+                inputMode === "paste"
+                  ? "bg-[#030213] text-white"
+                  : "bg-[#F5F5F7] text-[#717182] hover:bg-[#EAEAED]"
+              }`}
+            >
+              <Type className="h-3.5 w-3.5" />
+              Paste text
+            </button>
+          </div>
 
-          <p className="mt-3 text-[11px] text-[#717182]">
-            How to export: <strong>ChatGPT</strong> → Settings → Data controls → Export data.{" "}
-            <strong>Claude</strong> → Settings → Export conversations.
-          </p>
+          {inputMode === "file" ? (
+            <>
+              <label className="mb-2 block text-[13px] font-medium text-[#030213]">
+                AI conversation exports <span className="text-red-500">*</span>
+              </label>
+
+              {/* Drop zone */}
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`cursor-pointer rounded-xl border-2 border-dashed p-6 text-center transition-all ${
+                  isDragging
+                    ? "border-blue-400 bg-blue-50"
+                    : "border-[rgba(0,0,0,0.12)] hover:border-[rgba(0,0,0,0.2)]"
+                }`}
+              >
+                <UploadIcon className="mx-auto mb-2 h-6 w-6 text-[#717182]" />
+                <p className="mb-1 text-[13px] text-[#030213]">Drop files here or click to browse</p>
+                <p className="mb-3 text-[11px] text-[#717182]">
+                  JSON, JSONL, ZIP, or TXT — multiple files OK
+                </p>
+                <label className="cursor-pointer">
+                  <span className="inline-flex items-center gap-2 rounded-md bg-[#030213] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#1a1a2e]">
+                    <UploadIcon className="h-3.5 w-3.5" />
+                    Choose files
+                  </span>
+                  <input
+                    type="file"
+                    accept=".txt,.json,.zip,.jsonl"
+                    multiple
+                    onChange={(e) => {
+                      const selected = Array.from(e.target.files ?? []);
+                      if (selected.length > 0) addFiles(selected);
+                      e.target.value = "";
+                    }}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {/* File list */}
+              {files.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {files.map((f, i) => (
+                    <div key={`${f.name}-${i}`} className="flex items-center gap-3 rounded-lg border border-[rgba(0,0,0,0.08)] bg-[#F5F5F7] px-4 py-3">
+                      <FileText className="h-5 w-5 flex-shrink-0 text-blue-600" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] font-medium text-[#030213]">{f.name}</p>
+                        <p className="text-[11px] text-[#717182]">{(f.size / 1024 / 1024).toFixed(2)} MB</p>
+                      </div>
+                      {!isSubmitting && (
+                        <button onClick={() => removeFile(i)} className="text-[#717182] hover:text-red-500">
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <p className="text-[11px] text-[#717182]">{files.length} file{files.length !== 1 ? "s" : ""} selected</p>
+                </div>
+              )}
+
+              <p className="mt-3 text-[11px] text-[#717182]">
+                How to export: <strong>ChatGPT</strong> → Settings → Data controls → Export data.{" "}
+                <strong>Claude</strong> → Settings → Export conversations.
+              </p>
+            </>
+          ) : (
+            <>
+              <label className="mb-2 block text-[13px] font-medium text-[#030213]">
+                Paste your AI conversation <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={pastedText}
+                onChange={(e) => setPastedText(e.target.value)}
+                placeholder={"Paste the full conversation here. Include both your messages and the AI's responses.\n\nExample:\nYou: Can you help me outline my research paper on climate policy?\nAI: Sure! Let's start by identifying your thesis..."}
+                disabled={isSubmitting}
+                rows={12}
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+              <p className="mt-2 text-[11px] text-[#717182]">
+                {pastedText.length > 0 ? `${pastedText.length.toLocaleString()} characters` : "Minimum 20 characters"}
+                {" — "}Copy/paste from ChatGPT, Claude, or any AI chat window.
+              </p>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -325,7 +410,7 @@ export default function StudentSubmit() {
             <div className="mb-3 flex items-center gap-2">
               <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
               <p className="text-[14px] font-medium text-blue-900">
-                {step === "uploading" && progress < 60 && "Uploading your conversation..."}
+                {step === "uploading" && progress < 60 && "Uploading your conversations..."}
                 {step === "uploading" && progress >= 60 && "Parsing conversations..."}
                 {step === "creating" && "Starting evaluation..."}
               </p>
