@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
-import { Upload, FileText, X, CheckCircle2 } from "lucide-react";
+import { Upload, FileText, X } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -10,6 +11,7 @@ import {
 } from "./ui/dialog";
 import { Card } from "./ui/card";
 import { toast } from "sonner";
+import { useDirectUpload } from "../../hooks/useApi";
 
 interface UploadDialogProps {
   open: boolean;
@@ -18,8 +20,9 @@ interface UploadDialogProps {
 
 export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
   const [files, setFiles] = useState<File[]>([]);
-  const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const qc = useQueryClient();
+  const uploadMutation = useDirectUpload();
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -55,20 +58,31 @@ export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleUpload = async () => {
+  const handleUpload = () => {
     if (files.length === 0) {
       toast.error("No files selected");
       return;
     }
 
-    setUploading(true);
-    // Simulate upload
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    toast.success(`Successfully uploaded ${files.length} file${files.length > 1 ? 's' : ''}`);
-    setUploading(false);
-    setFiles([]);
-    onOpenChange(false);
+    uploadMutation.mutate(
+      { files },
+      {
+        onSuccess: () => {
+          toast.success(
+            `Successfully uploaded ${files.length} file${files.length > 1 ? "s" : ""}`,
+          );
+          qc.invalidateQueries({ queryKey: ["pool"] });
+          qc.invalidateQueries({ queryKey: ["conversations"] });
+          setFiles([]);
+          onOpenChange(false);
+        },
+        onError: (err: any) => {
+          const message =
+            err?.message ?? "Upload failed. Please try again.";
+          toast.error(message);
+        },
+      },
+    );
   };
 
   return (
@@ -143,7 +157,7 @@ export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
                     variant="ghost"
                     size="sm"
                     onClick={() => removeFile(index)}
-                    disabled={uploading}
+                    disabled={uploadMutation.isPending}
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -154,11 +168,11 @@ export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
         </div>
 
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={uploading}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={uploadMutation.isPending}>
             Cancel
           </Button>
-          <Button onClick={handleUpload} disabled={uploading || files.length === 0}>
-            {uploading ? "Uploading..." : `Upload ${files.length > 0 ? `(${files.length})` : ''}`}
+          <Button onClick={handleUpload} disabled={uploadMutation.isPending || files.length === 0}>
+            {uploadMutation.isPending ? "Uploading..." : `Upload ${files.length > 0 ? `(${files.length})` : ""}`}
           </Button>
         </div>
       </DialogContent>
