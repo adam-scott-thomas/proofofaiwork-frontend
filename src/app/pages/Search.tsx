@@ -5,12 +5,15 @@ import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router";
 import { useGlobalSearch } from "../../hooks/useApi";
+import { toast } from "sonner";
 
 export default function Search() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -43,7 +46,7 @@ export default function Search() {
                 Search across conversations, projects, and proof pages
               </p>
             </div>
-            <Button variant="outline">
+            <Button variant="outline" onClick={() => toast.info("Advanced filters coming soon")}>
               <Filter className="mr-2 h-4 w-4" />
               Advanced Filters
             </Button>
@@ -173,29 +176,31 @@ export default function Search() {
                   </div>
                   <div className="space-y-3">
                     {projects.map((project: any) => (
-                      <Card key={project.id} className="border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm hover:border-[rgba(0,0,0,0.15)] transition-all">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="mb-1 flex items-center gap-3">
-                              <h3 className="text-[14px]">{project.name}</h3>
-                              {project.relevance != null && (
-                                <div className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-mono text-blue-700">
-                                  {Math.round(project.relevance * 100)}% match
+                      <Link key={project.id} to={`/app/projects/${project.id}`} className="block">
+                        <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm hover:border-[rgba(0,0,0,0.15)] transition-all">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="mb-1 flex items-center gap-3">
+                                <h3 className="text-[14px]">{project.name}</h3>
+                                {project.relevance != null && (
+                                  <div className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-mono text-blue-700">
+                                    {Math.round(project.relevance * 100)}% match
+                                  </div>
+                                )}
+                              </div>
+                              <p className="mb-2 text-[13px] text-[#717182]">{project.description}</p>
+                              {project.conversationCount != null && (
+                                <div className="text-[13px] text-[#717182]">
+                                  {project.conversationCount} conversations
                                 </div>
                               )}
                             </div>
-                            <p className="mb-2 text-[13px] text-[#717182]">{project.description}</p>
-                            {project.conversationCount != null && (
-                              <div className="text-[13px] text-[#717182]">
-                                {project.conversationCount} conversations
-                              </div>
-                            )}
+                            <Button variant="outline" size="sm" asChild>
+                              <span>View Project</span>
+                            </Button>
                           </div>
-                          <Button variant="outline" size="sm">
-                            View Project
-                          </Button>
-                        </div>
-                      </Card>
+                        </Card>
+                      </Link>
                     ))}
                   </div>
                 </div>
@@ -209,31 +214,33 @@ export default function Search() {
                   </div>
                   <div className="space-y-3">
                     {conversations.map((conv: any) => (
-                      <Card key={conv.id} className="border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm hover:border-[rgba(0,0,0,0.15)] transition-all">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="mb-1 flex items-center gap-3">
-                              <h3 className="text-[14px]">{conv.title}</h3>
-                              {conv.relevance != null && (
-                                <div className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-mono text-blue-700">
-                                  {Math.round(conv.relevance * 100)}% match
-                                </div>
+                      <Link key={conv.id} to={`/app/conversations/${conv.id}`} className="block">
+                        <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm hover:border-[rgba(0,0,0,0.15)] transition-all">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="mb-1 flex items-center gap-3">
+                                <h3 className="text-[14px]">{conv.title}</h3>
+                                {conv.relevance != null && (
+                                  <div className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-mono text-blue-700">
+                                    {Math.round(conv.relevance * 100)}% match
+                                  </div>
+                                )}
+                              </div>
+                              {conv.snippet && (
+                                <p className="mb-2 text-[13px] text-[#717182] italic">{conv.snippet}</p>
+                              )}
+                              {conv.project && (
+                                <Badge variant="secondary" className="bg-[#F5F5F7]">
+                                  {conv.project}
+                                </Badge>
                               )}
                             </div>
-                            {conv.snippet && (
-                              <p className="mb-2 text-[13px] text-[#717182] italic">{conv.snippet}</p>
-                            )}
-                            {conv.project && (
-                              <Badge variant="secondary" className="bg-[#F5F5F7]">
-                                {conv.project}
-                              </Badge>
-                            )}
+                            <Button variant="outline" size="sm" asChild>
+                              <span>View Conversation</span>
+                            </Button>
                           </div>
-                          <Button variant="outline" size="sm">
-                            View Conversation
-                          </Button>
-                        </div>
-                      </Card>
+                        </Card>
+                      </Link>
                     ))}
                   </div>
                 </div>
@@ -247,41 +254,43 @@ export default function Search() {
                   </div>
                   <div className="space-y-3">
                     {proofPages.map((proof: any) => (
-                      <Card key={proof.id} className="border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm hover:border-[rgba(0,0,0,0.15)] transition-all">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="mb-2 flex items-center gap-3">
-                              <h3 className="text-[14px]">{proof.projectName ?? proof.project_name}</h3>
-                              {proof.relevance != null && (
-                                <div className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-mono text-blue-700">
-                                  {Math.round(proof.relevance * 100)}% match
-                                </div>
-                              )}
+                      <Link key={proof.id} to={`/p/${proof.slug ?? proof.id}`} className="block">
+                        <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm hover:border-[rgba(0,0,0,0.15)] transition-all">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="mb-2 flex items-center gap-3">
+                                <h3 className="text-[14px]">{proof.projectName ?? proof.project_name}</h3>
+                                {proof.relevance != null && (
+                                  <div className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-mono text-blue-700">
+                                    {Math.round(proof.relevance * 100)}% match
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-4">
+                                {proof.cai != null && (
+                                  <div className="flex items-baseline gap-1.5">
+                                    <span className="text-[11px] uppercase tracking-wider text-[#717182]">CAI</span>
+                                    <span className="font-mono text-[15px]" style={{ color: 'var(--score-cai)' }}>
+                                      {proof.cai}
+                                    </span>
+                                  </div>
+                                )}
+                                {proof.hls != null && (
+                                  <div className="flex items-baseline gap-1.5">
+                                    <span className="text-[11px] uppercase tracking-wider text-[#717182]">HLS</span>
+                                    <span className="font-mono text-[15px]" style={{ color: 'var(--score-hls)' }}>
+                                      {proof.hls}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <div className="flex items-center gap-4">
-                              {proof.cai != null && (
-                                <div className="flex items-baseline gap-1.5">
-                                  <span className="text-[11px] uppercase tracking-wider text-[#717182]">CAI</span>
-                                  <span className="font-mono text-[15px]" style={{ color: 'var(--score-cai)' }}>
-                                    {proof.cai}
-                                  </span>
-                                </div>
-                              )}
-                              {proof.hls != null && (
-                                <div className="flex items-baseline gap-1.5">
-                                  <span className="text-[11px] uppercase tracking-wider text-[#717182]">HLS</span>
-                                  <span className="font-mono text-[15px]" style={{ color: 'var(--score-hls)' }}>
-                                    {proof.hls}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
+                            <Button variant="outline" size="sm" asChild>
+                              <span>View Proof Page</span>
+                            </Button>
                           </div>
-                          <Button variant="outline" size="sm">
-                            View Proof Page
-                          </Button>
-                        </div>
-                      </Card>
+                        </Card>
+                      </Link>
                     ))}
                   </div>
                 </div>
@@ -290,99 +299,105 @@ export default function Search() {
 
             <TabsContent value="conversations" className="space-y-3">
               {conversations.map((conv: any) => (
-                <Card key={conv.id} className="border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm hover:border-[rgba(0,0,0,0.15)] transition-all">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="mb-1 flex items-center gap-3">
-                        <h3 className="text-[14px]">{conv.title}</h3>
-                        {conv.relevance != null && (
-                          <div className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-mono text-blue-700">
-                            {Math.round(conv.relevance * 100)}% match
-                          </div>
+                <Link key={conv.id} to={`/app/conversations/${conv.id}`} className="block">
+                  <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm hover:border-[rgba(0,0,0,0.15)] transition-all">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="mb-1 flex items-center gap-3">
+                          <h3 className="text-[14px]">{conv.title}</h3>
+                          {conv.relevance != null && (
+                            <div className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-mono text-blue-700">
+                              {Math.round(conv.relevance * 100)}% match
+                            </div>
+                          )}
+                        </div>
+                        {conv.snippet && (
+                          <p className="mb-2 text-[13px] text-[#717182] italic">{conv.snippet}</p>
+                        )}
+                        {conv.project && (
+                          <Badge variant="secondary" className="bg-[#F5F5F7]">
+                            {conv.project}
+                          </Badge>
                         )}
                       </div>
-                      {conv.snippet && (
-                        <p className="mb-2 text-[13px] text-[#717182] italic">{conv.snippet}</p>
-                      )}
-                      {conv.project && (
-                        <Badge variant="secondary" className="bg-[#F5F5F7]">
-                          {conv.project}
-                        </Badge>
-                      )}
+                      <Button variant="outline" size="sm" asChild>
+                        <span>View Conversation</span>
+                      </Button>
                     </div>
-                    <Button variant="outline" size="sm">
-                      View Conversation
-                    </Button>
-                  </div>
-                </Card>
+                  </Card>
+                </Link>
               ))}
             </TabsContent>
 
             <TabsContent value="projects" className="space-y-3">
               {projects.map((project: any) => (
-                <Card key={project.id} className="border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm hover:border-[rgba(0,0,0,0.15)] transition-all">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="mb-1 flex items-center gap-3">
-                        <h3 className="text-[14px]">{project.name}</h3>
-                        {project.relevance != null && (
-                          <div className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-mono text-blue-700">
-                            {Math.round(project.relevance * 100)}% match
+                <Link key={project.id} to={`/app/projects/${project.id}`} className="block">
+                  <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm hover:border-[rgba(0,0,0,0.15)] transition-all">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="mb-1 flex items-center gap-3">
+                          <h3 className="text-[14px]">{project.name}</h3>
+                          {project.relevance != null && (
+                            <div className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-mono text-blue-700">
+                              {Math.round(project.relevance * 100)}% match
+                            </div>
+                          )}
+                        </div>
+                        <p className="mb-2 text-[13px] text-[#717182]">{project.description}</p>
+                        {project.conversationCount != null && (
+                          <div className="text-[13px] text-[#717182]">
+                            {project.conversationCount} conversations
                           </div>
                         )}
                       </div>
-                      <p className="mb-2 text-[13px] text-[#717182]">{project.description}</p>
-                      {project.conversationCount != null && (
-                        <div className="text-[13px] text-[#717182]">
-                          {project.conversationCount} conversations
-                        </div>
-                      )}
+                      <Button variant="outline" size="sm" asChild>
+                        <span>View Project</span>
+                      </Button>
                     </div>
-                    <Button variant="outline" size="sm">
-                      View Project
-                    </Button>
-                  </div>
-                </Card>
+                  </Card>
+                </Link>
               ))}
             </TabsContent>
 
             <TabsContent value="proofs" className="space-y-3">
               {proofPages.map((proof: any) => (
-                <Card key={proof.id} className="border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm hover:border-[rgba(0,0,0,0.15)] transition-all">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="mb-2 flex items-center gap-3">
-                        <h3 className="text-[14px]">{proof.projectName ?? proof.project_name}</h3>
-                        {proof.relevance != null && (
-                          <div className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-mono text-blue-700">
-                            {Math.round(proof.relevance * 100)}% match
-                          </div>
-                        )}
+                <Link key={proof.id} to={`/p/${proof.slug ?? proof.id}`} className="block">
+                  <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm hover:border-[rgba(0,0,0,0.15)] transition-all">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="mb-2 flex items-center gap-3">
+                          <h3 className="text-[14px]">{proof.projectName ?? proof.project_name}</h3>
+                          {proof.relevance != null && (
+                            <div className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-mono text-blue-700">
+                              {Math.round(proof.relevance * 100)}% match
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4">
+                          {proof.cai != null && (
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-[11px] uppercase tracking-wider text-[#717182]">CAI</span>
+                              <span className="font-mono text-[15px]" style={{ color: 'var(--score-cai)' }}>
+                                {proof.cai}
+                              </span>
+                            </div>
+                          )}
+                          {proof.hls != null && (
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-[11px] uppercase tracking-wider text-[#717182]">HLS</span>
+                              <span className="font-mono text-[15px]" style={{ color: 'var(--score-hls)' }}>
+                                {proof.hls}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        {proof.cai != null && (
-                          <div className="flex items-baseline gap-1.5">
-                            <span className="text-[11px] uppercase tracking-wider text-[#717182]">CAI</span>
-                            <span className="font-mono text-[15px]" style={{ color: 'var(--score-cai)' }}>
-                              {proof.cai}
-                            </span>
-                          </div>
-                        )}
-                        {proof.hls != null && (
-                          <div className="flex items-baseline gap-1.5">
-                            <span className="text-[11px] uppercase tracking-wider text-[#717182]">HLS</span>
-                            <span className="font-mono text-[15px]" style={{ color: 'var(--score-hls)' }}>
-                              {proof.hls}
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                      <Button variant="outline" size="sm" asChild>
+                        <span>View Proof Page</span>
+                      </Button>
                     </div>
-                    <Button variant="outline" size="sm">
-                      View Proof Page
-                    </Button>
-                  </div>
-                </Card>
+                  </Card>
+                </Link>
               ))}
             </TabsContent>
           </Tabs>
