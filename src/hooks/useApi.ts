@@ -220,8 +220,15 @@ export const usePublishProofPage = () => {
 };
 
 // Assessments — single item + results
-export const useAssessment = (id: string) =>
-  useAuthQuery(["assessment", id], () => apiFetch<any>(`/assessments/${id}`), { enabled: !!id });
+export const useAssessment = (id: string, opts?: { refetchInterval?: number | false }) => {
+  const { isAuthenticated } = useAuthStore();
+  return useQuery({
+    queryKey: ["assessment", id],
+    queryFn: () => apiFetch<any>(`/assessments/${id}`),
+    enabled: isAuthenticated() && !!id,
+    refetchInterval: opts?.refetchInterval,
+  });
+};
 
 export const useAssessmentResults = (id: string) =>
   useAuthQuery(
