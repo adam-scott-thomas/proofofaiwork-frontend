@@ -14,12 +14,15 @@ import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { Link, useParams } from "react-router";
-import { useProject } from "../../hooks/useApi";
+import { Link, useParams, useNavigate } from "react-router";
+import { useProject, useTriggerEvaluation } from "../../hooks/useApi";
+import { toast } from "sonner";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { data: project, isLoading } = useProject(id ?? "");
+  const triggerEvaluation = useTriggerEvaluation();
 
   if (isLoading) return (
     <div className="flex min-h-screen items-center justify-center text-[13px] text-[#717182]">Loading...</div>
@@ -70,14 +73,26 @@ export default function ProjectDetail() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button>
+              <Button
+                disabled={triggerEvaluation.isPending}
+                onClick={() => {
+                  if (!id) return;
+                  triggerEvaluation.mutate(id, {
+                    onSuccess: () => {
+                      toast.success("Assessment started — check Assessments page for results");
+                      navigate("/app/assessments");
+                    },
+                    onError: (err: any) => toast.error(err?.message ?? "Failed to start assessment"),
+                  });
+                }}
+              >
                 <Play className="mr-2 h-4 w-4" />
-                Run Assessment
+                {triggerEvaluation.isPending ? "Starting…" : "Run Assessment"}
               </Button>
-              <Button variant="outline">
+              <Button variant="outline" onClick={() => toast.info("Project settings coming soon")}>
                 <Settings className="h-4 w-4" />
               </Button>
-              <Button variant="ghost">
+              <Button variant="ghost" onClick={() => toast.info("Coming soon")}>
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </div>
@@ -139,7 +154,7 @@ export default function ProjectDetail() {
               <div className="border-b border-[rgba(0,0,0,0.06)] px-6 py-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-[15px]">Project Conversations</h3>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => toast.info("Coming soon")}>
                     Add Conversation
                   </Button>
                 </div>
@@ -199,7 +214,7 @@ export default function ProjectDetail() {
               <div className="border-b border-[rgba(0,0,0,0.06)] px-6 py-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-[15px]">Attached Repositories</h3>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => toast.info("Repository attachment coming soon")}>
                     <GitBranch className="mr-2 h-4 w-4" />
                     Attach Repository
                   </Button>
@@ -233,10 +248,10 @@ export default function ProjectDetail() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => toast.info("Correlation view coming soon")}>
                             View Correlations
                           </Button>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" onClick={() => toast.info("Repository removal coming soon")}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
@@ -269,7 +284,7 @@ export default function ProjectDetail() {
               <div className="border-b border-[rgba(0,0,0,0.06)] px-6 py-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-[15px]">Censorship Masks</h3>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => toast.info("Content masking coming soon")}>
                     <Shield className="mr-2 h-4 w-4" />
                     Add Mask
                   </Button>
@@ -303,7 +318,7 @@ export default function ProjectDetail() {
                           )}
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" onClick={() => toast.info("Mask removal coming soon")}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
@@ -330,7 +345,7 @@ export default function ProjectDetail() {
             </Card>
 
             <div className="flex justify-end">
-              <Button variant="outline">
+              <Button variant="outline" onClick={() => toast.info("Content preview coming soon")}>
                 <Eye className="mr-2 h-4 w-4" />
                 Preview Censored Content
               </Button>
