@@ -121,7 +121,7 @@ export default function WorkProfile() {
                 </div>
                 <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200">
                   <CheckCircle2 className="mr-1 h-3 w-3" />
-                  {confidence.toUpperCase()} CONFIDENCE
+                  {String(confidence || "").toUpperCase()} CONFIDENCE
                 </Badge>
               </div>
               {(projectCount > 0 || conversationCount > 0 || evaluatedAt) && (
@@ -305,7 +305,7 @@ export default function WorkProfile() {
                       <div>
                         <div className="text-[13px] text-[#717182]">Manipulation Likelihood</div>
                         <Badge variant="secondary" className="mt-1 bg-green-50 text-green-700 border-green-200">
-                          {integrity.manipulation_likelihood.toUpperCase()}
+                          {String(integrity.manipulation_likelihood || "").toUpperCase()}
                         </Badge>
                       </div>
                     )}

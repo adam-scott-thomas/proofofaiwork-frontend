@@ -1,5 +1,6 @@
 import { createBrowserRouter } from "react-router";
 import Layout from "./components/Layout";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
@@ -38,15 +39,16 @@ function protect(Component: React.ComponentType) {
 
 export const router = createBrowserRouter([
   // Public landing
-  { path: "/", Component: Landing },
+  { path: "/", Component: Landing, ErrorBoundary },
 
   // First-time upload flow (no sidebar)
-  { path: "/upload", Component: UploadFlow },
+  { path: "/upload", Component: UploadFlow, ErrorBoundary },
 
   // Authenticated workspace
   {
     path: "/app",
     Component: protect(Layout),
+    ErrorBoundary,
     children: [
       { index: true, Component: Dashboard },
       { path: "upload", Component: UploadPool },

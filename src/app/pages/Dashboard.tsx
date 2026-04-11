@@ -177,8 +177,8 @@ export default function Dashboard() {
                 <div className="flex items-center gap-4">
                   <div className="text-6xl tracking-tight font-medium">
                     {workProfile?.archetype?.primary
-                      ? `${workProfile.archetype.primary.toUpperCase()}${workProfile.archetype.secondary ? `–${workProfile.archetype.secondary.toUpperCase()}` : ""}`
-                      : "ADVANCED–INTERMEDIATE"}
+                      ? `${String(workProfile.archetype.primary).toUpperCase()}${workProfile.archetype.secondary ? `–${String(workProfile.archetype.secondary).toUpperCase()}` : ""}`
+                      : "ANALYZING"}
                   </div>
                   <Button
                     variant="ghost"
