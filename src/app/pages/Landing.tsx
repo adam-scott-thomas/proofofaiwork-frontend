@@ -8,8 +8,16 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA]">
+      {/* Top nav */}
+      <nav className="flex items-center justify-between px-8 py-5">
+        <div className="text-[15px] tracking-tight">Proof of AI Work</div>
+        <Button variant="outline" size="sm" onClick={() => navigate("/sign-in")}>
+          Sign In
+        </Button>
+      </nav>
+
       {/* Hero */}
-      <section className="relative mx-auto max-w-6xl px-8 pt-32 pb-40">
+      <section className="relative mx-auto max-w-6xl px-8 pt-24 pb-40">
         <div className="text-center">
           <h1 className="mb-8 text-8xl tracking-tight leading-[0.95] drop-shadow-sm">
             Turn AI work
