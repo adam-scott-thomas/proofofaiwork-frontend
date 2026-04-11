@@ -170,3 +170,130 @@ export const useCryptoStatus = (invoiceId: string | null) =>
     () => apiFetch<any>(`/payments/crypto-status/${invoiceId}`),
     { enabled: !!invoiceId },
   );
+
+// Projects — mutations
+export const useCreateProject = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name: string; description?: string }) =>
+      apiPost<any>("/projects", body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
+  });
+};
+
+export const useDeleteProject = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete(`/projects/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
+  });
+};
+
+// AI Cluster
+export const useAiClusterEstimate = () =>
+  useAuthQuery(["ai-cluster-estimate"], () => apiFetch<any>("/projects/ai-cluster/estimate"));
+
+export const useAiCluster = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body?: { source_id?: string }) =>
+      apiPost<any>("/projects/ai-cluster", body ?? {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
+  });
+};
+
+// Proof Pages — mutations
+export const useCreateProofPage = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: any) => apiPost<any>("/proof-pages", body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["proof-pages"] }),
+  });
+};
+
+export const usePublishProofPage = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiPost<any>(`/proof-pages/${id}/publish`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["proof-pages"] }),
+  });
+};
+
+// Assessments — single item + results
+export const useAssessment = (id: string) =>
+  useAuthQuery(["assessment", id], () => apiFetch<any>(`/assessments/${id}`), { enabled: !!id });
+
+export const useAssessmentResults = (id: string) =>
+  useAuthQuery(
+    ["assessment-results", id],
+    () => apiFetch<any>(`/assessments/${id}/results`),
+    { enabled: !!id },
+  );
+
+// Direct Upload — presign → PUT file(s) → complete
+export const useDirectUpload = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      files,
+      metadata,
+    }: {
+      files: File | File[];
+      metadata?: Record<string, any>;
+    }) => {
+      const fileArray = Array.isArray(files) ? files : [files];
+      const isSingle = fileArray.length === 1;
+
+      // Step 1: presign
+      const presignRes = await apiPost<any>("/uploads/presign", {
+        filename: isSingle ? fileArray[0].name : fileArray.map((f) => f.name),
+        content_type: isSingle ? fileArray[0].type : fileArray.map((f) => f.type),
+        ...metadata,
+      });
+      const uploadId: string = presignRes.upload_id;
+
+      const apiBase = (import.meta.env.VITE_API_URL as string).replace(/\/$/, "");
+      const token = localStorage.getItem("poaw-token");
+      const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+
+      // Step 2: PUT file(s)
+      if (isSingle) {
+        await fetch(`${apiBase}/uploads/${uploadId}/file`, {
+          method: "PUT",
+          headers: { "Content-Type": fileArray[0].type, ...authHeader },
+          body: fileArray[0],
+        });
+      } else {
+        const formData = new FormData();
+        fileArray.forEach((f) => formData.append("files", f));
+        await fetch(`${apiBase}/uploads/${uploadId}/files`, {
+          method: "PUT",
+          headers: { ...authHeader },
+          body: formData,
+        });
+      }
+
+      // Step 3: complete
+      const result = await apiPost<any>("/uploads/complete", { upload_id: uploadId });
+      return result;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["uploads"] }),
+  });
+};
+
+// Global Search
+export const useGlobalSearch = (q: string) =>
+  useAuthQuery(
+    ["search", q],
+    () => apiFetch<any>(`/search?q=${encodeURIComponent(q)}`),
+    { enabled: q.length >= 2 },
+  );
+
+// Update Profile
+export const useUpdateProfile = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: any) => apiPatch<any>("/auth/me", body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
+  });
+};
