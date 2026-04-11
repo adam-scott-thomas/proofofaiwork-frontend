@@ -118,7 +118,7 @@ export default function Processing() {
   // Redirect to results when done
   useEffect(() => {
     if (isDone) {
-      const timer = setTimeout(() => navigate(`/dashboard/assessment/${id}/results`, { replace: true }), 2500);
+      const timer = setTimeout(() => navigate(`/app/assessment/${id}/results`, { replace: true }), 2500);
       return () => clearTimeout(timer);
     }
   }, [isDone, id, navigate]);
@@ -129,7 +129,7 @@ export default function Processing() {
       <div className="min-h-screen">
         <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
           <div className="px-8 py-6">
-            <Link to="/dashboard" className="inline-flex items-center gap-2 text-[13px] text-[#717182] hover:text-[#030213] transition-colors">
+            <Link to="/app" className="inline-flex items-center gap-2 text-[13px] text-[#717182] hover:text-[#030213] transition-colors">
               <ArrowLeft className="h-3.5 w-3.5" /> Back to Dashboard
             </Link>
           </div>
@@ -145,7 +145,7 @@ export default function Processing() {
             </p>
             <div className="flex justify-center gap-3">
               {isParseFail ? (
-                <Link to="/dashboard/upload/new">
+                <Link to="/app/upload/new">
                   <Button>Upload a different file</Button>
                 </Link>
               ) : (
@@ -175,7 +175,7 @@ export default function Processing() {
       {/* Header */}
       <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
         <div className="px-8 py-6">
-          <Link to="/dashboard" className="mb-3 inline-flex items-center gap-2 text-[13px] text-[#717182] hover:text-[#030213] transition-colors">
+          <Link to="/app" className="mb-3 inline-flex items-center gap-2 text-[13px] text-[#717182] hover:text-[#030213] transition-colors">
             <ArrowLeft className="h-3.5 w-3.5" /> Back to Dashboard
           </Link>
           <h1 className="text-xl tracking-tight">

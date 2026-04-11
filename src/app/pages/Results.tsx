@@ -109,7 +109,7 @@ export default function Results() {
       <div className="min-h-screen">
         <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
           <div className="px-8 py-6">
-            <Link to="/dashboard" className="inline-flex items-center gap-2 text-[13px] text-[#717182] hover:text-[#030213] transition-colors">
+            <Link to="/app" className="inline-flex items-center gap-2 text-[13px] text-[#717182] hover:text-[#030213] transition-colors">
               <ArrowLeft className="h-3.5 w-3.5" /> Back to Dashboard
             </Link>
           </div>
@@ -129,7 +129,7 @@ export default function Results() {
       <div className="min-h-screen">
         <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
           <div className="px-8 py-6">
-            <Link to="/dashboard" className="inline-flex items-center gap-2 text-[13px] text-[#717182] hover:text-[#030213] transition-colors">
+            <Link to="/app" className="inline-flex items-center gap-2 text-[13px] text-[#717182] hover:text-[#030213] transition-colors">
               <ArrowLeft className="h-3.5 w-3.5" /> Back to Dashboard
             </Link>
           </div>
@@ -160,7 +160,7 @@ export default function Results() {
       {/* Header */}
       <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
         <div className="px-8 py-6">
-          <Link to="/dashboard" className="mb-3 inline-flex items-center gap-2 text-[13px] text-[#717182] hover:text-[#030213] transition-colors">
+          <Link to="/app" className="mb-3 inline-flex items-center gap-2 text-[13px] text-[#717182] hover:text-[#030213] transition-colors">
             <ArrowLeft className="h-3.5 w-3.5" /> Back to Dashboard
           </Link>
           <h1 className="text-xl tracking-tight">Assessment Results</h1>
@@ -414,12 +414,12 @@ export default function Results() {
               <Download className="mr-1.5 h-3.5 w-3.5" />
               Download JSON
             </Button>
-            <Link to="/dashboard/upload/new">
+            <Link to="/app/upload/new">
               <Button variant="outline" size="sm">
                 Upload more conversations
               </Button>
             </Link>
-            <Link to="/dashboard">
+            <Link to="/app">
               <Button variant="outline" size="sm">
                 Back to Dashboard
               </Button>

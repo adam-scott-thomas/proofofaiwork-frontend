@@ -201,10 +201,10 @@ const TripleScoreCard = forwardRef<HTMLDivElement, { data: ShareDialogProps["dat
       {/* Footer */}
       <div className="relative mt-6 flex items-center justify-between border-t border-[rgba(0,0,0,0.08)] pt-3">
         <div className="font-mono text-[10px] text-[#717182]">
-          Verified {data.date || "Mar 27, 2026"} • proofofaiwork.com
+          Verified {data.date || new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} • proofofaiwork.com
         </div>
         <div className="text-[10px] text-[#717182]">
-          {data.conversationCount || "127"} conversations analyzed
+          {data.conversationCount || "—"} conversations analyzed
         </div>
       </div>
     </div>
@@ -261,7 +261,7 @@ const SingleScoreCard = forwardRef<HTMLDivElement, { data: ShareDialogProps["dat
                 Verified Evidence
               </div>
               <div className="font-mono text-[11px] text-[#3A3A3A]">
-                {data.date || "Mar 27, 2026"}
+                {data.date || new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </div>
             </div>
             <div className="font-mono text-[12px] text-[#6B46C1]">
@@ -304,7 +304,7 @@ const CertificateCard = forwardRef<HTMLDivElement, { data: ShareDialogProps["dat
         <div className="mb-6 max-w-md text-[14px] leading-relaxed text-[#3A3A3A]">
           This certifies that <strong className="tracking-tight" style={{ fontFamily: "var(--font-serif)" }}>{data.name}</strong> has
           demonstrated exceptional cognitive capacity through verified human-AI collaboration,
-          achieving measurable work output across <strong>{data.conversationCount || "127"}</strong> analyzed conversations.
+          achieving measurable work output across <strong>{data.conversationCount || "—"}</strong> analyzed conversations.
         </div>
 
         {/* Scores */}
