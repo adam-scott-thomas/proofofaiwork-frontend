@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { useNavigate } from "react-router";
 import { Upload, FileText, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "./ui/button";
@@ -19,6 +20,7 @@ interface UploadDialogProps {
 }
 
 export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
+  const navigate = useNavigate();
   const [files, setFiles] = useState<File[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const qc = useQueryClient();
@@ -67,14 +69,19 @@ export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
     uploadMutation.mutate(
       { files },
       {
-        onSuccess: () => {
-          toast.success(
-            `Successfully uploaded ${files.length} file${files.length > 1 ? "s" : ""}`,
-          );
+        onSuccess: (result: any) => {
+          const assessmentId = result?.assessment_id ?? result?.assessmentId;
           qc.invalidateQueries({ queryKey: ["pool"] });
           qc.invalidateQueries({ queryKey: ["conversations"] });
           setFiles([]);
           onOpenChange(false);
+          if (assessmentId) {
+            navigate(`/app/assessment/${assessmentId}/processing`);
+          } else {
+            toast.success(
+              `Successfully uploaded ${files.length} file${files.length > 1 ? "s" : ""}`,
+            );
+          }
         },
         onError: (err: any) => {
           const message =
