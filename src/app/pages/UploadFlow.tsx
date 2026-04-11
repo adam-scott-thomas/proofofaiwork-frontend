@@ -153,7 +153,7 @@ export default function UploadFlow() {
   // Upload Step
   if (step === "upload") {
     return (
-      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center p-8">
+      <div className="min-h-screen bg-[#FAFAFA] flex items-start justify-center px-8 py-16 overflow-y-auto">
         <div className="w-full max-w-2xl">
           <div className="mb-8 text-center">
             <h1 className="mb-4 text-5xl tracking-tight">Upload your conversations</h1>
