@@ -23,6 +23,7 @@ import Account from "./pages/Account";
 import PublicProofPage from "./pages/PublicProofPage";
 import PublicProfile from "./pages/PublicProfile";
 import Leaderboard from "./pages/Leaderboard";
+import Explore from "./pages/Explore";
 import Methodology from "./pages/Methodology";
 import NotFound from "./pages/NotFound";
 import SignIn from "./pages/SignIn";
@@ -71,7 +72,9 @@ export const router = createBrowserRouter([
 
   // Public pages
   { path: "/@:username", Component: PublicProfile },
+  { path: "/@:username/:projectSlug", Component: PublicProofPage },
   { path: "/p/:slug", Component: PublicProofPage },
+  { path: "/explore", Component: Explore },
   { path: "/leaderboard", Component: Leaderboard },
   { path: "/methodology", Component: Methodology },
 

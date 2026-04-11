@@ -11,9 +11,17 @@ export default function Landing() {
       {/* Top nav */}
       <nav className="flex items-center justify-between px-8 py-5">
         <div className="text-[15px] tracking-tight">Proof of AI Work</div>
-        <Button variant="outline" size="sm" onClick={() => navigate("/sign-in")}>
-          Sign In
-        </Button>
+        <div className="flex items-center gap-4">
+          <button onClick={() => navigate("/explore")} className="text-[13px] text-[#717182] hover:text-[#030213] transition-colors">
+            Explore
+          </button>
+          <button onClick={() => navigate("/leaderboard")} className="text-[13px] text-[#717182] hover:text-[#030213] transition-colors">
+            Leaderboard
+          </button>
+          <Button variant="outline" size="sm" onClick={() => navigate("/sign-in")}>
+            Sign In
+          </Button>
+        </div>
       </nav>
 
       {/* Hero */}

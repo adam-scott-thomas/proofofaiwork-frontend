@@ -29,12 +29,15 @@ function scoreTextColor(score: number): string {
 }
 
 export default function PublicProofPage() {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug, projectSlug, username } = useParams<{ slug?: string; projectSlug?: string; username?: string }>();
+
+  // Support both /p/:slug and /@:username/:projectSlug
+  const proofSlug = slug ?? projectSlug ?? "";
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["public-proof", slug],
-    queryFn: () => apiFetch<any>(`/p/${slug}`),
-    enabled: !!slug,
+    queryKey: ["public-proof", proofSlug],
+    queryFn: () => apiFetch<any>(`/p/${proofSlug}`),
+    enabled: !!proofSlug,
   });
 
   if (isLoading) {
