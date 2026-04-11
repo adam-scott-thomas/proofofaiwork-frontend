@@ -96,7 +96,7 @@ export default function StudentProcessing() {
   const status: Status = assessment?.status ?? "pending";
   const isDone = status === "complete" || status === "partial";
   const isProcessing = !isDone && status !== "failed";
-  const isStuck = status === "pending" && elapsed > 120;
+  const isStuck = status === "pending" && elapsed > 300;
 
   // Fake progress: advance steps on a timer so the UI feels alive
   // Steps hold on "evaluating" until the real backend finishes

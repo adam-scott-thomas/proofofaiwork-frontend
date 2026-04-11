@@ -96,7 +96,7 @@ export default function Processing() {
   const status: Status = assessment?.status ?? "pending";
   const isDone = status === "complete" || status === "partial";
   const isProcessing = !isDone && status !== "failed";
-  const isStuck = status === "pending" && elapsed > 120;
+  const isStuck = status === "pending" && elapsed > 300;
 
   // Fake progress: advance steps on a timer so the UI feels alive
   const STEP_TIMINGS = [0, 3, 7, 12, 18];
@@ -204,7 +204,7 @@ export default function Processing() {
                   {STEP_LABELS[displayStatus] || "Processing..."}
                 </h2>
                 <p className="mt-1 text-[13px] text-[#717182]">
-                  {elapsed < 10 && "This usually takes 30\u201360 seconds"}
+                  {elapsed < 10 && "This usually takes 20\u201340 seconds"}
                   {elapsed >= 10 && elapsed < 60 && `${elapsed}s elapsed`}
                   {elapsed >= 60 && `${Math.floor(elapsed / 60)}m ${elapsed % 60}s elapsed`}
                 </p>
