@@ -2,13 +2,28 @@ import { Twitter, Linkedin, Lock, Unlock } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
+import { useAssessmentResults } from "../../../hooks/useApi";
 
 export default function StudentShareGate() {
   const [hasShared, setHasShared] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const assessmentId = searchParams.get("id") || "";
 
-  const shareText = "I just analyzed my AI work style with Proof of AI Work. See how you work with AI →";
+  const { data: resultsData } = useAssessmentResults(assessmentId);
+
+  // Build share text with real scores when available
+  const hlsScore = resultsData?.hls ?? resultsData?.hls_score ?? null;
+  const aiLoad = resultsData?.ai_load ?? resultsData?.ai_execution_load ?? null;
+  const cai = resultsData?.cai ?? resultsData?.cai_multiplier ?? null;
+
+  const scoreFragment =
+    hlsScore != null && aiLoad != null && cai != null
+      ? ` HLS: ${hlsScore}% | AI Load: ${aiLoad}% | CAI: ${cai}x.`
+      : "";
+
+  const shareText = `I just analyzed my AI work style with Proof of AI Work.${scoreFragment} See how you work with AI →`;
   const shareUrl = "https://proofofaiwork.com/student";
 
   const handleShare = (platform: "twitter" | "linkedin") => {
@@ -29,7 +44,8 @@ export default function StudentShareGate() {
   };
 
   const handleContinue = () => {
-    navigate("/student/results");
+    const idParam = assessmentId ? `?id=${assessmentId}` : "";
+    navigate(`/student/results${idParam}`);
   };
 
   return (
