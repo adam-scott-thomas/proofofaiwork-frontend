@@ -297,42 +297,10 @@ export default function UploadFlow() {
                   );
                 })
               ) : (
-                // Fallback placeholders while data loads
-                <>
-                  <div className="flex items-center justify-between rounded-lg border border-[rgba(0,0,0,0.06)] bg-[#FAFAFA] p-4">
-                    <div>
-                      <div className="mb-1 text-[15px] font-medium">
-                        Landing Page Redesign
-                      </div>
-                      <div className="text-[13px] text-[#717182]">
-                        23 conversations
-                      </div>
-                    </div>
-                    <div className="text-[13px] text-[#717182]">Mar 15 - Mar 28</div>
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-lg border border-[rgba(0,0,0,0.06)] bg-[#FAFAFA] p-4">
-                    <div>
-                      <div className="mb-1 text-[15px] font-medium">API Integration</div>
-                      <div className="text-[13px] text-[#717182]">
-                        18 conversations
-                      </div>
-                    </div>
-                    <div className="text-[13px] text-[#717182]">Mar 8 - Mar 20</div>
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-lg border border-[rgba(0,0,0,0.06)] bg-[#FAFAFA] p-4">
-                    <div>
-                      <div className="mb-1 text-[15px] font-medium">
-                        Database Optimization
-                      </div>
-                      <div className="text-[13px] text-[#717182]">
-                        12 conversations
-                      </div>
-                    </div>
-                    <div className="text-[13px] text-[#717182]">Feb 28 - Mar 12</div>
-                  </div>
-                </>
+                // Loading skeleton while project data is being fetched
+                <div className="flex items-center justify-center py-6 text-[13px] text-[#717182]">
+                  Detecting projects...
+                </div>
               )}
             </div>
           </Card>
