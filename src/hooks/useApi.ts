@@ -262,15 +262,17 @@ export const useDirectUpload = () => {
       });
       const uploadId: string = presignRes.upload_id;
 
-      const apiBase = (import.meta.env.VITE_API_URL as string).replace(/\/$/, "");
+      const apiHost = import.meta.env.VITE_API_URL || "";
+      const apiBase = apiHost ? `${apiHost.replace(/\/$/, "")}/api/v1` : "/api/v1";
       const token = localStorage.getItem("poaw-token");
       const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
 
       // Step 2: PUT file(s) — FastAPI expects multipart form data
+      let putResp: Response;
       if (isSingle) {
         const formData = new FormData();
         formData.append("file", fileArray[0]);
-        await fetch(`${apiBase}/api/v1/uploads/${uploadId}/file`, {
+        putResp = await fetch(`${apiBase}/uploads/${uploadId}/file`, {
           method: "PUT",
           headers: { ...authHeader },
           body: formData,
@@ -278,11 +280,16 @@ export const useDirectUpload = () => {
       } else {
         const formData = new FormData();
         fileArray.forEach((f) => formData.append("files", f));
-        await fetch(`${apiBase}/api/v1/uploads/${uploadId}/files`, {
+        putResp = await fetch(`${apiBase}/uploads/${uploadId}/files`, {
           method: "PUT",
           headers: { ...authHeader },
           body: formData,
         });
+      }
+
+      if (!putResp.ok) {
+        const err = await putResp.json().catch(() => ({ detail: putResp.statusText }));
+        throw new Error(err.detail || err.message || `Upload failed (${putResp.status})`);
       }
 
       // Step 3: complete

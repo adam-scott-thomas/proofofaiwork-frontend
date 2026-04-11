@@ -132,8 +132,10 @@ export default function UploadFlow() {
             null;
           if (id) {
             setAssessmentId(id);
+            setStep("processing");
+          } else {
+            setUploadError("Upload completed but no assessment was created. Please try again.");
           }
-          setStep("processing");
         },
         onError: (err: any) => {
           const msg =
