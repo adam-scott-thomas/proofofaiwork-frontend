@@ -11,10 +11,12 @@ import {
   Command,
   Settings,
   Network,
+  LogOut,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { useState, useEffect } from "react";
 import { KeyboardShortcutsDialog } from "./KeyboardShortcutsDialog";
+import { useAuthStore } from "../../stores/authStore";
 
 const navigation = [
   { name: "Dashboard", href: "/app", icon: LayoutDashboard, key: "d" },
@@ -31,6 +33,7 @@ const navigation = [
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { clearToken } = useAuthStore();
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   useEffect(() => {
@@ -113,6 +116,17 @@ export default function Layout() {
           >
             <Settings className="mr-3 h-4 w-4" />
             Account & Settings
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-[13px] text-red-500 hover:text-red-600 hover:bg-red-50"
+            onClick={() => {
+              clearToken();
+              navigate("/sign-in");
+            }}
+          >
+            <LogOut className="mr-3 h-4 w-4" />
+            Sign Out
           </Button>
         </div>
       </aside>
