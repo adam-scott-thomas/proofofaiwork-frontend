@@ -6,9 +6,10 @@ import { Progress } from "../components/ui/progress";
 import { useState } from "react";
 import { UploadDialog } from "../components/UploadDialog";
 import { PaymentModal } from "../components/PaymentModal";
-import { usePool, useUploads, useTriggerClustering, useAiCluster } from "../../hooks/useApi";
+import { usePool, useUploads, useTriggerClustering, useAiCluster, useDirectUpload } from "../../hooks/useApi";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { apiDelete } from "../../lib/api";
 
 function StatusBadge({ status, progress }: { status: string; progress?: number }) {
   if (status === "completed" || status === "done") {
@@ -45,8 +46,24 @@ function StatusBadge({ status, progress }: { status: string; progress?: number }
 export default function UploadPool() {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const qc = useQueryClient();
   const clusterMutation = useTriggerClustering();
+  const retryUpload = useDirectUpload();
+
+  const handleDelete = async (uploadId: string) => {
+    setDeletingId(uploadId);
+    try {
+      await apiDelete(`/uploads/${uploadId}`);
+      toast.success("Upload deleted");
+      qc.invalidateQueries({ queryKey: ["uploads"] });
+      qc.invalidateQueries({ queryKey: ["pool"] });
+    } catch {
+      toast.error("Failed to delete upload");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const { data: poolData, isLoading: poolLoading } = usePool();
   const { data: uploadsData, isLoading: uploadsLoading } = useUploads();
@@ -187,16 +204,21 @@ export default function UploadPool() {
                     <div className="flex items-center gap-2">
                       {(upload.status === "completed" || upload.status === "done") && (
                         <>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" onClick={() => toast.info("Download coming soon")}>
                             <Download className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={deletingId === upload.id}
+                            onClick={() => handleDelete(upload.id)}
+                          >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </>
                       )}
                       {(upload.status === "error" || upload.status === "failed") && (
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => toast.info("Retry: re-upload the file to try again")}>
                           Retry
                         </Button>
                       )}
