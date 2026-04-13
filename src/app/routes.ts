@@ -75,6 +75,7 @@ export const router = createBrowserRouter([
   { path: "/@:username/:projectSlug", Component: PublicProofPage },
   { path: "/p/:slug", Component: PublicProofPage },
   { path: "/explore", Component: Explore },
+  { path: "/directory", Component: Explore },
   { path: "/leaderboard", Component: Leaderboard },
   { path: "/methodology", Component: Methodology },
 
