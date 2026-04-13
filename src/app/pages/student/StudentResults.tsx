@@ -48,9 +48,12 @@ export default function StudentResults() {
     resultsData?.profile?.verdict ??
     "";
 
+  // Only show share/download when there is at least one real score
+  const hasRealResults = hlsScore != null || aiExecutionLoad != null || caiMultiplier != null;
+
   const shareUrl = assessmentId
     ? `https://proofofaiwork.com/p/${assessmentId}`
-    : "https://proofofaiwork.com/student";
+    : "https://proofofaiwork.com/";
 
   const scoreFragment =
     hlsScore != null && aiExecutionLoad != null && caiMultiplier != null
@@ -87,7 +90,13 @@ export default function StudentResults() {
     );
   }
 
-  if (isError || (!isLoading && !resultsData && assessmentId)) {
+  // Redirect to upload if there's no assessment ID at all
+  if (!assessmentId) {
+    navigate("/student/upload", { replace: true });
+    return null;
+  }
+
+  if (isError || (!isLoading && !resultsData)) {
     return (
       <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center p-8">
         <div className="text-center">
@@ -218,51 +227,53 @@ export default function StudentResults() {
           </div>
         </Card>
 
-        {/* Share Actions */}
-        <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-6">
-          <div className="mb-4 text-center text-[13px] uppercase tracking-wider text-[#717182]">
-            Share Your Results
-          </div>
+        {/* Share Actions — only shown when real results exist */}
+        {hasRealResults && (
+          <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-6">
+            <div className="mb-4 text-center text-[13px] uppercase tracking-wider text-[#717182]">
+              Share Your Results
+            </div>
 
-          {/* Copy Link */}
-          <div className="mb-4">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={shareUrl}
-                readOnly
-                className="flex-1 rounded-md border border-[rgba(0,0,0,0.12)] bg-[#FAFAFA] px-4 py-2 text-[13px] text-[#717182]"
-              />
-              <Button variant="outline" onClick={handleCopyLink}>
-                {copied ? <Check className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
+            {/* Copy Link */}
+            <div className="mb-4">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={shareUrl}
+                  readOnly
+                  className="flex-1 rounded-md border border-[rgba(0,0,0,0.12)] bg-[#FAFAFA] px-4 py-2 text-[13px] text-[#717182]"
+                />
+                <Button variant="outline" onClick={handleCopyLink}>
+                  {copied ? <Check className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+
+            {/* Social Share Buttons */}
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1 gap-2"
+                onClick={() => handleShare("twitter")}
+              >
+                <Twitter className="h-4 w-4" />
+                Twitter
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 gap-2"
+                onClick={() => handleShare("linkedin")}
+              >
+                <Linkedin className="h-4 w-4" />
+                LinkedIn
+              </Button>
+              <Button variant="outline" className="flex-1 gap-2" onClick={() => toast.info("Download coming soon")}>
+                <Download className="h-4 w-4" />
+                Download
               </Button>
             </div>
-          </div>
-
-          {/* Social Share Buttons */}
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              className="flex-1 gap-2"
-              onClick={() => handleShare("twitter")}
-            >
-              <Twitter className="h-4 w-4" />
-              Twitter
-            </Button>
-            <Button
-              variant="outline"
-              className="flex-1 gap-2"
-              onClick={() => handleShare("linkedin")}
-            >
-              <Linkedin className="h-4 w-4" />
-              LinkedIn
-            </Button>
-            <Button variant="outline" className="flex-1 gap-2" onClick={() => toast.info("Download coming soon")}>
-              <Download className="h-4 w-4" />
-              Download
-            </Button>
-          </div>
-        </Card>
+          </Card>
+        )}
 
         {/* Next Steps */}
         <div className="mt-8 text-center">

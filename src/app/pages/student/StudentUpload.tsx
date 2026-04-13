@@ -2,11 +2,14 @@ import { Upload, FileText, Sparkles, AlertCircle } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, Link } from "react-router";
 import { useDirectUpload } from "../../../hooks/useApi";
+import { useAuthStore } from "../../../stores/authStore";
 
 export default function StudentUpload() {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuthStore();
+  const authed = isAuthenticated();
   const [file, setFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -58,6 +61,24 @@ export default function StudentUpload() {
 
   const uploading = uploadMutation.isPending;
 
+  if (!authed) {
+    return (
+      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center p-8">
+        <div className="max-w-md w-full text-center">
+          <h1 className="mb-4 text-4xl tracking-tight">Sign in to upload</h1>
+          <p className="mb-8 text-xl text-[#717182]">
+            Upload your conversations. We analyze them securely on our servers.
+          </p>
+          <Link to="/sign-in?next=/student/upload">
+            <Button size="lg" className="min-w-[220px] text-lg">
+              Sign in
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center p-8">
       <div className="max-w-2xl w-full">
@@ -67,7 +88,7 @@ export default function StudentUpload() {
             How do you work with AI?
           </h1>
           <p className="text-xl text-[#717182]">
-            Upload your AI conversations. Get a free analysis of your work style.
+            Upload your conversations. We analyze them securely on our servers.
           </p>
         </div>
 
@@ -172,7 +193,7 @@ export default function StudentUpload() {
 
         {/* Privacy */}
         <div className="mt-6 text-center text-[13px] text-[#717182]">
-          Your conversations are analyzed locally and not stored permanently.
+          Your conversations are processed securely and never shared.
         </div>
       </div>
     </div>
