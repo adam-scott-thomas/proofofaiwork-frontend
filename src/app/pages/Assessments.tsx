@@ -5,7 +5,10 @@ import { Card } from "../components/ui/card";
 import { Progress } from "../components/ui/progress";
 import { Link, useNavigate } from "react-router";
 import { useAssessments } from "../../hooks/useApi";
+import { useQueryClient } from "@tanstack/react-query";
+import { apiPost } from "../../lib/api";
 import { toast } from "sonner";
+import { useState } from "react";
 
 function StatusBadge({ status, progress }: { status: string; progress?: number }) {
   if (status === "completed") {
@@ -37,7 +40,22 @@ function StatusBadge({ status, progress }: { status: string; progress?: number }
 
 export default function Assessments() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
+  const [rerunningId, setRerunningId] = useState<string | null>(null);
   const { data: assessmentsData, isLoading } = useAssessments();
+
+  const handleRerun = async (assessmentId: string) => {
+    setRerunningId(assessmentId);
+    try {
+      await apiPost(`/assessments/${assessmentId}/rerun`, {});
+      toast.success("Assessment queued for rerun");
+      qc.invalidateQueries({ queryKey: ["assessments"] });
+    } catch (err: any) {
+      toast.error(err?.message ?? "Rerun failed");
+    } finally {
+      setRerunningId(null);
+    }
+  };
 
   if (isLoading) return (
     <div className="flex min-h-screen items-center justify-center text-[13px] text-[#717182]">Loading...</div>
@@ -223,9 +241,14 @@ export default function Assessments() {
 
                           <div className="flex items-center gap-2">
                             {assessment.status === "failed" && (
-                              <Button variant="outline" size="sm" onClick={() => toast.info("Retry: go to the project and run assessment again")}>
-                                <RotateCw className="mr-2 h-4 w-4" />
-                                Retry
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={rerunningId === assessment.id}
+                                onClick={() => handleRerun(assessment.id)}
+                              >
+                                <RotateCw className={`mr-2 h-4 w-4 ${rerunningId === assessment.id ? "animate-spin" : ""}`} />
+                                {rerunningId === assessment.id ? "Queuing…" : "Retry"}
                               </Button>
                             )}
                             {assessment.status === "running" && (
