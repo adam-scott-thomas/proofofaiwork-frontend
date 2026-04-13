@@ -1,4 +1,4 @@
-import { ArrowRight, TrendingUp, Clock, MessageSquare, FolderKanban, CheckCircle2, AlertCircle, Sparkles, Upload, Share2, Webhook, FileText, ClipboardList, Globe } from "lucide-react";
+import { ArrowRight, TrendingUp, Clock, MessageSquare, FolderKanban, CheckCircle2, AlertCircle, Sparkles, Upload, Share2, Webhook, FileText, ClipboardList, Globe, RefreshCw } from "lucide-react";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
@@ -35,10 +35,34 @@ function formatRelativeTime(isoString: string) {
 export default function Dashboard() {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const unlocked = useUnlockStore((s) => s.unlocked);
   const setUnlocked = useUnlockStore((s) => s.setUnlocked);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["me"] }),
+        queryClient.invalidateQueries({ queryKey: ["work-profile"] }),
+        queryClient.invalidateQueries({ queryKey: ["projects"] }),
+        queryClient.invalidateQueries({ queryKey: ["conversations"] }),
+        queryClient.invalidateQueries({ queryKey: ["assessments"] }),
+        queryClient.invalidateQueries({ queryKey: ["proof-pages"] }),
+        queryClient.invalidateQueries({ queryKey: ["activity"] }),
+        queryClient.invalidateQueries({ queryKey: ["pool"] }),
+      ]);
+      toast.success("Dashboard refreshed");
+    } catch {
+      toast.error("Failed to refresh");
+    } finally {
+      // Give the visible data a moment to re-render so the button's spin
+      // state doesn't vanish before the new numbers arrive
+      setTimeout(() => setRefreshing(false), 500);
+    }
+  };
 
   // Real API data
   const { data: user, isLoading: userLoading } = useCurrentUser();
@@ -121,6 +145,16 @@ export default function Dashboard() {
               )}
             </div>
             <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                title="Refresh dashboard data"
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+                {refreshing ? "Refreshing..." : "Refresh"}
+              </Button>
               <Button variant="outline" size="sm" onClick={() => toast.info("Coming soon")}>
                 <AlertCircle className="mr-2 h-4 w-4" />
                 Disputes
