@@ -13,6 +13,7 @@ import {
 import { Card } from "./ui/card";
 import { toast } from "sonner";
 import { apiPost } from "../../lib/api";
+import { useAuthStore } from "../../stores/authStore";
 
 interface UploadDialogProps {
   open: boolean;
@@ -77,7 +78,7 @@ export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
 
     const apiHost = import.meta.env.VITE_API_URL || "";
     const apiBase = apiHost ? `${apiHost.replace(/\/$/, "")}/api/v1` : "/api/v1";
-    const token = localStorage.getItem("poaw-token");
+    const token = useAuthStore.getState().token;
     const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
 
     let lastAssessmentId: string | null = null;

@@ -2,6 +2,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, apiPost, apiPatch, apiDelete } from "../lib/api";
 import { useAuthStore } from "../stores/authStore";
 
+// Helper used by raw-fetch multipart uploads — reads from zustand, not localStorage
+function getAuthHeader(): Record<string, string> {
+  const token = useAuthStore.getState().token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 // Helper: only run query when authenticated
 function useAuthQuery<T>(key: string[], fn: () => Promise<T>, opts?: { enabled?: boolean; retry?: boolean }) {
   const { isAuthenticated } = useAuthStore();
@@ -106,9 +112,9 @@ export const usePresignUpload = () =>
 export const useCompleteUpload = () =>
   useMutation({ mutationFn: (body: any) => apiPost<any>("/uploads/complete", body) });
 
-// Upload Pool (list of uploads)
+// Upload Pool (list of uploads) — uses /pool since /uploads has no GET
 export const useUploads = () =>
-  useAuthQuery(["uploads"], () => apiFetch<any>("/uploads"));
+  useAuthQuery(["uploads"], () => apiFetch<any>("/pool"));
 
 // Clustering
 export const useTriggerClustering = () => {
@@ -264,8 +270,7 @@ export const useDirectUpload = () => {
 
       const apiHost = import.meta.env.VITE_API_URL || "";
       const apiBase = apiHost ? `${apiHost.replace(/\/$/, "")}/api/v1` : "/api/v1";
-      const token = localStorage.getItem("poaw-token");
-      const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+      const authHeader = getAuthHeader();
 
       // Step 2: PUT file(s) — FastAPI expects multipart form data
       let putResp: Response;

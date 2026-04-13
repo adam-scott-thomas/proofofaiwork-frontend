@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { usePresignUpload } from "../../hooks/useApi";
 import { apiPost } from "../../lib/api";
+import { useAuthStore } from "../../stores/authStore";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { Progress } from "../components/ui/progress";
@@ -70,7 +71,7 @@ export default function Upload() {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open("PUT", presignedUrl);
-      const token = localStorage.getItem("poaw-token");
+      const token = useAuthStore.getState().token;
       if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
       xhr.onload = () => (xhr.status < 300 ? resolve() : reject(new Error(`Upload failed: ${xhr.status}`)));
       xhr.onerror = () => reject(new Error("Network error during upload"));

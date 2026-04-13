@@ -12,12 +12,10 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       token: null,
-      setToken: (token) => {
-        localStorage.setItem("poaw-token", token);
-        set({ token });
-      },
+      setToken: (token) => set({ token }),
       clearToken: () => {
-        localStorage.removeItem("poaw-token");
+        // Clear the legacy key too in case it was set by older builds
+        try { localStorage.removeItem("poaw-token"); } catch {}
         set({ token: null });
       },
       isAuthenticated: () => !!get().token,

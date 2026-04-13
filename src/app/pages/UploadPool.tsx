@@ -6,7 +6,7 @@ import { Progress } from "../components/ui/progress";
 import { useState } from "react";
 import { UploadDialog } from "../components/UploadDialog";
 import { PaymentModal } from "../components/PaymentModal";
-import { usePool, useUploads, useTriggerClustering, useAiCluster, useDirectUpload } from "../../hooks/useApi";
+import { usePool, useTriggerClustering, useDirectUpload } from "../../hooks/useApi";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiDelete } from "../../lib/api";
@@ -54,7 +54,7 @@ export default function UploadPool() {
   const handleDelete = async (uploadId: string) => {
     setDeletingId(uploadId);
     try {
-      await apiDelete(`/uploads/${uploadId}`);
+      await apiDelete(`/pool/${uploadId}`);
       toast.success("Upload deleted");
       qc.invalidateQueries({ queryKey: ["uploads"] });
       qc.invalidateQueries({ queryKey: ["pool"] });
@@ -66,15 +66,14 @@ export default function UploadPool() {
   };
 
   const { data: poolData, isLoading: poolLoading } = usePool();
-  const { data: uploadsData, isLoading: uploadsLoading } = useUploads();
 
-  const isLoading = poolLoading || uploadsLoading;
+  const isLoading = poolLoading;
 
   if (isLoading) return (
     <div className="flex min-h-screen items-center justify-center text-[13px] text-[#717182]">Loading...</div>
   );
 
-  const uploads: any[] = Array.isArray(uploadsData) ? uploadsData : uploadsData?.data ?? uploadsData?.items ?? [];
+  const uploads: any[] = poolData?.conversations ?? [];
 
   // Pool stats — use poolData if available, otherwise derive from uploads
   const pool = poolData ?? {};

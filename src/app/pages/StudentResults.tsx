@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiFetch, apiPost } from "../../lib/api";
+import { useAuthStore } from "../../stores/authStore";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 
@@ -92,7 +93,7 @@ export default function StudentResults() {
   const downloadMutation = useMutation({
     mutationFn: async () => {
       const blob = await fetch(`/api/v1/assessments/${id}/download?format=json`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("poaw-token") ?? ""}` },
+        headers: { Authorization: `Bearer ${useAuthStore.getState().token ?? ""}` },
       }).then((r) => r.blob());
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

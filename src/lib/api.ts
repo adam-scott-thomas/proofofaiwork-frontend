@@ -7,7 +7,7 @@ const API_BASE = API_HOST ? `${API_HOST}/api/v1` : "/api/v1";
 let redirecting = false;
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem("poaw-token");
+  const token = useAuthStore.getState().token;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
