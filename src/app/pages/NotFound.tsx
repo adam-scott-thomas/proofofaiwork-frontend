@@ -1,8 +1,12 @@
 import { Link } from "react-router";
 import { Button } from "../components/ui/button";
 import { FileQuestion } from "lucide-react";
+import { useAuthStore } from "../../stores/authStore";
 
 export default function NotFound() {
+  const { isAuthenticated } = useAuthStore();
+  const authed = isAuthenticated();
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA]">
       <div className="text-center">
@@ -15,9 +19,16 @@ export default function NotFound() {
         <p className="mb-6 text-[15px] text-[#717182]">
           This page doesn't exist in the evidence chain.
         </p>
-        <Link to="/">
-          <Button>Return to Dashboard</Button>
-        </Link>
+        <div className="flex items-center justify-center gap-3">
+          <Link to="/">
+            <Button variant={authed ? "outline" : "default"}>Back to home</Button>
+          </Link>
+          {authed && (
+            <Link to="/app">
+              <Button>Back to dashboard</Button>
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   );
