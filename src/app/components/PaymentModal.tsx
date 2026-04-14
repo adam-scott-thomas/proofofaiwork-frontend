@@ -2,9 +2,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Sparkles, Lock, CreditCard, Bitcoin, ExternalLink, Loader2, AlertCircle, CheckCircle2, Tag } from "lucide-react";
-import { useState } from "react";
+import React, { useState } from "react";
 import { usePaymentConfig } from "../../hooks/useApi";
-import { apiPost } from "../../lib/api";
+import { apiFetch, apiPost } from "../../lib/api";
 import { useUnlockStore } from "../../stores/unlockStore";
 import SquarePaymentForm from "./SquarePaymentForm";
 import UnlockSuccess from "./UnlockSuccess";
@@ -26,6 +26,8 @@ export function PaymentModal({ open, onOpenChange, onComplete }: PaymentModalPro
   const [error, setError] = useState<string | null>(null);
   const [cryptoLoading, setCryptoLoading] = useState(false);
   const [cryptoInvoiceUrl, setCryptoInvoiceUrl] = useState<string | null>(null);
+  const [cryptoInvoiceId, setCryptoInvoiceId] = useState<string | null>(null);
+  const [cryptoStatus, setCryptoStatus] = useState<string>("waiting");
   const [coupon, setCoupon] = useState("");
   const [couponApplied, setCouponApplied] = useState(false);
   const [couponChecking, setCouponChecking] = useState(false);
@@ -90,6 +92,8 @@ export function PaymentModal({ open, onOpenChange, onComplete }: PaymentModalPro
       setTab("card");
       setError(null);
       setCryptoInvoiceUrl(null);
+      setCryptoInvoiceId(null);
+      setCryptoStatus("waiting");
       setCoupon("");
       setCouponApplied(false);
       setCouponDiscount(0);
@@ -114,9 +118,14 @@ export function PaymentModal({ open, onOpenChange, onComplete }: PaymentModalPro
   const handleCryptoPay = async () => {
     setError(null);
     setCryptoLoading(true);
+    setCryptoStatus("waiting");
     try {
-      const res = await apiPost<{ invoice_url: string }>("/payments/crypto-invoice", { feature: "ai_sort" });
+      const res = await apiPost<{ invoice_url: string; invoice_id?: string; id?: string }>(
+        "/payments/crypto-invoice",
+        { feature: "ai_sort" },
+      );
       setCryptoInvoiceUrl(res.invoice_url);
+      setCryptoInvoiceId(res.invoice_id ?? res.id ?? null);
       window.open(res.invoice_url, "_blank");
     } catch (e: any) {
       setError(e.message || "Could not create crypto invoice. Please try again.");
@@ -124,6 +133,35 @@ export function PaymentModal({ open, onOpenChange, onComplete }: PaymentModalPro
       setCryptoLoading(false);
     }
   };
+
+  // Poll crypto invoice status every 5s while the invoice screen is open.
+  // When status transitions to finished/confirmed, fire the unlock.
+  React.useEffect(() => {
+    if (!cryptoInvoiceId || !open) return;
+
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const s: any = await apiFetch(`/payments/crypto-status/${cryptoInvoiceId}`);
+        if (cancelled) return;
+        const status = (s?.status ?? s?.payment_status ?? "").toLowerCase();
+        setCryptoStatus(status || "waiting");
+        if (status === "finished" || status === "confirmed" || status === "paid") {
+          triggerUnlock("Crypto", "$4.20");
+        }
+      } catch {
+        /* transient — keep polling */
+      }
+    };
+
+    poll(); // fire once immediately
+    const interval = setInterval(poll, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cryptoInvoiceId, open]);
 
   return (
     <>
@@ -324,11 +362,23 @@ export function PaymentModal({ open, onOpenChange, onComplete }: PaymentModalPro
                   <div className="space-y-3">
                     <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3">
                       <div className="flex items-center gap-2 mb-1">
-                        <CheckCircle2 className="h-4 w-4 text-amber-700" />
-                        <p className="text-[13px] text-amber-800 font-medium">Invoice created</p>
+                        {cryptoStatus === "finished" || cryptoStatus === "confirmed" || cryptoStatus === "paid" ? (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-700" />
+                        ) : (
+                          <Loader2 className="h-4 w-4 text-amber-700 animate-spin" />
+                        )}
+                        <p className="text-[13px] text-amber-800 font-medium">
+                          {cryptoStatus === "waiting" && "Invoice created — waiting for payment"}
+                          {cryptoStatus === "confirming" && "Payment detected — confirming on chain…"}
+                          {cryptoStatus === "partially_paid" && "Partial payment received"}
+                          {(cryptoStatus === "finished" || cryptoStatus === "confirmed" || cryptoStatus === "paid") && "Payment confirmed — unlocking…"}
+                          {cryptoStatus === "failed" && "Payment failed"}
+                          {cryptoStatus === "expired" && "Invoice expired"}
+                          {!["waiting","confirming","partially_paid","finished","confirmed","paid","failed","expired"].includes(cryptoStatus) && "Checking status…"}
+                        </p>
                       </div>
                       <p className="text-[12px] text-amber-700">
-                        Complete your payment in the NowPayments window. Your access will be activated once confirmed.
+                        Complete your payment in the NowPayments window. We check every 5 seconds — this page will unlock automatically once the payment confirms.
                       </p>
                     </div>
                     <div className="flex gap-3 justify-end">
@@ -337,6 +387,8 @@ export function PaymentModal({ open, onOpenChange, onComplete }: PaymentModalPro
                         size="sm"
                         onClick={() => {
                           setCryptoInvoiceUrl(null);
+                          setCryptoInvoiceId(null);
+                          setCryptoStatus("waiting");
                           setError(null);
                         }}
                       >
