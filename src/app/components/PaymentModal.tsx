@@ -28,25 +28,40 @@ export function PaymentModal({ open, onOpenChange, onComplete }: PaymentModalPro
   const [cryptoInvoiceUrl, setCryptoInvoiceUrl] = useState<string | null>(null);
   const [coupon, setCoupon] = useState("");
   const [couponApplied, setCouponApplied] = useState(false);
+  const [couponChecking, setCouponChecking] = useState(false);
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [couponFinalCents, setCouponFinalCents] = useState(0);
   const [successOpen, setSuccessOpen] = useState(false);
   const [successMethod, setSuccessMethod] = useState<string>("Card");
   const [successAmount, setSuccessAmount] = useState<string>("$5.00");
 
-  const VALID_COUPONS: Record<string, number> = {
-    "MAELSTROM99": 100,
-  };
+  const isFreeWithCoupon = couponApplied && couponFinalCents === 0;
 
-  const couponDiscount = VALID_COUPONS[coupon.trim().toUpperCase()] ?? 0;
-  const isFreeWithCoupon = couponApplied && couponDiscount === 100;
-
-  const handleApplyCoupon = () => {
+  // Server-side coupon validation. The backend records a Payment row
+  // with payment_type='coupon' which the paywall dependency honors.
+  const handleApplyCoupon = async () => {
     const code = coupon.trim().toUpperCase();
-    if (VALID_COUPONS[code]) {
+    if (!code) return;
+    setCouponChecking(true);
+    setError(null);
+    try {
+      const res = await apiPost<{
+        status: string;
+        feature: string;
+        discount_percent: number;
+        amount_paid_cents: number;
+        full_price_cents: number;
+      }>("/payments/coupon/redeem", { code, feature: "ai_sort" });
       setCouponApplied(true);
-      setError(null);
-    } else {
-      setError("Invalid coupon code");
+      setCouponDiscount(res.discount_percent);
+      setCouponFinalCents(res.amount_paid_cents);
+    } catch (e: any) {
+      setError(e?.message ?? "Invalid coupon code");
       setCouponApplied(false);
+      setCouponDiscount(0);
+      setCouponFinalCents(0);
+    } finally {
+      setCouponChecking(false);
     }
   };
 
@@ -58,13 +73,15 @@ export function PaymentModal({ open, onOpenChange, onComplete }: PaymentModalPro
     setSuccessAmount(amount);
     onOpenChange(false);
     setSuccessOpen(true);
-    // Kick off clustering in background
+    // Kick off clustering in background — paywall now gates this
+    // server-side, so the call only succeeds if the backend saw the
+    // payment/coupon row we just created.
     apiPost("/projects/ai-cluster", {}).catch(() => {});
   };
 
   const handleFreeUnlock = () => {
     setUnlocking(true);
-    triggerUnlock("Coupon MAELSTROM99", "$0.00");
+    triggerUnlock(`Coupon ${coupon.trim().toUpperCase()}`, "$0.00");
     setUnlocking(false);
   };
 
@@ -75,6 +92,8 @@ export function PaymentModal({ open, onOpenChange, onComplete }: PaymentModalPro
       setCryptoInvoiceUrl(null);
       setCoupon("");
       setCouponApplied(false);
+      setCouponDiscount(0);
+      setCouponFinalCents(0);
     }
     onOpenChange(open);
   };
@@ -163,18 +182,30 @@ export function PaymentModal({ open, onOpenChange, onComplete }: PaymentModalPro
             <div className="mt-2 flex gap-2">
               <Input
                 value={coupon}
-                onChange={(e) => { setCoupon(e.target.value); setCouponApplied(false); setError(null); }}
+                onChange={(e) => {
+                  setCoupon(e.target.value);
+                  setCouponApplied(false);
+                  setCouponDiscount(0);
+                  setCouponFinalCents(0);
+                  setError(null);
+                }}
                 placeholder="Enter code"
                 className="h-9 text-[13px] uppercase"
-                disabled={couponApplied}
+                disabled={couponApplied || couponChecking}
               />
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleApplyCoupon}
-                disabled={!coupon.trim() || couponApplied}
+                disabled={!coupon.trim() || couponApplied || couponChecking}
               >
-                {couponApplied ? <CheckCircle2 className="h-3.5 w-3.5 text-green-600" /> : "Apply"}
+                {couponChecking ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : couponApplied ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                ) : (
+                  "Apply"
+                )}
               </Button>
             </div>
             {couponApplied && (
