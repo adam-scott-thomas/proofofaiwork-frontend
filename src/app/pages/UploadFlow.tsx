@@ -422,11 +422,11 @@ export default function UploadFlow() {
                   className="h-14 min-w-[240px] text-lg font-medium"
                   onClick={handleUnlock}
                 >
-                  Unlock full analysis — $7
+                  Unlock full analysis — $5
                 </Button>
 
                 <p className="mt-4 text-[13px] text-[#717182]">
-                  One-time payment. Full access forever.
+                  One-time payment. Card unlock is $5 and crypto unlock is $4.20.
                 </p>
               </div>
             </div>

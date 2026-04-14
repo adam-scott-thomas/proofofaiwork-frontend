@@ -1,19 +1,16 @@
-import { Search as SearchIcon, Filter, X } from "lucide-react";
+import { Search as SearchIcon } from "lucide-react";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link } from "react-router";
 import { useGlobalSearch } from "../../hooks/useApi";
-import { toast } from "sonner";
 
 export default function Search() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [activeFilters, setActiveFilters] = useState<string[]>([]);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -30,27 +27,15 @@ export default function Search() {
 
   const totalCount = conversations.length + projects.length + proofPages.length;
 
-  const removeFilter = (filter: string) => {
-    setActiveFilters(activeFilters.filter(f => f !== filter));
-  };
-
   return (
     <div className="min-h-screen">
       {/* Header */}
       <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
         <div className="px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl tracking-tight">Search</h1>
-              <p className="mt-1 text-[13px] text-[#717182]">
-                Search across conversations, projects, and proof pages
-              </p>
-            </div>
-            <Button variant="outline" onClick={() => toast.info("Advanced filters coming soon")}>
-              <Filter className="mr-2 h-4 w-4" />
-              Advanced Filters
-            </Button>
-          </div>
+          <h1 className="text-xl tracking-tight">Search</h1>
+          <p className="mt-1 text-[13px] text-[#717182]">
+            Search across conversations, projects, and proof pages
+          </p>
         </div>
       </header>
 
@@ -66,68 +51,7 @@ export default function Search() {
               className="h-12 pl-12 text-[15px] border-none bg-transparent focus-visible:ring-0"
             />
           </div>
-
-          {/* Active Filters */}
-          {activeFilters.length > 0 && (
-            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[rgba(0,0,0,0.06)] pt-4">
-              <span className="text-[13px] text-[#717182]">Active filters:</span>
-              {activeFilters.map((filter) => (
-                <Badge
-                  key={filter}
-                  variant="secondary"
-                  className="bg-[#F5F5F7] pr-1"
-                >
-                  {filter}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="ml-1 h-4 w-4 p-0 hover:bg-transparent"
-                    onClick={() => removeFilter(filter)}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </Badge>
-              ))}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-[11px]"
-                onClick={() => setActiveFilters([])}
-              >
-                Clear all
-              </Button>
-            </div>
-          )}
         </Card>
-
-        {/* Quick Filters */}
-        <div className="mb-6 flex flex-wrap gap-2">
-          <span className="text-[13px] text-[#717182]">Quick filters:</span>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7"
-            onClick={() => setActiveFilters([...activeFilters, "Last 30 days"])}
-          >
-            Last 30 days
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7"
-            onClick={() => setActiveFilters([...activeFilters, "Has assessment"])}
-          >
-            Has assessment
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7"
-            onClick={() => setActiveFilters([...activeFilters, "Published"])}
-          >
-            Published
-          </Button>
-        </div>
 
         {/* Loading state */}
         {isLoading && debouncedQuery.length >= 2 && (

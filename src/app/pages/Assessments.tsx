@@ -10,8 +10,12 @@ import { apiPost } from "../../lib/api";
 import { toast } from "sonner";
 import { useState } from "react";
 
+function isCompletedStatus(status: string | undefined) {
+  return status === "complete" || status === "completed";
+}
+
 function StatusBadge({ status, progress }: { status: string; progress?: number }) {
-  if (status === "completed") {
+  if (isCompletedStatus(status)) {
     return (
       <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200">
         <CheckCircle2 className="mr-1 h-3 w-3" />
@@ -63,8 +67,8 @@ export default function Assessments() {
 
   const assessments: any[] = Array.isArray(assessmentsData) ? assessmentsData : assessmentsData?.data ?? assessmentsData?.items ?? [];
 
-  const verifiedAssessments = assessments.filter((a: any) => a.status === "completed" && a.confidence === "high");
-  const incompleteAssessments = assessments.filter((a: any) => a.status !== "completed" || a.confidence === "low");
+  const verifiedAssessments = assessments.filter((a: any) => isCompletedStatus(a.status) && a.confidence === "high");
+  const incompleteAssessments = assessments.filter((a: any) => !isCompletedStatus(a.status) || a.confidence === "low");
 
   return (
     <div className="min-h-screen">
@@ -226,7 +230,7 @@ export default function Assessments() {
                               </div>
                             )}
 
-                            {assessment.status === "completed" && assessment.confidence === "low" && (
+                            {isCompletedStatus(assessment.status) && assessment.confidence === "low" && (
                               <div className="rounded-sm bg-yellow-50 px-3 py-2 text-[13px] text-yellow-800 border border-yellow-200">
                                 Low confidence • Not recommended for proof pages
                               </div>
@@ -256,7 +260,7 @@ export default function Assessments() {
                                 <Clock className="h-4 w-4 animate-spin" />
                               </Button>
                             )}
-                            {assessment.status === "completed" && assessment.confidence === "low" && (
+                            {isCompletedStatus(assessment.status) && assessment.confidence === "low" && (
                               <Link to={`/app/assessment/${assessment.id}/results`}>
                                 <Button variant="outline" size="sm">
                                   View Anyway

@@ -1,26 +1,23 @@
-import { Copy, Globe, Share2, Eye, ExternalLink, CheckCircle2, Sparkles, Plus, Search, MoreVertical } from "lucide-react";
+import { Copy, Globe, Share2, ExternalLink, CheckCircle2, Sparkles, Plus } from "lucide-react";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
-import { Input } from "../components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../components/ui/dialog";
-import { Link, useNavigate } from "react-router";
+import { Link } from "react-router";
 import { useState } from "react";
 import { ShareDialog } from "../components/ShareDialog";
 import { useProofPages, usePublishProofPage, useAssessments, useCreateProofPage } from "../../hooks/useApi";
 import { toast } from "sonner";
 
-type ViewMode = "my-proofs" | "directory";
+function isCompletedStatus(status: string | undefined) {
+  return status === "complete" || status === "completed";
+}
 
 export default function ProofPages() {
-  const [viewMode, setViewMode] = useState<ViewMode>("my-proofs");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"recent" | "level" | "proofs">("recent");
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [selectedProof, setSelectedProof] = useState<any>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const navigate = useNavigate();
 
   const { data: pagesData, isLoading } = useProofPages();
   const { data: assessmentsData } = useAssessments();
@@ -57,7 +54,7 @@ export default function ProofPages() {
     : assessmentsData?.data ?? assessmentsData?.items ?? [];
   const pageAssessmentIds = new Set(proofPages.map((p: any) => p.assessment_id).filter(Boolean));
   const unpagedAssessments = allAssessments.filter(
-    (a: any) => a.status === "completed" && !pageAssessmentIds.has(a.id)
+    (a: any) => isCompletedStatus(a.status) && !pageAssessmentIds.has(a.id)
   );
 
   return (
@@ -65,64 +62,38 @@ export default function ProofPages() {
       {/* Header */}
       <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
         <div className="px-8 py-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-6">
             <div>
               <h1 className="text-xl tracking-tight">Proof Pages</h1>
               <p className="mt-1 text-[13px] text-[#717182]">
-                {viewMode === "my-proofs"
-                  ? "Shareable evidence pages based on AI-organized work streams"
-                  : "Browse public AI work profiles"}
+                Shareable evidence pages based on AI-organized work streams.
+                <Link to="/explore" className="ml-1 inline-flex items-center gap-1 text-[#030213] underline-offset-2 hover:underline">
+                  Browse public profiles in Explore
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </Link>
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="flex rounded-md border border-[rgba(0,0,0,0.08)] bg-white p-1">
-                <button
-                  onClick={() => setViewMode("my-proofs")}
-                  className={`rounded px-4 py-2 text-[13px] transition-colors ${
-                    viewMode === "my-proofs"
-                      ? "bg-[#F5F5F7] text-[#030213]"
-                      : "text-[#717182] hover:text-[#030213]"
-                  }`}
-                >
-                  My Proofs
-                </button>
-                <button
-                  onClick={() => setViewMode("directory")}
-                  className={`rounded px-4 py-2 text-[13px] transition-colors ${
-                    viewMode === "directory"
-                      ? "bg-[#F5F5F7] text-[#030213]"
-                      : "text-[#717182] hover:text-[#030213]"
-                  }`}
-                >
-                  Directory
-                </button>
-              </div>
-              {viewMode === "my-proofs" && (
-                <Button onClick={() => {
-                  if (unpagedAssessments.length === 0) {
-                    toast.info("No completed assessments available. Run an assessment first.");
-                  } else {
-                    setCreateDialogOpen(true);
-                  }
-                }}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Proof Page
-                </Button>
-              )}
-            </div>
+            <Button onClick={() => {
+              if (unpagedAssessments.length === 0) {
+                toast.info("No completed assessments available. Run an assessment first.");
+              } else {
+                setCreateDialogOpen(true);
+              }
+            }}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Proof Page
+            </Button>
           </div>
         </div>
       </header>
 
       <div className="p-8">
-        {viewMode === "my-proofs" ? (
-          <>
-            {proofPages.length === 0 ? (
+        {proofPages.length === 0 ? (
               <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-8 text-center shadow-sm">
                 <p className="text-[13px] text-[#717182]">No proof pages yet. Create one from an assessed project.</p>
               </Card>
-            ) : (
-              <>
+        ) : (
+          <>
                 {/* Stats */}
                 <div className="mb-6 grid grid-cols-3 gap-4">
                   <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm">
@@ -207,12 +178,7 @@ export default function ProofPages() {
                                       </span>
                                     </div>
                                   )}
-                                  {page.views != null && (
-                                    <div className="flex items-center gap-1.5 text-[13px] text-[#717182]">
-                                      <Eye className="h-3.5 w-3.5" />
-                                      <span>{page.views} views</span>
-                                    </div>
-                                  )}
+                                  {page.views != null && <span className="text-[13px] text-[#717182]">{page.views} views</span>}
                                   {(page.published_at ?? page.publishedAt) && (
                                     <span className="text-[13px] text-[#717182] font-mono">
                                       Published {new Date(page.published_at ?? page.publishedAt).toLocaleDateString('en-US', {
@@ -237,9 +203,6 @@ export default function ProofPages() {
                                   }}
                                 >
                                   <Copy className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => toast.info("More options coming soon")}>
-                                  <MoreVertical className="h-4 w-4" />
                                 </Button>
                               </div>
                             </div>
@@ -335,9 +298,6 @@ export default function ProofPages() {
                                 <Globe className="mr-2 h-4 w-4" />
                                 {publishingId === page.id ? "Publishing…" : "Publish"}
                               </Button>
-                              <Button variant="ghost" size="sm" onClick={() => toast.info("More options coming soon")}>
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
                             </div>
                           </div>
                         </div>
@@ -345,39 +305,6 @@ export default function ProofPages() {
                     </div>
                   </Card>
                 )}
-              </>
-            )}
-          </>
-        ) : (
-          <>
-            {/* Search and Filter */}
-            <div className="mb-6 flex items-center gap-4">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#717182]" />
-                <Input
-                  placeholder="Search profiles..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as "recent" | "level" | "proofs")}
-                className="rounded-md border border-[rgba(0,0,0,0.08)] bg-white px-4 py-2 text-[13px] outline-none focus:border-[rgba(0,0,0,0.2)]"
-              >
-                <option value="recent">Most Recent</option>
-                <option value="level">By Level</option>
-                <option value="proofs">Most Proofs</option>
-              </select>
-            </div>
-
-            {/* Directory placeholder — public profiles not yet in API */}
-            <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-12 text-center shadow-sm">
-              <p className="text-[15px] text-[#717182]">
-                Public directory coming soon.
-              </p>
-            </Card>
           </>
         )}
       </div>

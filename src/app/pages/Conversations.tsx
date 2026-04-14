@@ -1,4 +1,4 @@
-import { MessageSquare, Search, Filter, Calendar, FolderKanban } from "lucide-react";
+import { MessageSquare, Search, FolderKanban } from "lucide-react";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
@@ -6,10 +6,10 @@ import { Input } from "../components/ui/input";
 import { Link } from "react-router";
 import { useState } from "react";
 import { useConversations, usePool } from "../../hooks/useApi";
-import { toast } from "sonner";
 
 export default function Conversations() {
   const [viewMode, setViewMode] = useState<"raw" | "organized">("raw");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: convsData, isLoading: convsLoading } = useConversations();
   const { data: poolData, isLoading: poolLoading } = usePool();
@@ -39,8 +39,27 @@ export default function Conversations() {
     }
   }
 
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredConversations = normalizedQuery
+    ? conversations.filter((conversation: any) => {
+        const haystack = [
+          conversation.title,
+          conversation.filename,
+          conversation.preview,
+          conversation.model,
+          conversation.project,
+          conversation.project_id,
+          ...(Array.isArray(conversation.tags) ? conversation.tags : []),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(normalizedQuery);
+      })
+    : conversations;
+
   // Group conversations by project for AI Organized view
-  const groupedByProject = conversations.reduce((acc: Record<string, any[]>, conv: any) => {
+  const groupedByProject = filteredConversations.reduce((acc: Record<string, any[]>, conv: any) => {
     const project = conv.project_id ?? conv.project ?? "Unassigned";
     if (!acc[project]) acc[project] = [];
     acc[project].push(conv);
@@ -81,14 +100,6 @@ export default function Conversations() {
                   AI Organized
                 </Button>
               </div>
-              <Button variant="outline" onClick={() => toast.info("Filters coming soon")}>
-                <Filter className="mr-2 h-4 w-4" />
-                Filters
-              </Button>
-              <Button variant="outline" onClick={() => toast.info("Date range filter coming soon")}>
-                <Calendar className="mr-2 h-4 w-4" />
-                Date Range
-              </Button>
             </div>
           </div>
         </div>
@@ -101,6 +112,8 @@ export default function Conversations() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#717182]" />
             <Input
               placeholder="Search conversations by content, tags, or project..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 border-none bg-transparent focus-visible:ring-0"
             />
           </div>
@@ -109,19 +122,19 @@ export default function Conversations() {
         {/* Results Count */}
         <div className="mb-4 text-[13px] text-[#717182]">
           {viewMode === "raw"
-            ? `${conversations.length} conversations found`
-            : `${Object.keys(groupedByProject).length} projects • ${conversations.length} conversations`}
+            ? `${filteredConversations.length} conversations found`
+            : `${Object.keys(groupedByProject).length} projects • ${filteredConversations.length} conversations`}
         </div>
 
         {/* Raw View - Chronological list */}
         {viewMode === "raw" && (
-          conversations.length === 0 ? (
+          filteredConversations.length === 0 ? (
             <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-8 text-center shadow-sm">
               <p className="text-[13px] text-[#717182]">No conversations yet.</p>
             </Card>
           ) : (
             <div className="space-y-2">
-              {conversations.map((conversation: any) => (
+              {filteredConversations.map((conversation: any) => (
                 <Link key={conversation.id} to={`/app/conversations/${conversation.id}`}>
                   <Card className="border border-[rgba(0,0,0,0.06)] bg-[#FAFAFA] p-4 shadow-none hover:bg-white hover:border-[rgba(0,0,0,0.12)] transition-all">
                     <div className="flex gap-4">

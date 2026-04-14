@@ -96,17 +96,11 @@ export default function Processing() {
   const status: Status = assessment?.status ?? "pending";
   const isDone = status === "complete" || status === "partial";
   const isProcessing = !isDone && status !== "failed";
-  const isStuck = status === "pending" && elapsed > 300;
-
-  // Fake progress: advance steps on a timer so the UI feels alive
-  const STEP_TIMINGS = [0, 3, 7, 12, 18];
-  const fakeStepIdx = isDone
+  const isStuck = status === "pending" && elapsed > 60;
+  const displayStatus = isDone ? "complete" : status;
+  const activeStepIdx = isDone
     ? STEP_ORDER.length - 1
-    : Math.min(
-        STEP_TIMINGS.filter((t) => elapsed >= t).length,
-        STEP_ORDER.length - 2,
-      );
-  const displayStatus = isDone ? "complete" : STEP_ORDER[Math.min(fakeStepIdx, STEP_ORDER.length - 1)];
+    : Math.max(0, STEP_ORDER.indexOf(displayStatus));
 
   useEffect(() => {
     if (!isProcessing && !isDone) return;
@@ -231,8 +225,8 @@ export default function Processing() {
                 </style>
                 <div className="space-y-3">
                   {STEP_ORDER.slice(0, -1).map((step, i) => {
-                    const isActive = i === fakeStepIdx;
-                    const isComplete = i < fakeStepIdx;
+                    const isActive = i === activeStepIdx;
+                    const isComplete = i < activeStepIdx;
                     return (
                       <div
                         key={step}

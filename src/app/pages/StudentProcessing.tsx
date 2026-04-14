@@ -96,18 +96,11 @@ export default function StudentProcessing() {
   const status: Status = assessment?.status ?? "pending";
   const isDone = status === "complete" || status === "partial";
   const isProcessing = !isDone && status !== "failed";
-  const isStuck = status === "pending" && elapsed > 300;
-
-  // Fake progress: advance steps on a timer so the UI feels alive
-  // Steps hold on "evaluating" until the real backend finishes
-  const STEP_TIMINGS = [0, 3, 7, 12, 18]; // seconds when each step "completes"
-  const fakeStepIdx = isDone
+  const isStuck = status === "pending" && elapsed > 60;
+  const displayStatus = isDone ? "complete" : status;
+  const activeStepIdx = isDone
     ? STEP_ORDER.length - 1
-    : Math.min(
-        STEP_TIMINGS.filter((t) => elapsed >= t).length,
-        STEP_ORDER.length - 2, // hold on last real step until done
-      );
-  const displayStatus = isDone ? "complete" : STEP_ORDER[Math.min(fakeStepIdx, STEP_ORDER.length - 1)];
+    : Math.max(0, STEP_ORDER.indexOf(displayStatus));
 
   useEffect(() => {
     if (!isProcessing && !isDone) return;
@@ -191,8 +184,8 @@ export default function StudentProcessing() {
           <CardContent className="p-6">
             <div className="space-y-2">
               {STEP_ORDER.slice(0, -1).map((step, i) => {
-                const isActive = i === fakeStepIdx;
-                const isComplete = i < fakeStepIdx;
+                const isActive = i === activeStepIdx;
+                const isComplete = i < activeStepIdx;
                 return (
                   <div key={step} className="flex items-center gap-3">
                     <div className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold ${

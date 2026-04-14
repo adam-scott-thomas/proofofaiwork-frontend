@@ -69,22 +69,32 @@ export function PaymentModal({ open, onOpenChange, onComplete }: PaymentModalPro
 
   const [unlocking, setUnlocking] = useState(false);
 
-  const triggerUnlock = (method: string, amount: string) => {
+  const triggerUnlock = async (
+    method: string,
+    amount: string,
+    options?: { runCluster?: boolean },
+  ) => {
     setUnlocked();
     setSuccessMethod(method);
     setSuccessAmount(amount);
     onOpenChange(false);
     setSuccessOpen(true);
-    // Kick off clustering in background — paywall now gates this
-    // server-side, so the call only succeeds if the backend saw the
-    // payment/coupon row we just created.
-    apiPost("/projects/ai-cluster", {}).catch(() => {});
+    if (options?.runCluster) {
+      // Coupon + crypto flows only create/grant the unlock. They still need
+      // the paid clustering request after the payment record is visible.
+      await apiPost("/projects/ai-cluster", {});
+    }
   };
 
-  const handleFreeUnlock = () => {
+  const handleFreeUnlock = async () => {
     setUnlocking(true);
-    triggerUnlock(`Coupon ${coupon.trim().toUpperCase()}`, "$0.00");
-    setUnlocking(false);
+    try {
+      await triggerUnlock(`Coupon ${coupon.trim().toUpperCase()}`, "$0.00", { runCluster: true });
+    } catch (e: any) {
+      setError(e?.message || "Unlock failed. Please try again.");
+    } finally {
+      setUnlocking(false);
+    }
   };
 
   const handleClose = (open: boolean) => {
@@ -107,7 +117,7 @@ export function PaymentModal({ open, onOpenChange, onComplete }: PaymentModalPro
     setCardLoading(true);
     try {
       await apiPost("/payments/ai-sort", { source_id: sourceId });
-      triggerUnlock("Card", "$5.00");
+      await triggerUnlock("Card", "$5.00");
     } catch (e: any) {
       setError(e.message || "Payment failed. Please try again.");
     } finally {
@@ -146,8 +156,8 @@ export function PaymentModal({ open, onOpenChange, onComplete }: PaymentModalPro
         if (cancelled) return;
         const status = (s?.status ?? s?.payment_status ?? "").toLowerCase();
         setCryptoStatus(status || "waiting");
-        if (status === "finished" || status === "confirmed" || status === "paid") {
-          triggerUnlock("Crypto", "$4.20");
+        if (status === "finished" || status === "confirmed" || status === "paid" || status === "completed") {
+          await triggerUnlock("Crypto", "$4.20", { runCluster: true });
         }
       } catch {
         /* transient — keep polling */
