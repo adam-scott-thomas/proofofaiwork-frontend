@@ -13,6 +13,24 @@ function isCompletedStatus(status: string | undefined) {
   return status === "complete" || status === "completed";
 }
 
+function isPublished(page: any) {
+  return page?.status === "published";
+}
+
+function publicPath(page: any) {
+  const id = page?.slug ?? page?.public_token;
+  return id ? `/p/${id}` : null;
+}
+
+function publicUrl(page: any) {
+  const path = publicPath(page);
+  return path ? `https://proofofaiwork.com${path}` : null;
+}
+
+function pageTitle(page: any) {
+  return page?.headline ?? page?.project_title ?? page?.id;
+}
+
 export default function ProofPages() {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [selectedProof, setSelectedProof] = useState<any>(null);
@@ -31,30 +49,35 @@ export default function ProofPages() {
   const proofPages: any[] = Array.isArray(pagesData) ? pagesData : pagesData?.data ?? pagesData?.items ?? [];
 
   const handleShare = (page: any) => {
+    const url = publicUrl(page);
+    if (!url) {
+      toast.error("Publish this page before sharing");
+      return;
+    }
     setSelectedProof({
       name: "",
       handle: "",
       hlsScore: page.hls ?? 0,
       aelScore: 0,
       caiScore: page.cai ?? 0,
-      proofUrl: `https://proofofaiwork.com/p/${page.slug ?? page.id}`,
-      projectName: page.title ?? page.project_name ?? "",
+      proofUrl: url,
+      projectName: pageTitle(page) ?? "",
       conversationCount: 0,
       date: page.created_at ? new Date(page.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "",
     });
     setShareDialogOpen(true);
   };
 
-  const publishedPages = proofPages.filter((p: any) => p.published);
-  const draftPages = proofPages.filter((p: any) => !p.published);
-  const totalViews = proofPages.reduce((sum: number, p: any) => sum + (p.views ?? 0), 0);
+  const publishedPages = proofPages.filter(isPublished);
+  const draftPages = proofPages.filter((p: any) => !isPublished(p));
+  const totalViews = proofPages.reduce((sum: number, p: any) => sum + (p.view_count ?? 0), 0);
 
   const allAssessments: any[] = Array.isArray(assessmentsData)
     ? assessmentsData
     : assessmentsData?.data ?? assessmentsData?.items ?? [];
-  const pageAssessmentIds = new Set(proofPages.map((p: any) => p.assessment_id).filter(Boolean));
+  const pagedAssessmentIds = new Set(proofPages.map((p: any) => p.assessment_id).filter(Boolean));
   const unpagedAssessments = allAssessments.filter(
-    (a: any) => isCompletedStatus(a.status) && !pageAssessmentIds.has(a.id)
+    (a: any) => isCompletedStatus(a.status) && !pagedAssessmentIds.has(a.id)
   );
 
   return (
@@ -126,14 +149,22 @@ export default function ProofPages() {
                         </div>
                       </div>
                       <div className="divide-y divide-[rgba(0,0,0,0.04)]">
-                        {publishedPages.map((page: any) => (
+                        {publishedPages.map((page: any) => {
+                          const path = publicPath(page);
+                          const url = publicUrl(page);
+                          const displayPath = page.slug ?? page.public_token;
+                          return (
                           <div key={page.id} className="px-6 py-5 hover:bg-[#FAFAFA] transition-colors">
                             <div className="flex items-start justify-between gap-6">
                               <div className="flex-1">
                                 <div className="mb-2 flex items-center gap-3">
-                                  <Link to={`/p/${page.slug ?? page.id}`} className="text-[14px] hover:underline">
-                                    {page.title ?? page.project_name ?? page.id}
-                                  </Link>
+                                  {path ? (
+                                    <Link to={path} className="text-[14px] hover:underline">
+                                      {pageTitle(page)}
+                                    </Link>
+                                  ) : (
+                                    <span className="text-[14px]">{pageTitle(page)}</span>
+                                  )}
                                   <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200">
                                     <CheckCircle2 className="mr-1 h-3 w-3" />
                                     Published
@@ -143,18 +174,20 @@ export default function ProofPages() {
                                     AI-organized work
                                   </Badge>
                                 </div>
-                                {page.slug && (
+                                {displayPath && (
                                   <div className="mb-3 flex items-center gap-2">
                                     <span className="font-mono text-[12px] text-[#717182]">
-                                      proofofaiwork.com/p/{page.slug}
+                                      proofofaiwork.com/p/{displayPath}
                                     </span>
                                     <Button
                                       variant="ghost"
                                       size="sm"
                                       className="h-5 w-5 p-0"
                                       onClick={() => {
-                                        navigator.clipboard.writeText(`https://proofofaiwork.com/p/${page.slug}`);
-                                        toast.success("URL copied to clipboard");
+                                        if (url) {
+                                          navigator.clipboard.writeText(url);
+                                          toast.success("URL copied to clipboard");
+                                        }
                                       }}
                                     >
                                       <Copy className="h-3 w-3" />
@@ -178,10 +211,10 @@ export default function ProofPages() {
                                       </span>
                                     </div>
                                   )}
-                                  {page.views != null && <span className="text-[13px] text-[#717182]">{page.views} views</span>}
-                                  {(page.published_at ?? page.publishedAt) && (
+                                  {page.view_count != null && <span className="text-[13px] text-[#717182]">{page.view_count} views</span>}
+                                  {page.published_at && (
                                     <span className="text-[13px] text-[#717182] font-mono">
-                                      Published {new Date(page.published_at ?? page.publishedAt).toLocaleDateString('en-US', {
+                                      Published {new Date(page.published_at).toLocaleDateString('en-US', {
                                         month: 'short',
                                         day: 'numeric',
                                       })}
@@ -190,6 +223,14 @@ export default function ProofPages() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
+                                {path && (
+                                  <a href={path} target="_blank" rel="noopener noreferrer">
+                                    <Button variant="outline" size="sm">
+                                      <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                                      Preview
+                                    </Button>
+                                  </a>
+                                )}
                                 <Button variant="ghost" size="sm" onClick={() => handleShare(page)}>
                                   <Share2 className="h-4 w-4" />
                                 </Button>
@@ -197,9 +238,10 @@ export default function ProofPages() {
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => {
-                                    const url = `https://proofofaiwork.com/p/${page.slug ?? page.id}`;
-                                    navigator.clipboard.writeText(url);
-                                    toast.success("URL copied to clipboard");
+                                    if (url) {
+                                      navigator.clipboard.writeText(url);
+                                      toast.success("URL copied to clipboard");
+                                    }
                                   }}
                                 >
                                   <Copy className="h-4 w-4" />
@@ -207,7 +249,8 @@ export default function ProofPages() {
                               </div>
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </Card>
                   </div>
@@ -228,9 +271,7 @@ export default function ProofPages() {
                           <div className="flex items-start justify-between gap-6">
                             <div className="flex-1">
                               <div className="mb-2 flex items-center gap-3">
-                                <Link to={`/p/${page.slug ?? page.id}`} className="text-[14px] hover:underline">
-                                  {page.title ?? page.project_name ?? page.id}
-                                </Link>
+                                <span className="text-[14px]">{pageTitle(page)}</span>
                                 <Badge variant="secondary" className="bg-[#F5F5F7] text-[#717182]">
                                   Draft
                                 </Badge>
@@ -263,21 +304,13 @@ export default function ProofPages() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              {page.slug ? (
-                                <a href={`/p/${page.slug}`} target="_blank" rel="noopener noreferrer">
-                                  <Button variant="outline" size="sm">
-                                    Preview
-                                  </Button>
-                                </a>
-                              ) : (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => toast.info("Preview available after publishing")}
-                                >
-                                  Preview
-                                </Button>
-                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => toast.info("Publish first to preview the public page")}
+                              >
+                                Preview
+                              </Button>
                               <Button
                                 size="sm"
                                 disabled={publishingId === page.id}
