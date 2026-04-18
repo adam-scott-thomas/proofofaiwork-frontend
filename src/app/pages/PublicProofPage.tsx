@@ -1,246 +1,136 @@
 import { useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Shield, Calendar, Loader2, AlertCircle } from "lucide-react";
-import { Badge } from "../components/ui/badge";
+import { AlertCircle, Globe, ShieldCheck } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { apiFetch } from "../../lib/api";
-
-const DIMENSION_LABELS: Record<string, { label: string; desc: string }> = {
-  clarity: { label: "Clarity of direction", desc: "How clearly the user stated what they needed" },
-  context: { label: "Problem framing", desc: "Background and context provided" },
-  constraint_quality: { label: "Setting constraints", desc: "Boundaries and requirements set" },
-  iteration_discipline: { label: "Iterating on output", desc: "How the user refined AI output" },
-  verification_habit: { label: "Checking AI's work", desc: "Testing and validating output" },
-  output_judgment: { label: "Accept/reject decisions", desc: "Evaluating output quality" },
-  workflow_efficiency: { label: "Task decomposition", desc: "Breaking work into steps" },
-  risk_awareness: { label: "Edge case awareness", desc: "Considering what could go wrong" },
-};
-
-function scoreColor(score: number): string {
-  if (score >= 0.7) return "bg-emerald-500";
-  if (score >= 0.4) return "bg-amber-400";
-  return "bg-red-400";
-}
-
-function scoreTextColor(score: number): string {
-  if (score >= 0.7) return "text-emerald-600";
-  if (score >= 0.4) return "text-amber-600";
-  return "text-red-600";
-}
+import { dateTime } from "../lib/poaw";
 
 export default function PublicProofPage() {
-  const { slug, projectSlug, username } = useParams<{ slug?: string; projectSlug?: string; username?: string }>();
-
-  // Support both /p/:slug and /@:username/:projectSlug
-  const proofSlug = slug ?? projectSlug ?? "";
-
+  const { slug } = useParams<{ slug?: string }>();
   const { data, isLoading, error } = useQuery({
-    queryKey: ["public-proof", proofSlug],
-    queryFn: () => apiFetch<any>(`/p/${proofSlug}`),
-    enabled: !!proofSlug,
+    queryKey: ["public-proof", slug],
+    queryFn: () => apiFetch<any>(`/p/${slug}`),
+    enabled: !!slug,
   });
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="flex min-h-screen items-center justify-center bg-[#F7F4ED] text-[13px] text-[#6B6B66]">
+        Loading proof page...
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3">
-        <AlertCircle className="h-10 w-10 text-red-400" />
-        <h1 className="text-xl font-medium">Proof page not found</h1>
-        <p className="text-sm text-gray-500">This link may have expired or been unpublished.</p>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#F7F4ED] px-8 text-center">
+        <AlertCircle className="h-8 w-8 text-[#8E3B34]" />
+        <div className="text-2xl tracking-tight text-[#161616]">Proof page not found.</div>
+        <div className="max-w-md text-[14px] leading-7 text-[#5C5C5C]">
+          This page may have been unpublished or the link may be invalid.
+        </div>
       </div>
     );
   }
 
-  const observations = data.observations || [];
-  const trustPanel = data.trust_panel || {};
-  const headline = data.headline || "AI Work Report";
-  const publishedAt = data.published_at;
-
-  // Split observations into scored and skipped
-  const scored = observations.filter((o: any) => o.score !== null && !o.skipped);
-  const avgScore = scored.length > 0
-    ? scored.reduce((sum: number, o: any) => sum + o.score, 0) / scored.length
-    : 0;
-
-  // Group into "your direction" vs "AI collaboration"
-  const directionDims = ["clarity", "context", "constraint_quality", "iteration_discipline"];
-  const collabDims = ["verification_habit", "output_judgment", "workflow_efficiency", "risk_awareness"];
-
-  const directionObs = observations.filter((o: any) => directionDims.includes(o.dimension));
-  const collabObs = observations.filter((o: any) => collabDims.includes(o.dimension));
-
-  // Strengths and weaknesses
-  const strengths = scored.filter((o: any) => o.score >= 0.7);
-  const weaknesses = scored.filter((o: any) => o.score < 0.4);
+  const observations = Array.isArray(data?.observations) ? data.observations : [];
+  const excerpts = Array.isArray(data?.excerpts) ? data.excerpts : [];
+  const githubPanels = Array.isArray(data?.github_panels) ? data.github_panels : [];
+  const trustPanel = data?.trust_panel ?? {};
 
   return (
-    <div className="not-dark min-h-screen bg-[#FAFAFA]">
-      {/* Header */}
-      <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
-        <div className="mx-auto max-w-3xl px-8 py-6">
-          <h1 className="mb-2 text-4xl md:text-5xl font-bold tracking-tight">Proof of AI Work</h1>
-          <p className="mb-3 text-[15px] text-[#717182]">{headline}</p>
-          <div className="flex items-center gap-4">
-            {publishedAt && (
-              <div className="flex items-center gap-2 text-[13px] text-[#717182]">
-                <Calendar className="h-4 w-4" />
-                {new Date(publishedAt).toLocaleDateString("en-US", {
-                  month: "long", day: "numeric", year: "numeric",
-                })}
-              </div>
-            )}
-            <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
-              <Shield className="mr-1 h-3 w-3" />
-              {trustPanel.dimensions_evaluated || scored.length} of 8 dimensions evaluated
-            </Badge>
+    <div className="min-h-screen bg-[#F7F4ED] text-[#161616]">
+      <div className="mx-auto max-w-5xl px-8 py-12">
+        <div className="text-[12px] uppercase tracking-[0.16em] text-[#6B6B66]">Public proof</div>
+        <div className="mt-4 flex items-start justify-between gap-6">
+          <div className="max-w-3xl">
+            <h1 className="text-5xl leading-[1] tracking-tight">{data.headline || data.project_title || "Proof of AI Work"}</h1>
+            <div className="mt-4 text-[18px] leading-9 text-[#5C5C5C]">
+              {data.summary || data.project_description || "No summary provided."}
+            </div>
+            <div className="mt-4 text-[13px] text-[#6B6B66]">
+              published {dateTime(data.published_at)} • {data.view_count ?? 0} views
+            </div>
+          </div>
+          <div className="rounded-full border border-[#D8D2C4] bg-white px-4 py-2 text-[13px] text-[#315D8A]">
+            <Globe className="mr-2 inline h-4 w-4" />
+            public
           </div>
         </div>
-      </header>
 
-      <div className="mx-auto max-w-3xl px-8 py-10">
-        {/* Overall Score */}
-        <Card className="mb-8 border border-[rgba(0,0,0,0.08)] bg-white p-8 shadow-sm text-center">
-          <div className="text-[13px] uppercase tracking-wider text-[#717182] mb-2">Overall Score</div>
-          <div className={`text-6xl font-bold mb-1 ${scoreTextColor(avgScore)}`}>
-            {Math.round(avgScore * 100)}%
-          </div>
-          <div className="text-[13px] text-[#717182]">
-            across {scored.length} evaluated dimension{scored.length !== 1 ? "s" : ""}
-          </div>
-        </Card>
-
-        {/* Direction Dimensions */}
-        {directionObs.length > 0 && (
-          <Card className="mb-6 border border-[rgba(0,0,0,0.08)] bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-[14px] font-medium text-[#030213]">How the student directed the AI</h2>
-            <div className="space-y-4">
-              {directionObs.map((obs: any) => {
-                const dim = DIMENSION_LABELS[obs.dimension];
-                const score = obs.score ?? 0;
-                const skipped = obs.skipped;
-                return (
-                  <div key={obs.dimension}>
-                    <div className="mb-1.5 flex items-baseline justify-between">
-                      <div>
-                        <span className="text-[13px] font-medium text-[#030213]">{dim?.label ?? obs.dimension}</span>
-                        <span className="ml-2 text-[11px] text-[#717182]">{dim?.desc}</span>
-                      </div>
-                      {!skipped && (
-                        <span className={`text-[13px] font-medium ${scoreTextColor(score)}`}>
-                          {Math.round(score * 100)}%
-                        </span>
+        <div className="mt-8 grid grid-cols-[1.3fr_0.7fr] gap-6">
+          <div className="space-y-6">
+            <Card className="border border-[#D8D2C4] bg-white p-6 shadow-sm">
+              <div className="text-[13px] uppercase tracking-[0.14em] text-[#6B6B66]">Observations</div>
+              <div className="mt-4 space-y-3">
+                {observations.map((observation: any, index: number) => (
+                  <div key={`${observation.dimension}-${index}`} className="rounded-md border border-[#D8D2C4] bg-[#FBF8F1] px-4 py-3">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="text-[14px]">{observation.dimension}</div>
+                      {observation.score != null ? (
+                        <div className="text-[13px] text-[#315D8A]">{Math.round(observation.score * 100)}%</div>
+                      ) : (
+                        <div className="text-[12px] text-[#6B6B66]">{observation.label || "skipped"}</div>
                       )}
                     </div>
-                    {!skipped && (
-                      <div className="h-1.5 overflow-hidden rounded-full bg-gray-200">
-                        <div className={`h-full rounded-full ${scoreColor(score)}`} style={{ width: `${Math.round(score * 100)}%` }} />
-                      </div>
-                    )}
-                    {obs.summary && (
-                      <p className="mt-1 text-[11px] text-[#717182]">{obs.summary}</p>
-                    )}
+                    {observation.summary ? (
+                      <div className="mt-1 text-[12px] text-[#5C5C5C]">{observation.summary}</div>
+                    ) : null}
                   </div>
-                );
-              })}
-            </div>
-          </Card>
-        )}
+                ))}
+                {observations.length === 0 ? (
+                  <div className="text-[14px] text-[#5C5C5C]">No public observations available.</div>
+                ) : null}
+              </div>
+            </Card>
 
-        {/* Collaboration Dimensions */}
-        {collabObs.length > 0 && (
-          <Card className="mb-6 border border-[rgba(0,0,0,0.08)] bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-[14px] font-medium text-[#030213]">How the student used AI</h2>
-            <div className="space-y-4">
-              {collabObs.map((obs: any) => {
-                const dim = DIMENSION_LABELS[obs.dimension];
-                const score = obs.score ?? 0;
-                const skipped = obs.skipped;
-                return (
-                  <div key={obs.dimension}>
-                    <div className="mb-1.5 flex items-baseline justify-between">
-                      <div>
-                        <span className="text-[13px] font-medium text-[#030213]">{dim?.label ?? obs.dimension}</span>
-                        <span className="ml-2 text-[11px] text-[#717182]">{dim?.desc}</span>
-                      </div>
-                      {!skipped && (
-                        <span className={`text-[13px] font-medium ${scoreTextColor(score)}`}>
-                          {Math.round(score * 100)}%
-                        </span>
-                      )}
-                    </div>
-                    {!skipped && (
-                      <div className="h-1.5 overflow-hidden rounded-full bg-gray-200">
-                        <div className={`h-full rounded-full ${scoreColor(score)}`} style={{ width: `${Math.round(score * 100)}%` }} />
-                      </div>
-                    )}
-                    {obs.summary && (
-                      <p className="mt-1 text-[11px] text-[#717182]">{obs.summary}</p>
-                    )}
+            <Card className="border border-[#D8D2C4] bg-white p-6 shadow-sm">
+              <div className="text-[13px] uppercase tracking-[0.14em] text-[#6B6B66]">Excerpts</div>
+              <div className="mt-4 space-y-3">
+                {excerpts.map((excerpt: any, index: number) => (
+                  <div key={excerpt.id ?? index} className="rounded-md border border-[#D8D2C4] bg-[#FBF8F1] px-4 py-3 text-[14px] leading-7 text-[#2A2A28]">
+                    {excerpt.text || excerpt.content || JSON.stringify(excerpt)}
                   </div>
-                );
-              })}
-            </div>
-          </Card>
-        )}
-
-        {/* Strengths & Weaknesses */}
-        {(strengths.length > 0 || weaknesses.length > 0) && (
-          <Card className="mb-6 border border-[rgba(0,0,0,0.08)] bg-white p-6 shadow-sm">
-            {strengths.length > 0 && (
-              <div className="mb-4">
-                <h3 className="mb-2 text-[13px] font-medium text-emerald-700">Strengths</h3>
-                <ul className="space-y-1">
-                  {strengths.map((o: any) => (
-                    <li key={o.dimension} className="text-[13px] text-[#3A3A3A]">
-                      <span className="font-medium">{DIMENSION_LABELS[o.dimension]?.label ?? o.dimension}:</span>{" "}
-                      {o.summary}
-                    </li>
-                  ))}
-                </ul>
+                ))}
+                {excerpts.length === 0 ? (
+                  <div className="text-[14px] text-[#5C5C5C]">No excerpts published.</div>
+                ) : null}
               </div>
-            )}
-            {weaknesses.length > 0 && (
-              <div>
-                <h3 className="mb-2 text-[13px] font-medium text-red-700">Areas for growth</h3>
-                <ul className="space-y-1">
-                  {weaknesses.map((o: any) => (
-                    <li key={o.dimension} className="text-[13px] text-[#3A3A3A]">
-                      <span className="font-medium">{DIMENSION_LABELS[o.dimension]?.label ?? o.dimension}:</span>{" "}
-                      {o.summary}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </Card>
-        )}
-
-        {/* Sample Size / Trust */}
-        <Card className="border border-blue-200 bg-blue-50 p-5 shadow-sm">
-          <div className="flex items-start gap-3">
-            <Shield className="h-5 w-5 text-blue-700 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="mb-1 text-[14px] font-medium text-blue-900">Verification</h3>
-              <p className="text-[13px] text-blue-800">
-                This report was generated by Proof of AI Work from uploaded conversation data.
-                {trustPanel.dimensions_evaluated > 0 && (
-                  <> {trustPanel.dimensions_evaluated} dimensions were evaluated using AI-assisted scoring.</>
-                )}
-              </p>
-            </div>
+            </Card>
           </div>
-        </Card>
 
-        {/* Footer */}
-        <div className="mt-10 border-t border-[rgba(0,0,0,0.08)] pt-6 text-center text-[13px] text-[#717182]">
-          ProofofAIWork - proofofaiwork.com
+          <div className="space-y-4">
+            <Card className="border border-[#D8D2C4] bg-white p-6 shadow-sm">
+              <div className="flex items-center gap-2 text-[13px] uppercase tracking-[0.14em] text-[#6B6B66]">
+                <ShieldCheck className="h-4 w-4" />
+                Trust panel
+              </div>
+              <div className="mt-4 space-y-2 text-[13px] text-[#5C5C5C]">
+                <div>dimensions evaluated: {trustPanel.dimensions_evaluated ?? 0}</div>
+                <div>dimensions skipped: {trustPanel.dimensions_skipped ?? 0}</div>
+                <div>hash integrity: {trustPanel.hash_integrity ? "verified" : "not verified"}</div>
+                <div>page version: {trustPanel.page_version ?? 1}</div>
+                <div>sample uploads: {trustPanel.sample_size?.uploads ?? 0}</div>
+              </div>
+            </Card>
+
+            <Card className="border border-[#D8D2C4] bg-white p-6 shadow-sm">
+              <div className="text-[13px] uppercase tracking-[0.14em] text-[#6B6B66]">GitHub evidence</div>
+              <div className="mt-4 space-y-3">
+                {githubPanels.map((panel: any, index: number) => (
+                  <a key={`${panel.repo_owner}-${panel.repo_name}-${index}`} href={panel.repo_url} target="_blank" rel="noreferrer" className="block rounded-md border border-[#D8D2C4] bg-[#FBF8F1] px-4 py-3">
+                    <div className="text-[14px]">{panel.repo_owner}/{panel.repo_name}</div>
+                    <div className="mt-1 text-[12px] text-[#5C5C5C]">
+                      {panel.language || "unknown language"} • correlation {panel.correlation_score ?? "—"}
+                    </div>
+                  </a>
+                ))}
+                {githubPanels.length === 0 ? (
+                  <div className="text-[14px] text-[#5C5C5C]">No GitHub evidence attached.</div>
+                ) : null}
+              </div>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

@@ -24,8 +24,15 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   }
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || err.message || `${res.status}`);
+    const err: any = await res.json().catch(() => ({ detail: res.statusText }));
+    // POAW error shape is { error: { code, message, details } }; tolerate both.
+    const msg =
+      err?.error?.message ||
+      err?.detail ||
+      err?.message ||
+      res.statusText ||
+      `${res.status}`;
+    throw new Error(msg);
   }
   if (res.status === 204) return undefined as T;
   return res.json();

@@ -1,248 +1,97 @@
-import { MessageSquare, Search, FolderKanban } from "lucide-react";
-import { Badge } from "../components/ui/badge";
-import { Button } from "../components/ui/button";
-import { Card } from "../components/ui/card";
-import { Input } from "../components/ui/input";
-import { Link } from "react-router";
+import { MessageSquare, Search } from "lucide-react";
 import { useState } from "react";
-import { useConversations, usePool } from "../../hooks/useApi";
+import { Link } from "react-router";
+import { Card } from "../components/ui/card";
+import { useConversations } from "../../hooks/useApi";
+import { isoDate } from "../lib/poaw";
 
 export default function Conversations() {
-  const [viewMode, setViewMode] = useState<"raw" | "organized">("raw");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [query, setQuery] = useState("");
+  const { data, isLoading } = useConversations();
 
-  const { data: convsData, isLoading: convsLoading } = useConversations();
-  const { data: poolData, isLoading: poolLoading } = usePool();
-
-  const isLoading = convsLoading || poolLoading;
-
-  if (isLoading) return (
-    <div className="flex min-h-screen items-center justify-center text-[13px] text-[#717182]">Loading...</div>
-  );
-
-  // Parsed conversations (have turn_count > 0, proper metadata)
-  const parsedConvs: any[] = Array.isArray(convsData)
-    ? convsData
-    : convsData?.conversations ?? convsData?.data ?? convsData?.items ?? [];
-
-  // Pool items (uploaded but not yet parsed) — include these too so users see everything they uploaded
-  const poolConvs: any[] = poolData?.conversations ?? [];
-
-  // Merge and dedupe by upload_id / id
-  const seenIds = new Set<string>();
-  const conversations: any[] = [];
-  for (const c of [...parsedConvs, ...poolConvs]) {
-    const key = c.upload_id ?? c.id ?? c.file_name;
-    if (key && !seenIds.has(key)) {
-      seenIds.add(key);
-      conversations.push({ ...c, id: c.upload_id ?? c.id });
-    }
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-[13px] text-[#6B6B66]">
+        Loading conversations...
+      </div>
+    );
   }
 
-  const normalizedQuery = searchQuery.trim().toLowerCase();
-  const filteredConversations = normalizedQuery
-    ? conversations.filter((conversation: any) => {
-        const haystack = [
-          conversation.title,
-          conversation.filename,
-          conversation.preview,
-          conversation.model,
-          conversation.project,
-          conversation.project_id,
-          ...(Array.isArray(conversation.tags) ? conversation.tags : []),
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        return haystack.includes(normalizedQuery);
-      })
-    : conversations;
-
-  // Group conversations by project for AI Organized view
-  const groupedByProject = filteredConversations.reduce((acc: Record<string, any[]>, conv: any) => {
-    const project = conv.project_id ?? conv.project ?? "Unassigned";
-    if (!acc[project]) acc[project] = [];
-    acc[project].push(conv);
-    return acc;
-  }, {} as Record<string, any[]>);
+  const conversations = Array.isArray(data?.conversations) ? data.conversations : [];
+  const filtered = conversations.filter((conversation: any) => {
+    if (!query.trim()) return true;
+    const haystack = [
+      conversation.title,
+      conversation.source_format,
+      conversation.project_title,
+      conversation.project_id,
+      ...(conversation.model_slugs ?? []),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(query.trim().toLowerCase());
+  });
 
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
-        <div className="px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl tracking-tight">Conversations</h1>
-              <p className="mt-1 text-[13px] text-[#717182]">
-                {viewMode === "raw"
-                  ? "Chronological list of all conversations"
-                  : "Conversations organized by AI-detected work streams"}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              {/* View Toggle */}
-              <div className="flex items-center gap-2 rounded-md border border-[rgba(0,0,0,0.08)] bg-white p-1">
-                <Button
-                  variant={viewMode === "raw" ? "secondary" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("raw")}
-                  className="h-8"
-                >
-                  Raw Conversations
-                </Button>
-                <Button
-                  variant={viewMode === "organized" ? "secondary" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("organized")}
-                  className="h-8"
-                >
-                  AI Organized
-                </Button>
-              </div>
-            </div>
-          </div>
+    <div className="min-h-screen bg-[#F7F4ED] text-[#161616]">
+      <header className="border-b border-[#D8D2C4] bg-[#FBF8F1]">
+        <div className="px-8 py-8">
+          <div className="text-[12px] uppercase tracking-[0.16em] text-[#6B6B66]">Conversation pool</div>
+          <h1 className="mt-2 text-3xl tracking-tight">Inspect parsed conversations.</h1>
+          <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-[#5C5C5C]">
+            This is the reader index. Open a conversation, inspect its turns, and move it into the right project.
+          </p>
         </div>
       </header>
 
-      <div className="p-8">
-        {/* Search Bar */}
-        <Card className="mb-6 border border-[rgba(0,0,0,0.08)] bg-white p-4 shadow-sm">
+      <div className="px-8 py-8">
+        <Card className="border border-[#D8D2C4] bg-white p-4 shadow-sm">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#717182]" />
-            <Input
-              placeholder="Search conversations by content, tags, or project..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 border-none bg-transparent focus-visible:ring-0"
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6B6B66]" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search by title, format, project, or model"
+              className="w-full rounded-md border border-[#D8D2C4] bg-[#FBF8F1] px-10 py-2 text-sm outline-none"
             />
           </div>
         </Card>
 
-        {/* Results Count */}
-        <div className="mb-4 text-[13px] text-[#717182]">
-          {viewMode === "raw"
-            ? `${filteredConversations.length} conversations found`
-            : `${Object.keys(groupedByProject).length} projects • ${filteredConversations.length} conversations`}
-        </div>
+        <div className="mt-4 text-[13px] text-[#6B6B66]">{filtered.length} conversations</div>
 
-        {/* Raw View - Chronological list */}
-        {viewMode === "raw" && (
-          filteredConversations.length === 0 ? (
-            <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-8 text-center shadow-sm">
-              <p className="text-[13px] text-[#717182]">No conversations yet.</p>
-            </Card>
-          ) : (
-            <div className="space-y-2">
-              {filteredConversations.map((conversation: any) => (
-                <Link key={conversation.id} to={`/app/conversations/${conversation.id}`}>
-                  <Card className="border border-[rgba(0,0,0,0.06)] bg-[#FAFAFA] p-4 shadow-none hover:bg-white hover:border-[rgba(0,0,0,0.12)] transition-all">
-                    <div className="flex gap-4">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white flex-shrink-0">
-                        <MessageSquare className="h-4 w-4 text-[#C0C0C5]" />
+        <div className="mt-4 space-y-3">
+          {filtered.map((conversation: any) => (
+            <Link key={conversation.upload_id} to={`/app/conversations/${conversation.upload_id}`} className="block">
+              <Card className="border border-[#D8D2C4] bg-white p-5 shadow-sm transition-colors hover:bg-[#FBF8F1]">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex gap-3">
+                    <MessageSquare className="mt-0.5 h-4 w-4 text-[#315D8A]" />
+                    <div>
+                      <div className="text-[15px]">{conversation.title}</div>
+                      <div className="mt-1 text-[13px] text-[#5C5C5C]">
+                        {conversation.turn_count} turns • {conversation.user_turn_count} user turns • {conversation.source_format || "unknown format"}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="mb-1 flex items-start justify-between gap-4">
-                          <h3 className="text-[14px] text-[#717182] line-clamp-1">
-                            {conversation.title ?? conversation.filename ?? conversation.id}
-                          </h3>
-                          <div className="text-[12px] text-[#C0C0C5] whitespace-nowrap font-mono">
-                            {new Date(conversation.created_at ?? Date.now()).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                            })}
-                          </div>
-                        </div>
-                        {conversation.preview && (
-                          <p className="mb-2 text-[13px] text-[#C0C0C5] line-clamp-1">
-                            {conversation.preview}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-3 text-[12px] text-[#C0C0C5]">
-                          {conversation.model && <span>{conversation.model}</span>}
-                          {conversation.model && conversation.turn_count != null && <span>•</span>}
-                          {conversation.turn_count != null && <span>{conversation.turn_count} turns</span>}
-                        </div>
+                      <div className="mt-1 text-[12px] text-[#6B6B66]">
+                        {(conversation.model_slugs ?? []).slice(0, 3).join(", ") || "model unknown"}
                       </div>
                     </div>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          )
-        )}
-
-        {/* AI Organized View - Grouped by project */}
-        {viewMode === "organized" && (
-          Object.keys(groupedByProject).length === 0 ? (
-            <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-8 text-center shadow-sm">
-              <p className="text-[13px] text-[#717182]">No conversations to organize.</p>
-            </Card>
-          ) : (
-            <div className="space-y-6">
-              {Object.entries(groupedByProject).map(([project, projectConvs]) => (
-                <div key={project}>
-                  <div className="mb-3 flex items-center gap-2">
-                    <FolderKanban className="h-4 w-4" style={{ color: 'var(--score-execution)' }} />
-                    <h3 className="text-[15px]">{project}</h3>
-                    <span className="text-[13px] text-[#717182]">
-                      → {projectConvs.length} conversation{projectConvs.length !== 1 ? 's' : ''}
-                    </span>
                   </div>
-                  <div className="space-y-2">
-                    {projectConvs.map((conversation: any) => (
-                      <Link key={conversation.id} to={`/app/conversations/${conversation.id}`}>
-                        <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-4 shadow-sm hover:shadow-md transition-all">
-                          <div className="flex gap-4">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#F5F5F7] flex-shrink-0">
-                              <MessageSquare className="h-4 w-4 text-[#717182]" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="mb-1 flex items-start justify-between gap-4">
-                                <h3 className="text-[14px] line-clamp-1">
-                                  {conversation.title ?? conversation.filename ?? conversation.id}
-                                </h3>
-                                <div className="text-[12px] text-[#717182] whitespace-nowrap font-mono">
-                                  {new Date(conversation.created_at ?? Date.now()).toLocaleDateString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                  })}
-                                </div>
-                              </div>
-                              {conversation.preview && (
-                                <p className="mb-2 text-[13px] text-[#717182] line-clamp-1">
-                                  {conversation.preview}
-                                </p>
-                              )}
-                              <div className="flex items-center gap-3 text-[12px] text-[#717182]">
-                                {conversation.model && <span>{conversation.model}</span>}
-                                {conversation.model && conversation.turn_count != null && <span>•</span>}
-                                {conversation.turn_count != null && <span>{conversation.turn_count} turns</span>}
-                                {Array.isArray(conversation.tags) && conversation.tags.length > 0 && (
-                                  <div className="ml-auto flex items-center gap-1.5">
-                                    {conversation.tags.slice(0, 2).map((tag: string) => (
-                                      <Badge
-                                        key={tag}
-                                        variant="outline"
-                                        className="border-[rgba(0,0,0,0.08)] bg-white text-[11px] font-mono"
-                                      >
-                                        {tag}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </Card>
-                      </Link>
-                    ))}
+                  <div className="text-right text-[12px] text-[#6B6B66]">
+                    <div>{conversation.project_id ? "assigned" : "unassigned"}</div>
+                    <div className="mt-1">{isoDate(conversation.first_timestamp ? conversation.first_timestamp * 1000 : null)}</div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )
-        )}
+              </Card>
+            </Link>
+          ))}
+
+          {filtered.length === 0 ? (
+            <Card className="border border-dashed border-[#D8D2C4] bg-[#FBF8F1] p-8 text-[14px] text-[#5C5C5C] shadow-sm">
+              No conversations match this search.
+            </Card>
+          ) : null}
+        </div>
       </div>
     </div>
   );

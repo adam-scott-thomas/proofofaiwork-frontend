@@ -1,216 +1,193 @@
-import { ArrowLeft, Tag, Copy, Download, MoreVertical } from "lucide-react";
-import { Badge } from "../components/ui/badge";
-import { Button } from "../components/ui/button";
-import { Card } from "../components/ui/card";
+import { ArrowLeft, Copy, Loader2, Tag } from "lucide-react";
+import { useState } from "react";
 import { Link, useParams } from "react-router";
-import { useConversation } from "../../hooks/useApi";
 import { toast } from "sonner";
+import { Card } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { useConversation, useProjects } from "../../hooks/useApi";
+import { apiDelete, apiPost } from "../../lib/api";
+import { asArray } from "../lib/poaw";
 
 export default function ConversationDetail() {
   const { id } = useParams<{ id: string }>();
-  const { data: conversation, isLoading } = useConversation(id ?? "");
+  const { data: conversation, isLoading, refetch } = useConversation(id ?? "");
+  const { data: projectsData } = useProjects();
+  const [targetProjectId, setTargetProjectId] = useState<string>("");
+  const [moving, setMoving] = useState(false);
+  const [newTag, setNewTag] = useState("");
+  const [tagging, setTagging] = useState(false);
 
-  if (isLoading) return (
-    <div className="flex min-h-screen items-center justify-center text-[13px] text-[#717182]">Loading...</div>
-  );
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-[13px] text-[#6B6B66]">
+        Loading conversation...
+      </div>
+    );
+  }
 
-  const turns: any[] = Array.isArray(conversation?.turns) ? conversation.turns : [];
-  const tags: string[] = Array.isArray(conversation?.tags) ? conversation.tags : [];
+  const turns = Array.isArray(conversation?.turns) ? conversation.turns : [];
+  const tags = Array.isArray(conversation?.tags) ? conversation.tags : [];
+  const projects = asArray<any>(projectsData);
+
+  const moveConversation = async () => {
+    if (!id || !targetProjectId) return;
+    setMoving(true);
+    try {
+      await apiPost("/projects/move-conversation", {
+        upload_id: id,
+        target_project_id: targetProjectId,
+      });
+      toast.success("Conversation moved");
+      await refetch();
+    } catch (error: any) {
+      toast.error(error?.message ?? "Failed to move conversation");
+    } finally {
+      setMoving(false);
+    }
+  };
+
+  const addTag = async () => {
+    if (!id || !newTag.trim()) return;
+    setTagging(true);
+    try {
+      await apiPost(`/conversations/${id}/tags`, { tag: newTag.trim() });
+      setNewTag("");
+      await refetch();
+      toast.success("Tag added");
+    } catch (error: any) {
+      toast.error(error?.message ?? "Failed to add tag");
+    } finally {
+      setTagging(false);
+    }
+  };
+
+  const removeTag = async (tagId: string) => {
+    if (!id) return;
+    try {
+      await apiDelete(`/conversations/${id}/tags/${tagId}`);
+      await refetch();
+      toast.success("Tag removed");
+    } catch (error: any) {
+      toast.error(error?.message ?? "Failed to remove tag");
+    }
+  };
 
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
-        <div className="px-8 py-6">
-          <div className="mb-4">
-            <Link to="/app/conversations">
-              <Button variant="ghost" size="sm" className="-ml-3">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Conversations
-              </Button>
-            </Link>
+    <div className="min-h-screen bg-[#F7F4ED] text-[#161616]">
+      <header className="border-b border-[#D8D2C4] bg-[#FBF8F1]">
+        <div className="px-8 py-8">
+          <Link to="/app/conversations" className="inline-flex items-center gap-2 text-[13px] text-[#5C5C5C] hover:text-[#161616]">
+            <ArrowLeft className="h-4 w-4" />
+            Back to conversations
+          </Link>
+          <div className="mt-5 flex items-start justify-between gap-6">
+            <div className="max-w-3xl">
+              <h1 className="text-3xl tracking-tight">{conversation?.title}</h1>
+              <p className="mt-2 text-[14px] text-[#5C5C5C]">
+                {conversation?.turn_count} turns • {conversation?.source_format || "unknown format"} • {conversation?.project_id ? "assigned to a project" : "currently unassigned"}
+              </p>
+              <p className="mt-1 text-[12px] text-[#6B6B66]">
+                Models: {(conversation?.model_slugs ?? []).join(", ") || "unknown"}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const text = turns.map((turn: any) => `${turn.role}: ${turn.content}`).join("\n\n");
+                navigator.clipboard.writeText(text);
+                toast.success("Conversation copied");
+              }}
+            >
+              <Copy className="mr-2 h-4 w-4" />
+              Copy transcript
+            </Button>
           </div>
-          <div className="flex items-start justify-between gap-6">
-            <div className="flex-1">
-              <h1 className="mb-2 text-xl tracking-tight">
-                {conversation?.title ?? conversation?.filename ?? "Conversation"}
-              </h1>
-              <div className="flex items-center gap-4 text-[13px] text-[#717182]">
-                {conversation?.created_at && (
-                  <span className="font-mono">
-                    {new Date(conversation.created_at).toLocaleDateString('en-US', {
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </span>
-                )}
-                {conversation?.model && <span>{conversation.model}</span>}
-                {(conversation?.project_id ?? conversation?.project) && (
-                  <Badge variant="secondary" className="bg-[#F5F5F7]">
-                    {conversation?.project ?? conversation?.project_id}
-                  </Badge>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const text = turns.map((t: any) => `${t.role === 'user' ? 'You' : 'Assistant'}: ${t.content ?? t.text ?? ""}`).join("\n\n");
-                  navigator.clipboard.writeText(text);
-                  toast.success("Conversation copied to clipboard");
-                }}
-              >
-                <Copy className="mr-2 h-4 w-4" />
-                Copy
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => toast.info("Export coming soon")}>
-                <Download className="mr-2 h-4 w-4" />
-                Export
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => toast.info("More options coming soon")}>
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Tags */}
-          {tags.length > 0 && (
-            <div className="mt-4 flex items-center gap-2">
-              <Tag className="h-3.5 w-3.5 text-[#717182]" />
-              <div className="flex items-center gap-2">
-                {tags.map((tag) => (
-                  <Badge
-                    key={tag}
-                    variant="outline"
-                    className="border-[rgba(0,0,0,0.08)] bg-white text-[11px] font-mono"
-                  >
-                    {tag}
-                  </Badge>
-                ))}
-                <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px]" onClick={() => toast.info("Tag editing coming soon")}>
-                  + Add tag
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
       </header>
 
-      {/* Conversation Transcript */}
-      <div className="mx-auto max-w-4xl px-8 py-8">
-        {turns.length === 0 ? (
-          <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-8 text-center shadow-sm">
-            <p className="text-[13px] text-[#717182]">No turns found in this conversation.</p>
-          </Card>
-        ) : (
-          <div className="space-y-6">
+      <div className="px-8 py-8">
+        <div className="grid grid-cols-[1fr_320px] gap-6">
+          <div className="space-y-4">
             {turns.map((turn: any, index: number) => (
-              <div key={turn.id ?? index}>
-                {/* Turn */}
-                <div className={`flex gap-6 ${turn.role === 'assistant' ? 'flex-row-reverse' : ''}`}>
-                  {/* Role Label */}
-                  <div className={`w-24 flex-shrink-0 pt-1 ${turn.role === 'assistant' ? 'text-right' : ''}`}>
-                    <div className="text-[11px] uppercase tracking-wider text-[#717182]">
-                      {turn.role === 'user' ? 'You' : 'Assistant'}
-                    </div>
-                    {turn.timestamp && (
-                      <div className="mt-0.5 font-mono text-[11px] text-[#717182]">
-                        {new Date(turn.timestamp).toLocaleTimeString('en-US', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </div>
-                    )}
+              <Card
+                key={`${turn.turn_index ?? index}-${turn.role}`}
+                className={`border p-5 shadow-sm ${
+                  turn.role === "assistant"
+                    ? "border-[#D8D2C4] bg-[#FBF8F1]"
+                    : "border-[#D8D2C4] bg-white"
+                }`}
+              >
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="text-[12px] uppercase tracking-[0.14em] text-[#6B6B66]">
+                    {turn.role === "assistant" ? "Assistant" : "You"}
                   </div>
-
-                  {/* Content */}
-                  <Card
-                    className={`flex-1 border p-5 shadow-sm ${
-                      turn.is_opening ?? turn.isOpening
-                        ? 'border-amber-200 bg-amber-50/30'
-                        : turn.role === 'user'
-                        ? 'border-[rgba(0,0,0,0.08)] bg-white'
-                        : 'border-[rgba(0,0,0,0.08)] bg-[#FAFAFA]'
-                    }`}
-                  >
-                    {(turn.is_opening ?? turn.isOpening) && (
-                      <div className="mb-3 flex items-center gap-2">
-                        <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200 text-[10px]">
-                          OPENING TURN
-                        </Badge>
-                        <span className="text-[11px] text-[#717182]">
-                          Cognitive baseline indicator
-                        </span>
-                      </div>
-                    )}
-                    <div className="whitespace-pre-wrap text-[14px] leading-relaxed text-[#3A3A3A]">
-                      {turn.content ?? turn.text ?? ""}
-                    </div>
-                    {(turn.has_code ?? turn.hasCode) && (
-                      <div className="mt-3 rounded-sm bg-[#F5F5F7] px-3 py-2 font-mono text-[11px] text-[#717182]">
-                        Code block detected
-                      </div>
-                    )}
-                  </Card>
+                  <div className="text-[12px] text-[#6B6B66]">turn {turn.turn_index ?? index + 1}</div>
                 </div>
-
-                {/* Turn Actions */}
-                <div className={`mt-2 flex gap-2 ${turn.role === 'assistant' ? 'flex-row-reverse' : ''}`}>
-                  <div className="w-24 flex-shrink-0" />
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]" onClick={() => toast.info("Turn tagging coming soon")}>
-                      <Tag className="mr-1 h-3 w-3" />
-                      Tag turn
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-[11px]"
-                      onClick={() => {
-                        const text = turn.content ?? turn.text ?? "";
-                        navigator.clipboard.writeText(text);
-                        toast.success("Copied to clipboard");
-                      }}
-                    >
-                      <Copy className="mr-1 h-3 w-3" />
-                      Copy
-                    </Button>
-                  </div>
-                </div>
-              </div>
+                <div className="whitespace-pre-wrap text-[14px] leading-7 text-[#2A2A28]">{turn.content}</div>
+              </Card>
             ))}
           </div>
-        )}
 
-        {/* Conversation Metadata Footer */}
-        <Card className="mt-12 border border-[rgba(0,0,0,0.08)] bg-white p-6 shadow-sm">
-          <div className="mb-3 text-[13px] uppercase tracking-wider text-[#717182]">
-            Conversation Metadata
+          <div className="space-y-4">
+            <Card className="border border-[#D8D2C4] bg-white p-5 shadow-sm">
+              <div className="text-[13px] uppercase tracking-[0.14em] text-[#6B6B66]">Add to project</div>
+              <p className="mt-2 text-[13px] leading-relaxed text-[#5C5C5C]">
+                This is the control that was missing. Choose a project and move the conversation directly.
+              </p>
+              <div className="mt-4">
+                <Select value={targetProjectId} onValueChange={setTargetProjectId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button className="mt-3 w-full" onClick={moveConversation} disabled={!targetProjectId || moving}>
+                {moving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Move conversation
+              </Button>
+            </Card>
+
+            <Card className="border border-[#D8D2C4] bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-2 text-[13px] uppercase tracking-[0.14em] text-[#6B6B66]">
+                <Tag className="h-4 w-4" />
+                Tags
+              </div>
+              <div className="mt-3 flex gap-2">
+                <input
+                  value={newTag}
+                  onChange={(event) => setNewTag(event.target.value)}
+                  placeholder="Add a tag"
+                  className="w-full rounded-md border border-[#D8D2C4] bg-[#FBF8F1] px-3 py-2 text-sm outline-none"
+                />
+                <Button onClick={addTag} disabled={!newTag.trim() || tagging}>Add</Button>
+              </div>
+
+              <div className="mt-3 space-y-2">
+                {tags.length === 0 ? (
+                  <div className="text-[13px] text-[#5C5C5C]">No tags yet.</div>
+                ) : (
+                  tags.map((tag: any) => (
+                    <div key={tag.id} className="flex items-center justify-between rounded-md border border-[#D8D2C4] bg-[#FBF8F1] px-3 py-2">
+                      <div className="text-[13px]">
+                        {tag.tag}
+                        {tag.turn_index != null ? <span className="text-[#6B6B66]"> • turn {tag.turn_index}</span> : null}
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => removeTag(tag.id)}>Remove</Button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </Card>
           </div>
-          <div className="grid grid-cols-2 gap-4 text-[13px]">
-            <div>
-              <div className="text-[#717182]">Total Turns</div>
-              <div className="font-mono">{turns.length}</div>
-            </div>
-            <div>
-              <div className="text-[#717182]">Upload ID</div>
-              <div className="font-mono text-[12px]">{conversation?.upload_id ?? conversation?.id ?? "—"}</div>
-            </div>
-            <div>
-              <div className="text-[#717182]">Project</div>
-              <div>{conversation?.project ?? conversation?.project_id ?? "—"}</div>
-            </div>
-            <div>
-              <div className="text-[#717182]">Model</div>
-              <div>{conversation?.model ?? "—"}</div>
-            </div>
-          </div>
-        </Card>
+        </div>
       </div>
     </div>
   );

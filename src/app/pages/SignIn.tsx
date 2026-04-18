@@ -1,12 +1,11 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate, useLocation, useSearchParams } from "react-router";
-import { Mail, ArrowLeft, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
+import { ArrowLeft, Mail } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiFetch } from "../../lib/api";
 import { useAuthStore } from "../../stores/authStore";
 import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Card, CardContent } from "../components/ui/card";
+import { Card } from "../components/ui/card";
 
 function useRequestMagicLink() {
   return useMutation({
@@ -27,10 +26,10 @@ export default function SignIn() {
   const { isAuthenticated } = useAuthStore();
   const requestMagicLink = useRequestMagicLink();
 
-  // Where to redirect after auth
-  const nextUrl = searchParams.get("next")
-    || (location.state as any)?.from?.pathname
-    || "/app";
+  const nextUrl =
+    searchParams.get("next") ||
+    (location.state as any)?.from?.pathname ||
+    "/app";
 
   useEffect(() => {
     if (isAuthenticated()) {
@@ -38,152 +37,76 @@ export default function SignIn() {
     }
   }, [isAuthenticated, navigate, nextUrl]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
     try {
-      // Store redirect target so AuthCallback can pick it up after the email roundtrip
-      if (nextUrl !== "/app") {
-        localStorage.setItem("poaw-auth-redirect", nextUrl);
-      }
+      if (nextUrl !== "/app") localStorage.setItem("poaw-auth-redirect", nextUrl);
       await requestMagicLink.mutateAsync({ email });
       setSent(true);
-    } catch (error) {
-      console.error("Failed to send magic link:", error);
+    } catch {
+      // handled by mutation state
     }
   };
 
-  if (sent) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col">
-        <header className="p-6">
-          <Link
-            to="/sign-in"
-            onClick={() => setSent(false)}
-            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to sign in
-          </Link>
-        </header>
-
-        <div className="flex-1 flex items-center justify-center px-6 py-12">
-          <div className="w-full max-w-md">
-            <Card className="shadow-xl border border-gray-200 p-8 text-center">
-              <CardContent className="p-0">
-                <div className="flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mx-auto mb-6">
-                  <Mail className="w-8 h-8 text-green-600" />
-                </div>
-                <h1 className="text-2xl font-bold text-foreground mb-3">Check your email</h1>
-                <p className="text-muted-foreground mb-4">We've sent a magic link to</p>
-                <div className="bg-muted rounded-lg p-4 mb-6">
-                  <p className="font-semibold text-foreground">{email}</p>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  The link expires in 15 minutes and can only be used once.
-                </p>
-                <div className="mt-6 pt-6 border-t border-border">
-                  <p className="text-sm text-muted-foreground mb-2">Didn't receive it?</p>
-                  <button
-                    onClick={() => setSent(false)}
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    Try again with a different email
-                  </button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col">
-      <header className="p-6">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
+    <div className="min-h-screen bg-[#F7F4ED] text-[#161616]">
+      <div className="mx-auto max-w-5xl px-8 py-10">
+        <Link to="/" className="inline-flex items-center gap-2 text-[13px] text-[#5C5C5C] hover:text-[#161616]">
+          <ArrowLeft className="h-4 w-4" />
           Back to home
         </Link>
-      </header>
 
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <Link to="/" className="inline-block">
-              <h1 className="text-3xl font-bold text-foreground mb-2">ProofofAIWork</h1>
-            </Link>
-            <p className="text-muted-foreground">
-              {nextUrl.startsWith("/student")
-                ? "Sign in to submit your work for analysis"
-                : "Sign in to build verifiable proof of your AI work"
-              }
+        <div className="mt-12 grid grid-cols-[1.1fr_0.9fr] gap-8">
+          <div>
+            <div className="text-[12px] uppercase tracking-[0.16em] text-[#6B6B66]">Sign in</div>
+            <h1 className="mt-4 text-6xl leading-[0.96] tracking-tight">Email only. No password.</h1>
+            <p className="mt-6 max-w-xl text-[20px] leading-9 text-[#5C5C5C]">
+              Request a magic link, click it, and land directly in the workspace. This page should do one thing and do it cleanly.
             </p>
           </div>
 
-          <Card className="shadow-xl border border-gray-200">
-            <CardContent className="p-8">
-              <div className="flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mx-auto mb-6">
-                <Mail className="w-8 h-8 text-blue-600" />
-              </div>
-
-              <h2 className="text-2xl font-bold text-foreground text-center mb-2">
-                Sign in with email
-              </h2>
-              <p className="text-muted-foreground text-center mb-8">
-                We'll send you a magic link to sign in instantly—no password needed.
-              </p>
-
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="block text-sm font-medium text-foreground mb-2"
-                  >
-                    Email address
-                  </label>
-                  <Input
-                    id="email"
+          <Card className="border border-[#D8D2C4] bg-white p-8 shadow-sm">
+            {sent ? (
+              <>
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#E7F2E9]">
+                  <Mail className="h-6 w-6 text-[#2F6B3B]" />
+                </div>
+                <div className="mt-5 text-2xl tracking-tight">Check your email.</div>
+                <div className="mt-3 text-[15px] leading-8 text-[#5C5C5C]">
+                  We sent a magic link to <span className="font-medium text-[#161616]">{email}</span>.
+                </div>
+                <div className="mt-6 text-[13px] text-[#6B6B66]">The link expires and can only be used once.</div>
+                <Button variant="outline" className="mt-6" onClick={() => setSent(false)}>
+                  Use a different email
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="text-[13px] uppercase tracking-[0.14em] text-[#6B6B66]">Magic link</div>
+                <form className="mt-5" onSubmit={submit}>
+                  <label className="text-[13px] text-[#5C5C5C]">Email address</label>
+                  <input
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(event) => setEmail(event.target.value)}
                     placeholder="you@example.com"
-                    required
+                    className="mt-2 w-full rounded-md border border-[#D8D2C4] bg-[#FBF8F1] px-3 py-3 text-sm outline-none"
                     disabled={requestMagicLink.isPending}
+                    required
                   />
-                </div>
 
-                {requestMagicLink.isError && (
-                  <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
-                    <p className="text-sm text-destructive">
-                      Failed to send magic link. Please try again.
-                    </p>
-                  </div>
-                )}
+                  {requestMagicLink.isError ? (
+                    <div className="mt-4 rounded-md border border-[#E4B7B2] bg-[#FBEDEC] px-3 py-3 text-[13px] text-[#8E3B34]">
+                      Failed to send magic link. Try again.
+                    </div>
+                  ) : null}
 
-                <Button
-                  type="submit"
-                  disabled={requestMagicLink.isPending || !email}
-                  className="w-full"
-                  size="lg"
-                >
-                  {requestMagicLink.isPending ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Sending magic link...
-                    </>
-                  ) : (
-                    <>
-                      <Mail className="w-5 h-5" />
-                      Send magic link
-                    </>
-                  )}
-                </Button>
-              </form>
-            </CardContent>
+                  <Button type="submit" size="lg" className="mt-5 w-full" disabled={!email || requestMagicLink.isPending}>
+                    {requestMagicLink.isPending ? "Sending..." : "Send magic link"}
+                  </Button>
+                </form>
+              </>
+            )}
           </Card>
         </div>
       </div>

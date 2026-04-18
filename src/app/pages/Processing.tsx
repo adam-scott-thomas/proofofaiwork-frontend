@@ -1,371 +1,185 @@
-import { useEffect, useState, useCallback } from "react";
-import { useParams, useNavigate, Link } from "react-router";
-import { Loader2, CheckCircle2, XCircle, User, Bot, RefreshCw, Clock, ArrowLeft } from "lucide-react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiFetch, apiPost } from "../../lib/api";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
-import { Card, CardContent } from "../components/ui/card";
+import { apiFetch, apiPost } from "../../lib/api";
 
-type Status =
-  | "pending" | "parsing" | "normalizing" | "gating"
-  | "evaluating" | "aggregating" | "complete" | "partial" | "failed";
-
-interface LiveObservation {
-  dimension: string;
-  score: number | null;
-  label: string | null;
-  summary: string | null;
-  skipped: boolean;
-}
-
-const STEP_LABELS: Record<string, string> = {
-  pending: "Queued — waiting for a worker...",
-  parsing: "Reading your conversation",
-  normalizing: "Structuring the data",
-  gating: "Checking what we can evaluate",
-  evaluating: "Scoring your work",
-  aggregating: "Compiling results",
-  complete: "Done!",
-  partial: "Done!",
-};
-
-const STEP_ORDER: Status[] = ["pending", "parsing", "normalizing", "gating", "evaluating", "aggregating", "complete"];
-
-const DIMENSION_LABELS: Record<string, { label: string; desc: string; side: "you" | "ai" }> = {
-  clarity: { label: "Clarity", desc: "How clearly you stated what you needed", side: "you" },
-  context: { label: "Context", desc: "How well you framed the problem", side: "you" },
-  constraint_quality: { label: "Constraints", desc: "How precisely you set boundaries", side: "you" },
-  iteration_discipline: { label: "Iteration", desc: "How you refined AI output", side: "you" },
-  verification_habit: { label: "Verification", desc: "Whether you checked AI's work", side: "ai" },
-  output_judgment: { label: "Judgment", desc: "Your accept/reject decisions", side: "ai" },
-  workflow_efficiency: { label: "Workflow", desc: "How you decomposed the task", side: "ai" },
-  risk_awareness: { label: "Risk awareness", desc: "Attention to edge cases", side: "ai" },
-};
-
-function scoreColor(score: number | null): string {
-  if (score === null) return "bg-gray-200";
-  if (score >= 0.7) return "bg-emerald-500";
-  if (score >= 0.4) return "bg-amber-400";
-  return "bg-red-400";
-}
+const STAGES = [
+  { key: "pending", label: "Queued" },
+  { key: "parsing", label: "Reading conversation" },
+  { key: "normalizing", label: "Structuring the data" },
+  { key: "gating", label: "Checking what can be evaluated" },
+  { key: "evaluating", label: "Scoring the work" },
+  { key: "aggregating", label: "Compiling results" },
+  { key: "complete", label: "Done" },
+];
 
 export default function Processing() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [observations, setObservations] = useState<LiveObservation[]>([]);
-  const [newDims, setNewDims] = useState<Set<string>>(new Set());
   const [elapsed, setElapsed] = useState(0);
+  const [observations, setObservations] = useState<any[]>([]);
 
   const { data: assessment } = useQuery({
     queryKey: ["assessment", id],
     queryFn: () => apiFetch<any>(`/assessments/${id}`),
     enabled: !!id,
     refetchInterval: (query) => {
-      const s = query.state.data?.status;
-      if (s === "complete" || s === "partial" || s === "failed") return false;
-      return 3000;
+      const status = query.state.data?.status;
+      return status === "complete" || status === "partial" || status === "failed" ? false : 2500;
     },
   });
 
-  const rerunMutation = useMutation({
-    mutationFn: () => apiPost<any>(`/assessments/${id}/rerun`, {}),
+  const rerun = useMutation({
+    mutationFn: () => apiPost(`/assessments/${id}/rerun`, {}),
   });
 
-  // Elapsed timer
   useEffect(() => {
-    const timer = setInterval(() => setElapsed((e) => e + 1), 1000);
+    const timer = setInterval(() => setElapsed((value) => value + 1), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Poll live observations
-  const poll = useCallback(async () => {
+  useEffect(() => {
     if (!id) return;
-    try {
-      const data = await apiFetch<{ observations: LiveObservation[] }>(`/assessments/${id}/live-observations`);
-      setObservations((prev) => {
-        if (data.observations.length > prev.length) {
-          const newKeys = new Set(data.observations.slice(prev.length).map((o) => o.dimension));
-          setNewDims(newKeys);
-          setTimeout(() => setNewDims(new Set()), 2000);
-        }
-        return data.observations;
-      });
-    } catch { /* ignore */ }
-  }, [id]);
-
-  const status: Status = assessment?.status ?? "pending";
-  const isDone = status === "complete" || status === "partial";
-  const isProcessing = !isDone && status !== "failed";
-  const isStuck = status === "pending" && elapsed > 60;
-  const displayStatus = isDone ? "complete" : status;
-  const activeStepIdx = isDone
-    ? STEP_ORDER.length - 1
-    : Math.max(0, STEP_ORDER.indexOf(displayStatus));
+    const status = assessment?.status;
+    if (status === "complete" || status === "partial" || status === "failed") return;
+    let live = true;
+    const tick = async () => {
+      try {
+        const data = await apiFetch<any>(`/assessments/${id}/live-observations`);
+        if (live) setObservations(Array.isArray(data?.observations) ? data.observations : []);
+      } catch {
+        // ignore live polling failures
+      }
+    };
+    tick();
+    const interval = setInterval(tick, 2500);
+    return () => {
+      live = false;
+      clearInterval(interval);
+    };
+  }, [assessment?.status, id]);
 
   useEffect(() => {
-    if (!isProcessing && !isDone) return;
-    poll();
-    const interval = setInterval(poll, 2500);
-    return () => clearInterval(interval);
-  }, [isProcessing, isDone, poll]);
-
-  // Redirect to results when done
-  useEffect(() => {
-    if (isDone) {
-      const timer = setTimeout(() => navigate(`/app/assessment/${id}/results`, { replace: true }), 2500);
-      return () => clearTimeout(timer);
+    if (assessment?.status === "complete" || assessment?.status === "partial") {
+      const timeout = setTimeout(() => navigate(`/app/assessment/${id}/results`, { replace: true }), 1200);
+      return () => clearTimeout(timeout);
     }
-  }, [isDone, id, navigate]);
+  }, [assessment?.status, id, navigate]);
 
-  if (status === "failed") {
-    const isParseFail = assessment?.failure_stage === "parse";
+  const activeIndex = useMemo(() => {
+    const status = assessment?.status ?? "pending";
+    const stageIndex = STAGES.findIndex((stage) => stage.key === status);
+    if (stageIndex >= 0) return stageIndex;
+    if (status === "partial") return STAGES.length - 1;
+    return 0;
+  }, [assessment?.status]);
+
+  if (assessment?.status === "failed") {
     return (
-      <div className="min-h-screen">
-        <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
-          <div className="px-8 py-6">
-            <Link to="/app" className="inline-flex items-center gap-2 text-[13px] text-[#717182] hover:text-[#030213] transition-colors">
-              <ArrowLeft className="h-3.5 w-3.5" /> Back to Dashboard
+      <div className="min-h-screen bg-[#F7F4ED] text-[#161616]">
+        <header className="border-b border-[#D8D2C4] bg-[#FBF8F1]">
+          <div className="px-8 py-8">
+            <Link to="/app" className="inline-flex items-center gap-2 text-[13px] text-[#5C5C5C] hover:text-[#161616]">
+              <ArrowLeft className="h-4 w-4" />
+              Back to dashboard
             </Link>
           </div>
         </header>
-        <div className="p-8">
-          <div className="mx-auto max-w-2xl py-12 text-center">
-            <XCircle className="mx-auto mb-4 h-12 w-12 text-red-500" />
-            <h1 className="mb-2 text-xl font-medium text-[#030213]">
-              {isParseFail ? "We couldn't read your file" : "Evaluation failed"}
-            </h1>
-            <p className="mb-6 text-[14px] text-[#717182]">
-              {assessment?.failure_reason || "Something went wrong."}
-            </p>
-            <div className="flex justify-center gap-3">
-              {isParseFail ? (
-                <Link to="/app/upload/new">
-                  <Button>Upload a different file</Button>
-                </Link>
-              ) : (
-                <Button
-                  onClick={() => rerunMutation.mutate()}
-                  disabled={rerunMutation.isPending}
-                >
-                  {rerunMutation.isPending ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Retrying...</>
-                  ) : (
-                    <><RefreshCw className="mr-2 h-4 w-4" /> Try again</>
-                  )}
+        <div className="px-8 py-12">
+          <div className="mx-auto max-w-2xl">
+            <Card className="border border-[#E4B7B2] bg-white p-8 shadow-sm">
+              <div className="text-2xl tracking-tight">Processing failed.</div>
+              <div className="mt-3 text-[15px] leading-8 text-[#8E3B34]">
+                {assessment.failure_reason || "The assessment could not complete."}
+              </div>
+              <div className="mt-6 flex gap-3">
+                <Button onClick={() => rerun.mutate()} disabled={rerun.isPending}>
+                  {rerun.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                  Retry
                 </Button>
-              )}
-            </div>
+                <Link to="/app/upload/new">
+                  <Button variant="outline">Upload again</Button>
+                </Link>
+              </div>
+            </Card>
           </div>
         </div>
       </div>
     );
   }
 
-  const yourDims = observations.filter((o) => DIMENSION_LABELS[o.dimension]?.side === "you");
-  const aiDims = observations.filter((o) => DIMENSION_LABELS[o.dimension]?.side === "ai");
-
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
-        <div className="px-8 py-6">
-          <Link to="/app" className="mb-3 inline-flex items-center gap-2 text-[13px] text-[#717182] hover:text-[#030213] transition-colors">
-            <ArrowLeft className="h-3.5 w-3.5" /> Back to Dashboard
+    <div className="min-h-screen bg-[#F7F4ED] text-[#161616]">
+      <header className="border-b border-[#D8D2C4] bg-[#FBF8F1]">
+        <div className="px-8 py-8">
+          <Link to="/app" className="inline-flex items-center gap-2 text-[13px] text-[#5C5C5C] hover:text-[#161616]">
+            <ArrowLeft className="h-4 w-4" />
+            Back to dashboard
           </Link>
-          <h1 className="text-xl tracking-tight">
-            {isDone ? "Assessment Complete" : "Processing Assessment"}
-          </h1>
-          <p className="mt-1 text-[13px] text-[#717182]">
-            Assessment {id?.slice(0, 8)}...
-          </p>
+          <div className="mt-5">
+            <div className="text-[12px] uppercase tracking-[0.16em] text-[#6B6B66]">Processing</div>
+            <h1 className="mt-2 text-3xl tracking-tight">
+              {assessment?.status === "complete" || assessment?.status === "partial" ? "Assessment complete." : "Assessment in progress."}
+            </h1>
+            <p className="mt-2 text-[15px] text-[#5C5C5C]">
+              {elapsed < 60 ? `${elapsed}s elapsed` : `${Math.floor(elapsed / 60)}m ${elapsed % 60}s elapsed`}
+            </p>
+          </div>
         </div>
       </header>
 
-      <div className="p-8">
-        <div className="mx-auto max-w-2xl">
-          {/* Status header */}
-          <div className="mb-8 text-center">
-            {isDone ? (
-              <>
-                <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-green-500" />
-                <h2 className="text-lg font-medium text-[#030213]">Analysis complete</h2>
-                <p className="mt-1 text-[13px] text-[#717182]">Taking you to your results...</p>
-              </>
-            ) : (
-              <>
-                <Loader2 className="mx-auto mb-3 h-10 w-10 animate-spin text-blue-500" />
-                <h2 className="text-lg font-medium text-[#030213]">
-                  {STEP_LABELS[displayStatus] || "Processing..."}
-                </h2>
-                <p className="mt-1 text-[13px] text-[#717182]">
-                  {elapsed < 10 && "This usually takes 20\u201340 seconds"}
-                  {elapsed >= 10 && elapsed < 60 && `${elapsed}s elapsed`}
-                  {elapsed >= 60 && `${Math.floor(elapsed / 60)}m ${elapsed % 60}s elapsed`}
-                </p>
-              </>
-            )}
-          </div>
-
-          {/* Pipeline progress steps */}
-          {isProcessing && (
-            <Card className="mb-6 border border-[rgba(0,0,0,0.08)] bg-white shadow-sm">
-              <CardContent className="p-6">
-                <style>
-                  {`
-                    @keyframes poaw-pulse-bar {
-                      0%   { transform: translateX(-100%); }
-                      50%  { transform: translateX(0); }
-                      100% { transform: translateX(100%); }
-                    }
-                    @keyframes poaw-fade-in {
-                      from { opacity: 0; transform: translateY(4px); }
-                      to   { opacity: 1; transform: translateY(0); }
-                    }
-                  `}
-                </style>
-                <div className="space-y-3">
-                  {STEP_ORDER.slice(0, -1).map((step, i) => {
-                    const isActive = i === activeStepIdx;
-                    const isComplete = i < activeStepIdx;
-                    return (
-                      <div
-                        key={step}
-                        className="flex items-center gap-3"
-                        style={isActive ? { animation: "poaw-fade-in 400ms ease-out" } : {}}
-                      >
-                        <div className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold transition-all duration-500 ${
-                          isComplete ? "bg-emerald-100 text-emerald-700" :
-                          isActive ? "bg-blue-100 text-blue-700 ring-2 ring-blue-200" :
-                          "bg-[#F5F5F7] text-[#717182]"
-                        }`}>
-                          {isComplete ? <CheckCircle2 className="h-3.5 w-3.5" /> :
-                           isActive ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> :
-                           i + 1}
-                        </div>
-                        <div className="flex-1">
-                          <span className={`text-[13px] transition-colors duration-300 ${
-                            isActive ? "font-medium text-[#030213]" :
-                            isComplete ? "text-emerald-700" :
-                            "text-[#C0C0C5]"
-                          }`}>
-                            {STEP_LABELS[step]?.replace("...", "") || step}
-                          </span>
-                          {isActive && (
-                            <div className="mt-1.5 h-0.5 w-full overflow-hidden rounded-full bg-blue-100">
-                              <div
-                                className="h-full w-1/3 bg-blue-500"
-                                style={{ animation: "poaw-pulse-bar 1.5s ease-in-out infinite" }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Stuck warning */}
-          {isStuck && !rerunMutation.isPending && (
-            <Card className="mb-6 border border-amber-200 bg-amber-50 shadow-sm">
-              <CardContent className="p-5 flex items-start gap-3">
-                <Clock className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-[14px] font-medium text-amber-900">Taking longer than expected</p>
-                  <p className="mt-1 text-[13px] text-amber-700">
-                    The evaluation queue is busy. Your submission is in line and will be processed shortly.
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-shrink-0 border-amber-300"
-                  onClick={() => rerunMutation.mutate()}
-                  disabled={rerunMutation.isPending}
-                >
-                  <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                  Retry
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Dimension scores (appear during evaluation) */}
-          {observations.length > 0 && (
-            <div className="space-y-6">
-              {yourDims.length > 0 && (
-                <Card className="border border-[rgba(0,0,0,0.08)] bg-white shadow-sm">
-                  <CardContent className="p-6">
-                    <div className="mb-4 flex items-center gap-2">
-                      <User className="h-4 w-4 text-blue-600" />
-                      <h2 className="text-[14px] font-medium text-[#030213]">Your contribution</h2>
+      <div className="px-8 py-8">
+        <div className="mx-auto max-w-3xl">
+          <Card className="border border-[#D8D2C4] bg-white p-6 shadow-sm">
+            <div className="space-y-4">
+              {STAGES.map((stage, index) => {
+                const complete = index < activeIndex;
+                const active = index === activeIndex && assessment?.status !== "complete" && assessment?.status !== "partial";
+                const done = (assessment?.status === "complete" || assessment?.status === "partial") && index === STAGES.length - 1;
+                return (
+                  <div key={stage.key} className="flex items-center gap-4">
+                    <div className={`flex h-8 w-8 items-center justify-center rounded-full text-[12px] ${
+                      complete || done
+                        ? "bg-[#E7F2E9] text-[#2F6B3B]"
+                        : active
+                        ? "bg-[#E7EEF6] text-[#315D8A]"
+                        : "bg-[#F3EEE2] text-[#6B6B66]"
+                    }`}>
+                      {complete || done ? <CheckCircle2 className="h-4 w-4" /> : active ? <Loader2 className="h-4 w-4 animate-spin" /> : index + 1}
                     </div>
-                    <div className="space-y-3">
-                      {yourDims.map((obs) => {
-                        const dim = DIMENSION_LABELS[obs.dimension];
-                        const isNew = newDims.has(obs.dimension);
-                        return (
-                          <div key={obs.dimension} className={`rounded-lg p-3 transition-all duration-700 ${isNew ? "bg-blue-50 ring-1 ring-blue-200" : "bg-[#FAFAFA]"}`}>
-                            <div className="mb-1.5 flex items-baseline justify-between">
-                              <span className="text-[13px] font-medium text-[#030213]">{dim?.label ?? obs.dimension}</span>
-                              {obs.score !== null && !obs.skipped && (
-                                <span className={`text-[13px] font-medium ${obs.score >= 0.7 ? "text-emerald-600" : obs.score >= 0.4 ? "text-amber-600" : "text-red-600"}`}>
-                                  {Math.round(obs.score * 100)}%
-                                </span>
-                              )}
-                            </div>
-                            {obs.score !== null && !obs.skipped && (
-                              <div className="h-1.5 overflow-hidden rounded-full bg-gray-200">
-                                <div className={`h-full rounded-full transition-all duration-1000 ${scoreColor(obs.score)}`} style={{ width: `${Math.round(obs.score * 100)}%` }} />
-                              </div>
-                            )}
-                            <p className="mt-1 text-[11px] text-[#717182]">{dim?.desc}</p>
-                          </div>
-                        );
-                      })}
+                    <div className="flex-1">
+                      <div className={`text-[14px] ${active ? "text-[#161616]" : "text-[#5C5C5C]"}`}>{stage.label}</div>
+                      {active ? <div className="mt-1 h-1.5 rounded-full bg-[#E7EEF6]" /> : null}
                     </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {aiDims.length > 0 && (
-                <Card className="border border-[rgba(0,0,0,0.08)] bg-white shadow-sm">
-                  <CardContent className="p-6">
-                    <div className="mb-4 flex items-center gap-2">
-                      <Bot className="h-4 w-4 text-purple-600" />
-                      <h2 className="text-[14px] font-medium text-[#030213]">How you used AI</h2>
-                    </div>
-                    <div className="space-y-3">
-                      {aiDims.map((obs) => {
-                        const dim = DIMENSION_LABELS[obs.dimension];
-                        const isNew = newDims.has(obs.dimension);
-                        return (
-                          <div key={obs.dimension} className={`rounded-lg p-3 transition-all duration-700 ${isNew ? "bg-purple-50 ring-1 ring-purple-200" : "bg-[#FAFAFA]"}`}>
-                            <div className="mb-1.5 flex items-baseline justify-between">
-                              <span className="text-[13px] font-medium text-[#030213]">{dim?.label ?? obs.dimension}</span>
-                              {obs.score !== null && !obs.skipped && (
-                                <span className={`text-[13px] font-medium ${obs.score >= 0.7 ? "text-emerald-600" : obs.score >= 0.4 ? "text-amber-600" : "text-red-600"}`}>
-                                  {Math.round(obs.score * 100)}%
-                                </span>
-                              )}
-                            </div>
-                            {obs.score !== null && !obs.skipped && (
-                              <div className="h-1.5 overflow-hidden rounded-full bg-gray-200">
-                                <div className={`h-full rounded-full transition-all duration-1000 ${scoreColor(obs.score)}`} style={{ width: `${Math.round(obs.score * 100)}%` }} />
-                              </div>
-                            )}
-                            <p className="mt-1 text-[11px] text-[#717182]">{dim?.desc}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                  </div>
+                );
+              })}
             </div>
-          )}
+          </Card>
+
+          {observations.length > 0 ? (
+            <Card className="mt-6 border border-[#D8D2C4] bg-white p-6 shadow-sm">
+              <div className="text-[13px] uppercase tracking-[0.14em] text-[#6B6B66]">Live observations</div>
+              <div className="mt-4 space-y-3">
+                {observations.map((observation: any) => (
+                  <div key={observation.dimension} className="rounded-md border border-[#D8D2C4] bg-[#FBF8F1] px-4 py-3">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="text-[14px]">{observation.dimension}</div>
+                      {observation.score != null ? (
+                        <div className="text-[13px] text-[#315D8A]">{Math.round(observation.score * 100)}%</div>
+                      ) : null}
+                    </div>
+                    {observation.summary ? (
+                      <div className="mt-1 text-[12px] text-[#5C5C5C]">{observation.summary}</div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : null}
         </div>
       </div>
     </div>

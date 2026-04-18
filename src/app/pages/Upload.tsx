@@ -1,365 +1,158 @@
-import { useState, useCallback } from "react";
-import { useNavigate, Link } from "react-router";
-import {
-  Upload as UploadIcon,
-  FileText,
-  AlertCircle,
-  CheckCircle2,
-  Loader2,
-  ArrowLeft,
-  ArrowRight,
-  X,
-  Type,
-} from "lucide-react";
-import { usePresignUpload } from "../../hooks/useApi";
-import { apiPost } from "../../lib/api";
+import { useState } from "react";
+import { ArrowLeft, FileText, Loader2, Upload as UploadIcon, X } from "lucide-react";
+import { Link, useNavigate } from "react-router";
+import { toast } from "sonner";
+import { apiPost, apiFetch } from "../../lib/api";
 import { useAuthStore } from "../../stores/authStore";
 import { Button } from "../components/ui/button";
-import { Card, CardContent } from "../components/ui/card";
+import { Card } from "../components/ui/card";
 import { Progress } from "../components/ui/progress";
 
-const ALLOWED_EXTENSIONS = ["txt", "json", "pdf", "md", "zip", "jsonl"] as const;
-type AllowedExt = (typeof ALLOWED_EXTENSIONS)[number];
-
-const MAX_FILE_SIZE_DEFAULT = 10 * 1024 * 1024;
-const MAX_FILE_SIZE_DATA_SHARE = 200 * 1024 * 1024;
-
-type SubmitStep = "form" | "uploading" | "creating" | "done" | "error";
-type InputMode = "file" | "paste";
+type Stage = "idle" | "uploading" | "submitting" | "done";
 
 export default function Upload() {
   const navigate = useNavigate();
-
   const [files, setFiles] = useState<File[]>([]);
-  const [pastedText, setPastedText] = useState("");
-  const [inputMode, setInputMode] = useState<InputMode>("file");
-
-  const [step, setStep] = useState<SubmitStep>("form");
   const [progress, setProgress] = useState(0);
-  const [errorMsg, setErrorMsg] = useState("");
-  const [isDragging, setIsDragging] = useState(false);
-  const [allowDataUse, setAllowDataUse] = useState(false);
-  const [retentionConsent, setRetentionConsent] = useState(false);
+  const [stage, setStage] = useState<Stage>("idle");
+  const [error, setError] = useState<string | null>(null);
 
-  const maxFileSize = allowDataUse ? MAX_FILE_SIZE_DATA_SHARE : MAX_FILE_SIZE_DEFAULT;
-  const maxFileSizeLabel = allowDataUse ? "200 MB" : "10 MB";
-
-  const presignMutation = usePresignUpload();
-
-  const validateFile = (f: File): string | null => {
-    if (f.size > maxFileSize)
-      return `${f.name} is too large (${(f.size / 1024 / 1024).toFixed(1)} MB). Maximum is ${maxFileSizeLabel}.`;
-    if (f.size === 0) return `${f.name} is empty.`;
-    const ext = f.name.split(".").pop()?.toLowerCase();
-    if (!ext || !ALLOWED_EXTENSIONS.includes(ext as AllowedExt))
-      return `${f.name}: unsupported file type.`;
-    return null;
+  const addFiles = (nextFiles: File[]) => {
+    setFiles((current) => [...current, ...nextFiles]);
+    setError(null);
   };
 
-  const addFiles = (newFiles: File[]) => {
-    for (const f of newFiles) {
-      const err = validateFile(f);
-      if (err) { setErrorMsg(err); setStep("error"); return; }
-    }
-    setFiles((prev) => [...prev, ...newFiles]);
-    setErrorMsg(""); setStep("form");
-  };
-
-  const hasContent = inputMode === "file" ? files.length > 0 : pastedText.trim().length > 20;
-
-  const uploadFileToServer = async (presignedUrl: string, file: File): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open("PUT", presignedUrl);
-      const token = useAuthStore.getState().token;
-      if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-      xhr.onload = () => (xhr.status < 300 ? resolve() : reject(new Error(`Upload failed: ${xhr.status}`)));
-      xhr.onerror = () => reject(new Error("Network error during upload"));
-      const formData = new FormData();
-      formData.append("file", file);
-      xhr.send(formData);
+  const uploadOne = async (file: File) => {
+    const ext = file.name.split(".").pop()?.toLowerCase() || "txt";
+    const presign = await apiPost<any>("/uploads/presign", {
+      file_name: file.name,
+      file_type: ext,
+      file_size_bytes: file.size,
     });
+
+    const token = useAuthStore.getState().token;
+    const apiHost = import.meta.env.VITE_API_URL || "";
+    const apiBase = apiHost ? `${apiHost.replace(/\/$/, "")}/api/v1` : "/api/v1";
+
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", `${apiBase}/uploads/${presign.upload_id}/file`);
+      if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          setProgress(Math.round((event.loaded / event.total) * 100));
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error(`Upload failed (${xhr.status})`));
+      };
+      xhr.onerror = () => reject(new Error("Upload failed"));
+      const body = new FormData();
+      body.append("file", file);
+      xhr.send(body);
+    });
+
+    return apiPost<{ assessment_id: string }>("/uploads/complete", { upload_id: presign.upload_id });
   };
 
-  const handleSubmit = useCallback(async () => {
-    if (!hasContent || !retentionConsent) return;
-
-    setStep("uploading");
-    setProgress(0);
-
+  const submit = async () => {
+    if (files.length === 0) return;
+    setError(null);
+    setStage("uploading");
     try {
-      // Build file — merge multiple files into one if needed
-      let uploadFile: File;
-      if (inputMode === "paste") {
-        const blob = new Blob([pastedText], { type: "text/plain" });
-        uploadFile = new File([blob], "pasted-conversation.txt", { type: "text/plain" });
-      } else if (files.length === 1) {
-        uploadFile = files[0];
-      } else {
-        const parts: string[] = [];
-        for (const f of files) {
-          const text = await f.text();
-          parts.push(`\n\n--- ${f.name} ---\n\n${text}`);
-        }
-        const merged = parts.join("\n");
-        const blob = new Blob([merged], { type: "text/plain" });
-        uploadFile = new File([blob], `merged_${files.length}_conversations.txt`, { type: "text/plain" });
+      let fileToUpload = files[0];
+      if (files.length > 1) {
+        const merged = await Promise.all(files.map(async (file) => `\n\n--- ${file.name} ---\n\n${await file.text()}`));
+        fileToUpload = new File([merged.join("")], `merged-${files.length}-conversations.txt`, { type: "text/plain" });
       }
-
-      setProgress(20);
-
-      // Presign
-      const ext = uploadFile.name.split(".").pop()?.toLowerCase() as AllowedExt;
-      const presign = await presignMutation.mutateAsync({
-        file_name: uploadFile.name,
-        file_type: ext,
-        file_size_bytes: uploadFile.size,
-        allow_data_use: allowDataUse,
-      });
-
-      setProgress(40);
-
-      // Upload to server
-      await uploadFileToServer(presign.presigned_url, uploadFile);
-
-      setProgress(70);
-
-      // Complete — creates assessment, dispatches parse+evaluate
-      const complete = await apiPost<{ upload_id: string; assessment_id: string; status: string }>(
-        "/uploads/complete",
-        { upload_id: presign.upload_id }
-      );
-
-      setProgress(100);
-      setStep("done");
-
-      // Navigate to processing page
-      setTimeout(() => navigate(`/app/assessment/${complete.assessment_id}/processing`), 800);
-
-    } catch (error) {
-      setErrorMsg(error instanceof Error ? error.message : "Something went wrong. Please try again.");
-      setStep("error");
+      const result = await uploadOne(fileToUpload);
+      setStage("done");
+      toast.success("Upload submitted");
+      navigate(`/app/assessment/${result.assessment_id}/processing`);
+    } catch (err: any) {
+      setStage("idle");
+      setError(err?.message ?? "Upload failed");
     }
-  }, [files, pastedText, inputMode, hasContent, retentionConsent, allowDataUse, presignMutation, navigate, maxFileSize]);
+  };
 
-  const isSubmitting = step === "uploading" || step === "creating";
-  const canSubmit = hasContent && retentionConsent && !isSubmitting;
+  const busy = stage === "uploading" || stage === "submitting";
 
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
-        <div className="px-8 py-6">
-          <Link
-            to="/app/upload"
-            className="mb-3 inline-flex items-center gap-2 text-[13px] text-[#717182] hover:text-[#030213] transition-colors"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Back to Upload Pool
+    <div className="min-h-screen bg-[#F7F4ED] text-[#161616]">
+      <header className="border-b border-[#D8D2C4] bg-[#FBF8F1]">
+        <div className="px-8 py-8">
+          <Link to="/app/upload" className="inline-flex items-center gap-2 text-[13px] text-[#5C5C5C] hover:text-[#161616]">
+            <ArrowLeft className="h-4 w-4" />
+            Back to pool
           </Link>
-          <h1 className="text-xl tracking-tight">Upload Conversations</h1>
-          <p className="mt-1 text-[13px] text-[#717182]">
-            Upload your AI conversation exports for analysis
-          </p>
+          <div className="mt-5">
+            <div className="text-[12px] uppercase tracking-[0.16em] text-[#6B6B66]">Upload</div>
+            <h1 className="mt-2 text-3xl tracking-tight">Add conversation exports.</h1>
+            <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-[#5C5C5C]">
+              Pick files, watch the progress bar move, submit, and go straight to processing with the new assessment.
+            </p>
+          </div>
         </div>
       </header>
 
-      <div className="p-8">
-        <div className="mx-auto max-w-2xl">
-          {/* Input mode toggle */}
-          {step === "form" && (
-            <>
-              <Card className="mb-6 border border-[rgba(0,0,0,0.08)] bg-white shadow-sm">
-                <CardContent className="p-6">
-                  <div className="mb-4 flex gap-2">
-                    <button onClick={() => setInputMode("file")} disabled={isSubmitting}
-                      className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors ${inputMode === "file" ? "bg-[#030213] text-white" : "bg-[#F5F5F7] text-[#717182] hover:bg-[#EAEAED]"}`}>
-                      <UploadIcon className="h-3.5 w-3.5" /> Upload files
-                    </button>
-                    <button onClick={() => setInputMode("paste")} disabled={isSubmitting}
-                      className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors ${inputMode === "paste" ? "bg-[#030213] text-white" : "bg-[#F5F5F7] text-[#717182] hover:bg-[#EAEAED]"}`}>
-                      <Type className="h-3.5 w-3.5" /> Paste text
-                    </button>
+      <div className="px-8 py-8">
+        <div className="mx-auto max-w-3xl">
+          <Card className="border border-[#D8D2C4] bg-white p-6 shadow-sm">
+            <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#D8D2C4] bg-[#FBF8F1] px-6 py-12 text-center transition-colors hover:bg-[#F3EEE2]">
+              <UploadIcon className="mb-3 h-8 w-8 text-[#315D8A]" />
+              <div className="text-[16px]">Drop files here or choose them manually</div>
+              <div className="mt-1 text-[13px] text-[#5C5C5C]">TXT, JSON, Markdown, ZIP, JSONL</div>
+              <input
+                type="file"
+                multiple
+                accept=".txt,.json,.md,.zip,.jsonl,.pdf"
+                className="hidden"
+                onChange={(event) => addFiles(Array.from(event.target.files ?? []))}
+              />
+            </label>
+
+            {files.length > 0 ? (
+              <div className="mt-4 space-y-2">
+                {files.map((file, index) => (
+                  <div key={`${file.name}-${index}`} className="flex items-center gap-3 rounded-md border border-[#D8D2C4] bg-[#FBF8F1] px-4 py-3">
+                    <FileText className="h-4 w-4 text-[#315D8A]" />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[14px]">{file.name}</div>
+                      <div className="text-[12px] text-[#6B6B66]">{(file.size / 1024 / 1024).toFixed(2)} MB</div>
+                    </div>
+                    {!busy ? (
+                      <button onClick={() => setFiles((current) => current.filter((_, fileIndex) => fileIndex !== index))}>
+                        <X className="h-4 w-4 text-[#6B6B66]" />
+                      </button>
+                    ) : null}
                   </div>
-
-                  {inputMode === "file" ? (
-                    <>
-                      <div
-                        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                        onDragLeave={() => setIsDragging(false)}
-                        onDrop={(e) => { e.preventDefault(); setIsDragging(false); const d = Array.from(e.dataTransfer.files); if (d.length) addFiles(d); }}
-                        className={`cursor-pointer rounded-xl border-2 border-dashed p-8 text-center transition-all ${isDragging ? "border-blue-400 bg-blue-50" : "border-[rgba(0,0,0,0.12)] hover:border-[rgba(0,0,0,0.2)]"}`}
-                      >
-                        <UploadIcon className="mx-auto mb-2 h-8 w-8 text-[#717182]" />
-                        <p className="mb-1 text-[14px] text-[#030213]">Drop conversation exports here</p>
-                        <p className="mb-4 text-[12px] text-[#717182]">JSON, TXT, Markdown, ZIP, JSONL — any chat export format</p>
-                        <label className="cursor-pointer">
-                          <span className="inline-flex items-center gap-2 rounded-md bg-[#030213] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#1a1a2e]">
-                            <UploadIcon className="h-3.5 w-3.5" /> Choose files
-                          </span>
-                          <input type="file" accept=".txt,.json,.pdf,.md,.zip,.jsonl" multiple
-                            onChange={(e) => { const s = Array.from(e.target.files ?? []); if (s.length) addFiles(s); e.target.value = ""; }} className="hidden" />
-                        </label>
-                      </div>
-                      {files.length > 0 && (
-                        <div className="mt-3 space-y-2">
-                          {files.map((f, i) => (
-                            <div key={`f-${f.name}-${i}`} className="flex items-center gap-3 rounded-lg border border-[rgba(0,0,0,0.08)] bg-[#F5F5F7] px-4 py-3">
-                              <FileText className="h-5 w-5 flex-shrink-0 text-blue-600" />
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-[13px] font-medium text-[#030213]">{f.name}</p>
-                                <p className="text-[11px] text-[#717182]">{(f.size / 1024 / 1024).toFixed(2)} MB</p>
-                              </div>
-                              {!isSubmitting && (
-                                <button onClick={() => setFiles((p) => p.filter((_, j) => j !== i))} className="text-[#717182] hover:text-red-500">
-                                  <X className="h-4 w-4" />
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <textarea value={pastedText} onChange={(e) => setPastedText(e.target.value)}
-                        placeholder={"Paste the full conversation here. Include both your messages and the AI's responses.\n\nExample:\nYou: Can you help me with my project?\nAssistant: Sure! Let's start by..."}
-                        disabled={isSubmitting} rows={10}
-                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" />
-                      <p className="mt-2 text-[11px] text-[#717182]">
-                        {pastedText.length > 0 ? `${pastedText.length.toLocaleString()} characters` : "Minimum 20 characters"}
-                      </p>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Consent checkboxes */}
-              <Card className="mb-6 border border-[rgba(0,0,0,0.08)] bg-white shadow-sm">
-                <CardContent className="p-6 space-y-3">
-                  <label className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors text-left">
-                    <input
-                      type="checkbox"
-                      checked={allowDataUse}
-                      onChange={(e) => setAllowDataUse(e.target.checked)}
-                      className="mt-0.5 w-4 h-4 rounded border-gray-300"
-                    />
-                    <div>
-                      <p className="text-[13px] font-medium text-[#030213]">
-                        Allow anonymized data use{" "}
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-100 text-emerald-700">
-                          200 MB uploads
-                        </span>
-                      </p>
-                      <p className="text-[11px] text-[#717182] mt-0.5">
-                        Your data will be anonymized and used to improve evaluation accuracy.
-                      </p>
-                    </div>
-                  </label>
-
-                  <label
-                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors text-left ${
-                      retentionConsent
-                        ? "border-blue-300 bg-blue-50"
-                        : "border-amber-300 bg-amber-50 hover:bg-amber-100"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={retentionConsent}
-                      onChange={(e) => setRetentionConsent(e.target.checked)}
-                      className="mt-0.5 w-4 h-4 rounded border-gray-300"
-                    />
-                    <div>
-                      <p className="text-[13px] font-medium text-[#030213]">
-                        Data retention acknowledgment{" "}
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-700">
-                          Required
-                        </span>
-                      </p>
-                      <p className="text-[11px] text-[#717182] mt-0.5">
-                        I understand my uploaded files will be automatically deleted 72 hours after
-                        evaluation completes. Only structured extracts and excerpts will be retained.
-                      </p>
-                    </div>
-                  </label>
-                </CardContent>
-              </Card>
-            </>
-          )}
-
-          {/* Error */}
-          {step === "error" && errorMsg && (
-            <div className="mb-6 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
-              <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600" />
-              <div>
-                <p className="text-[14px] font-medium text-red-900">Upload failed</p>
-                <p className="mt-0.5 text-[13px] text-red-700">{errorMsg}</p>
-                <Button onClick={() => { setStep("form"); setErrorMsg(""); }} variant="outline" size="sm" className="mt-3">
-                  Try again
-                </Button>
+                ))}
               </div>
-            </div>
-          )}
+            ) : null}
 
-          {/* Progress */}
-          {isSubmitting && (
-            <Card className="mb-6 border border-blue-200 bg-blue-50 shadow-sm">
-              <CardContent className="p-6">
-                <div className="mb-3 flex items-center gap-2">
-                  <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                  <p className="text-[14px] font-medium text-blue-900">
-                    {progress < 40 && "Preparing upload..."}
-                    {progress >= 40 && progress < 70 && "Uploading your files..."}
-                    {progress >= 70 && "Submitting for analysis..."}
-                  </p>
+            {busy ? (
+              <div className="mt-5">
+                <div className="mb-2 text-[13px] text-[#5C5C5C]">
+                  {stage === "uploading" ? "Uploading file..." : "Submitting assessment..."}
                 </div>
                 <Progress value={progress} className="h-2" />
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            ) : null}
 
-          {/* Done */}
-          {step === "done" && (
-            <Card className="mb-6 border border-green-200 bg-green-50 shadow-sm">
-              <CardContent className="flex items-center gap-3 p-6">
-                <CheckCircle2 className="h-6 w-6 text-green-600" />
-                <div>
-                  <p className="text-[14px] font-medium text-green-900">Submitted!</p>
-                  <p className="text-[13px] text-green-700">Taking you to processing...</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+            {error ? (
+              <div className="mt-4 rounded-md border border-[#E4B7B2] bg-[#FBEDEC] px-4 py-3 text-[13px] text-[#8E3B34]">
+                {error}
+              </div>
+            ) : null}
 
-          {/* Submit button */}
-          {step === "form" && (
-            <>
-              <Button
-                onClick={handleSubmit}
-                disabled={!canSubmit}
-                className="w-full py-6 text-[15px]"
-                size="lg"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    Analyze my conversations
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </>
-                )}
+            <div className="mt-5 flex justify-end">
+              <Button size="lg" onClick={submit} disabled={files.length === 0 || busy}>
+                {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Analyze conversations
               </Button>
-
-              <p className="mt-4 text-center text-[11px] text-[#717182]">
-                Your uploaded files are automatically deleted 72 hours after evaluation completes.
-                Only structured analysis results are retained.
-              </p>
-            </>
-          )}
+            </div>
+          </Card>
         </div>
       </div>
     </div>

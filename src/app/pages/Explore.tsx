@@ -1,127 +1,112 @@
-import { Search, Globe, TrendingUp, Users, ArrowRight } from "lucide-react";
-import { Button } from "../components/ui/button";
-import { Card } from "../components/ui/card";
-import { Input } from "../components/ui/input";
+import { useMemo, useState } from "react";
+import { Globe } from "lucide-react";
 import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
+import { Card } from "../components/ui/card";
 import { apiFetch } from "../../lib/api";
 
 export default function Explore() {
-  const { data: directory } = useQuery({
-    queryKey: ["directory-public"],
-    queryFn: () => apiFetch<any>("/directory"),
+  const [signalFilter, setSignalFilter] = useState("");
+  const { data, isLoading } = useQuery({
+    queryKey: ["directory-public", signalFilter],
+    queryFn: () => apiFetch<any>(`/directory${signalFilter ? `?signal=${encodeURIComponent(signalFilter)}` : ""}`),
   });
 
-  const isOpen = directory?.enabled ?? false;
-  const profiles: any[] = isOpen ? (directory?.profiles ?? directory?.items ?? []) : [];
-  const totalPublished = directory?.total_published ?? 0;
-  const threshold = directory?.threshold ?? 15;
+  const entries = Array.isArray(data?.entries) ? data.entries : [];
+  const clusters = data?.signal_clusters ?? {};
+  const filterKeys = useMemo(() => Object.keys(clusters), [clusters]);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-[13px] text-[#6B6B66]">
+        Loading directory...
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
-      {/* Header */}
-      <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
-        <div className="mx-auto max-w-5xl px-8 py-12">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-[#F7F4ED] text-[#161616]">
+      <header className="border-b border-[#D8D2C4] bg-[#FBF8F1]">
+        <div className="mx-auto max-w-5xl px-8 py-10">
+          <div className="flex items-center gap-3">
+            <Globe className="h-6 w-6 text-[#315D8A]" />
             <div>
-              <div className="mb-4 flex items-center gap-3">
-                <Globe className="h-8 w-8" />
-                <h1 className="text-4xl tracking-tight">Explore</h1>
-              </div>
-              <p className="text-xl text-[#717182]">
-                Discover verified AI operators and their proof of work
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <Link to="/leaderboard">
-                <Button variant="outline">
-                  <TrendingUp className="mr-2 h-4 w-4" />
-                  Leaderboard
-                </Button>
-              </Link>
-              <Link to="/upload">
-                <Button>
-                  Upload your conversations
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
+              <div className="text-[12px] uppercase tracking-[0.16em] text-[#6B6B66]">Directory</div>
+              <h1 className="mt-1 text-3xl tracking-tight">Browse published proof pages.</h1>
             </div>
           </div>
+          <p className="mt-3 max-w-3xl text-[15px] leading-relaxed text-[#5C5C5C]">
+            This is the public browse layer. Once a proof page is published and opted in, it should show up here.
+          </p>
         </div>
       </header>
 
       <div className="mx-auto max-w-5xl px-8 py-8">
-        {isOpen ? (
+        {data?.enabled === false ? (
+          <Card className="border border-[#D8D2C4] bg-white p-8 shadow-sm">
+            <div className="text-[18px] tracking-tight">Directory not open yet</div>
+            <div className="mt-2 text-[14px] text-[#5C5C5C]">
+              {data?.message || "The directory opens after enough proof pages have been published."}
+            </div>
+          </Card>
+        ) : (
           <>
-            {/* Search */}
-            <div className="mb-8 flex items-center gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#717182]" />
-                <Input placeholder="Search operators by name or skill..." className="pl-10" />
+            {filterKeys.length > 0 ? (
+              <div className="mb-6 flex flex-wrap gap-2">
+                <button
+                  onClick={() => setSignalFilter("")}
+                  className={`rounded-full border px-3 py-1.5 text-[12px] ${
+                    !signalFilter ? "border-[#315D8A] bg-[#315D8A] text-white" : "border-[#D8D2C4] bg-white text-[#5C5C5C]"
+                  }`}
+                >
+                  All
+                </button>
+                {filterKeys.map((signal) => (
+                  <button
+                    key={signal}
+                    onClick={() => setSignalFilter(signal)}
+                    className={`rounded-full border px-3 py-1.5 text-[12px] ${
+                      signalFilter === signal ? "border-[#315D8A] bg-[#315D8A] text-white" : "border-[#D8D2C4] bg-white text-[#5C5C5C]"
+                    }`}
+                  >
+                    {signal} ({clusters[signal]})
+                  </button>
+                ))}
               </div>
+            ) : null}
+
+            <div className="mb-4 text-[13px] text-[#6B6B66]">
+              {data?.total_published ?? entries.length} published proof pages
             </div>
 
-            {/* Profile grid */}
-            <div className="grid grid-cols-3 gap-4">
-              {profiles.map((profile: any) => (
-                <Link key={profile.id ?? profile.handle} to={`/@${profile.handle ?? profile.slug ?? profile.id}`}>
-                  <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-                    <div className="mb-3 text-[15px] font-medium">{profile.name ?? profile.handle}</div>
-                    {profile.archetype && (
-                      <div className="mb-3 text-[13px] text-[#717182] uppercase tracking-wider">
-                        {profile.archetype}
-                      </div>
-                    )}
-                    <div className="flex items-center gap-4 text-[13px]">
-                      {profile.hls != null && (
-                        <span style={{ color: "var(--score-hls)" }}>{profile.hls}% HLS</span>
-                      )}
-                      {profile.cai != null && (
-                        <span style={{ color: "var(--score-cai)" }}>{profile.cai}x CAI</span>
-                      )}
+            <div className="grid grid-cols-2 gap-4">
+              {entries.map((entry: any) => (
+                <Link key={entry.slug ?? entry.public_token} to={entry.url} className="block">
+                  <Card className="h-full border border-[#D8D2C4] bg-white p-6 shadow-sm transition-colors hover:bg-[#FBF8F1]">
+                    <div className="text-[18px] tracking-tight">{entry.headline || "Untitled proof page"}</div>
+                    <div className="mt-2 text-[14px] leading-7 text-[#5C5C5C]">
+                      {entry.summary || "No summary provided."}
                     </div>
+                    {Array.isArray(entry.signals) && entry.signals.length > 0 ? (
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {entry.signals.slice(0, 4).map((signal: any, index: number) => (
+                          <div key={`${signal.id ?? signal.label ?? index}`} className="rounded-full border border-[#D8D2C4] bg-[#FBF8F1] px-3 py-1 text-[12px] text-[#5C5C5C]">
+                            {signal.label ?? signal.id ?? String(signal)}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
                   </Card>
                 </Link>
               ))}
             </div>
 
-            {profiles.length === 0 && (
-              <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-16 text-center">
-                <Users className="mx-auto mb-4 h-10 w-10 text-[#717182]" />
-                <p className="text-[15px] text-[#717182]">No public profiles yet.</p>
+            {entries.length === 0 ? (
+              <Card className="border border-dashed border-[#D8D2C4] bg-[#FBF8F1] p-8 text-[14px] text-[#5C5C5C] shadow-sm">
+                No proof pages match this filter.
               </Card>
-            )}
+            ) : null}
           </>
-        ) : (
-          /* Directory not yet open */
-          <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-16 text-center">
-            <Users className="mx-auto mb-6 h-12 w-12 text-[#717182]" />
-            <h2 className="mb-4 text-2xl tracking-tight">Directory opens soon</h2>
-            <p className="mx-auto mb-2 max-w-md text-[15px] text-[#717182]">
-              The explore directory opens when {threshold} proof pages are published.
-            </p>
-            <p className="mx-auto mb-8 max-w-md text-[15px] text-[#717182]">
-              Currently <span className="font-medium text-[#030213]">{totalPublished}</span> of {threshold} published.
-            </p>
-
-            {/* Progress bar */}
-            <div className="mx-auto mb-8 max-w-xs">
-              <div className="h-2 overflow-hidden rounded-full bg-gray-200">
-                <div
-                  className="h-full rounded-full bg-[#030213] transition-all"
-                  style={{ width: `${Math.min(100, (totalPublished / threshold) * 100)}%` }}
-                />
-              </div>
-              <p className="mt-2 text-[12px] text-[#717182]">{totalPublished}/{threshold} proof pages</p>
-            </div>
-
-            <Link
-              to="/upload"
-              className="inline-block text-[15px] text-[#030213] underline underline-offset-4 hover:text-[#717182]"
-            >
-              Upload your conversations and be one of the first →
-            </Link>
-          </Card>
         )}
       </div>
     </div>

@@ -1,195 +1,208 @@
-import { Plus, FolderKanban, Sparkles, ChevronRight, Loader2 } from "lucide-react";
-import { Button } from "../components/ui/button";
-import { Card } from "../components/ui/card";
-import { Link } from "react-router";
+import { FolderKanban, Loader2, Plus, Sparkles } from "lucide-react";
 import { useState } from "react";
-import { CreateProjectDialog } from "../components/CreateProjectDialog";
-import { PaymentModal } from "../components/PaymentModal";
-import { useProjects, useConversations, useTriggerClustering } from "../../hooks/useApi";
+import { Link } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Card } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { useAiCluster, useCreateProject, useProjects } from "../../hooks/useApi";
+import { apiFetch, apiPost } from "../../lib/api";
+import { asArray, isoDate } from "../lib/poaw";
 
 export default function Projects() {
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const qc = useQueryClient();
-  const clusterMutation = useTriggerClustering();
+  const { data: projectsData, isLoading } = useProjects();
+  const createProject = useCreateProject();
+  const aiCluster = useAiCluster();
+  const [creating, setCreating] = useState(false);
+  const [clustering, setClustering] = useState(false);
+  const [title, setTitle] = useState("");
 
-  const { data: projectsData, isLoading: projectsLoading } = useProjects();
-  const { data: convsData, isLoading: convsLoading } = useConversations();
+  const [unassigned, setUnassigned] = useState<any[] | null>(null);
+  const [loadingUnassigned, setLoadingUnassigned] = useState(false);
 
-  const isLoading = projectsLoading || convsLoading;
+  const loadUnassigned = async () => {
+    setLoadingUnassigned(true);
+    try {
+      const data = await apiFetch<any>("/projects/unassigned");
+      setUnassigned(data?.conversations ?? []);
+    } catch (error: any) {
+      toast.error(error?.message ?? "Failed to load unassigned conversations");
+    } finally {
+      setLoadingUnassigned(false);
+    }
+  };
 
-  if (isLoading) return (
-    <div className="flex min-h-screen items-center justify-center text-[13px] text-[#717182]">Loading...</div>
-  );
+  const handleCreate = () => {
+    if (!title.trim()) return;
+    createProject.mutate(
+      { title: title.trim() },
+      {
+        onSuccess: () => {
+          setTitle("");
+          setCreating(false);
+          toast.success("Project created");
+        },
+        onError: (error: any) => toast.error(error?.message ?? "Failed to create project"),
+      },
+    );
+  };
 
-  const projects = Array.isArray(projectsData) ? projectsData : projectsData?.data ?? projectsData?.items ?? [];
-  const conversations = Array.isArray(convsData) ? convsData : convsData?.data ?? convsData?.items ?? [];
+  const handleCluster = () => {
+    setClustering(true);
+    aiCluster.mutate(undefined, {
+      onSuccess: (data: any) => {
+        const count = data?.projects?.length ?? 0;
+        toast.success(`AI clustering created ${count} project${count === 1 ? "" : "s"}`);
+        qc.invalidateQueries({ queryKey: ["projects"] });
+        qc.invalidateQueries({ queryKey: ["pool"] });
+        loadUnassigned();
+      },
+      onError: (error: any) => toast.error(error?.message ?? "Clustering failed"),
+      onSettled: () => setClustering(false),
+    });
+  };
 
-  // Derive hasAISorted from real data: user has at least one project
-  const hasAISorted = projects.length > 0;
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-[13px] text-[#6B6B66]">
+        Loading projects...
+      </div>
+    );
+  }
+
+  const projects = asArray<any>(projectsData);
 
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
-        <div className="px-8 py-6">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-[#F7F4ED] text-[#161616]">
+      <header className="border-b border-[#D8D2C4] bg-[#FBF8F1]">
+        <div className="px-8 py-8">
+          <div className="flex items-start justify-between gap-6">
             <div>
-              <h1 className="text-xl tracking-tight">Projects</h1>
-              <p className="mt-1 text-[13px] text-[#717182]">
-                {!hasAISorted
-                  ? "Your conversations are uploaded but not yet organized into structured work"
-                  : "AI-organized work streams based on your conversation history"}
+              <div className="text-[12px] uppercase tracking-[0.16em] text-[#6B6B66]">Projects</div>
+              <h1 className="mt-2 text-3xl tracking-tight">Group conversations into real work.</h1>
+              <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-[#5C5C5C]">
+                Suggested projects can be confirmed later. The key here is to make sure uploaded conversations
+                land in the right work stream before you evaluate them.
               </p>
             </div>
-            <Button onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Project
+            <Button variant="outline" onClick={loadUnassigned} disabled={loadingUnassigned}>
+              {loadingUnassigned ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              View unassigned
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="p-8">
-        {!hasAISorted ? (
-          <>
-            {/* Raw Conversations (Pre-Sort) */}
-            <div className="mb-6">
-              <div className="mb-4 flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-[#C0C0C5]" />
-                <h2 className="text-[15px] text-[#717182]">Raw Conversations (Pre-Sort)</h2>
+      <div className="px-8 py-8">
+        <div className="grid grid-cols-[1.4fr_1fr] gap-6">
+          <Card className="border border-[#D8D2C4] bg-white p-6 shadow-sm">
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <div className="text-[13px] uppercase tracking-[0.14em] text-[#6B6B66]">Existing projects</div>
+                <div className="mt-1 text-[14px] text-[#5C5C5C]">{projects.length} work streams in the workspace</div>
               </div>
-              <p className="mb-6 text-[13px] text-[#717182] max-w-2xl">
-                These are your uploaded conversations. They are not yet organized or evaluated.
-              </p>
+              <Button onClick={() => setCreating((value) => !value)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create project
+              </Button>
+            </div>
 
-              {conversations.length === 0 ? (
-                <Card className="border border-[rgba(0,0,0,0.06)] bg-[#FAFAFA] p-8 text-center shadow-none">
-                  <p className="text-[13px] text-[#717182]">No conversations uploaded yet.</p>
-                </Card>
-              ) : (
-                <Card className="border border-[rgba(0,0,0,0.06)] bg-[#FAFAFA] shadow-none">
-                  <div className="divide-y divide-[rgba(0,0,0,0.04)]">
-                    {conversations.map((conv: any) => (
-                      <div
-                        key={conv.id}
-                        className="px-6 py-3 hover:bg-white/50 transition-colors"
-                      >
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="text-[14px] text-[#717182]">{conv.title ?? conv.filename ?? conv.id}</div>
+            {creating ? (
+              <div className="mb-5 rounded-lg border border-[#D8D2C4] bg-[#FBF8F1] p-4">
+                <div className="mb-2 text-[13px] text-[#5C5C5C]">Manual project title</div>
+                <input
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder="Example: March launch materials"
+                  className="mb-3 w-full rounded-md border border-[#D8D2C4] bg-white px-3 py-2 text-sm outline-none"
+                />
+                <div className="flex gap-2">
+                  <Button onClick={handleCreate} disabled={createProject.isPending || !title.trim()}>
+                    Create
+                  </Button>
+                  <Button variant="outline" onClick={() => setCreating(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            {projects.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-[#D8D2C4] bg-[#FBF8F1] px-5 py-8 text-[14px] text-[#5C5C5C]">
+                No projects yet. Run clustering or create one manually.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {projects.map((project) => (
+                  <Link key={project.id} to={`/app/projects/${project.id}`} className="block">
+                    <div className="rounded-lg border border-[#D8D2C4] bg-[#FBF8F1] px-4 py-4 transition-colors hover:bg-[#F3EEE2]">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <div className="flex items-center gap-2 text-[15px]">
+                            <FolderKanban className="h-4 w-4 text-[#315D8A]" />
+                            {project.title}
                           </div>
-                          <div className="font-mono text-[12px] text-[#C0C0C5] whitespace-nowrap">
-                            {new Date(conv.created_at ?? conv.timestamp ?? Date.now()).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
+                          <div className="mt-1 text-[13px] text-[#5C5C5C]">
+                            {project.conversation_count} conversations • {project.status}
                           </div>
+                          {project.description ? (
+                            <div className="mt-2 text-[13px] text-[#5C5C5C]">{project.description}</div>
+                          ) : null}
+                        </div>
+                        <div className="text-right text-[12px] text-[#6B6B66]">
+                          <div>{isoDate(project.created_at)}</div>
+                          {project.cluster_confidence != null ? (
+                            <div className="mt-1">confidence {Math.round(project.cluster_confidence * 100)}%</div>
+                          ) : null}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </Card>
-              )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </Card>
 
-              <div className="mt-6 flex items-center justify-center">
-                <Button size="lg" onClick={() => setPaymentModalOpen(true)}>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Run AI Sort — $5
-                </Button>
+          <Card className="border border-[#D8D2C4] bg-[#FBF8F1] p-6 shadow-sm">
+            <div className="text-[13px] uppercase tracking-[0.14em] text-[#6B6B66]">Tools</div>
+            <div className="mt-4 rounded-lg border border-[#D8D2C4] bg-white p-4">
+              <div className="flex items-center gap-2 text-[15px]">
+                <Sparkles className="h-4 w-4 text-[#315D8A]" />
+                AI clustering
               </div>
-            </div>
-          </>
-        ) : (
-          <>
-            {/* AI-Organized Work (Post-Sort) */}
-            <div className="mb-6">
-              <div className="mb-4 flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full" style={{ backgroundColor: 'var(--score-execution)' }} />
-                <h2 className="text-[15px]">AI-Organized Work (Post-Sort)</h2>
-              </div>
-              <p className="mb-6 text-[13px] text-[#3A3A3A] max-w-2xl">
-                Your conversations have been analyzed and grouped into real work streams.
+              <p className="mt-2 text-[13px] leading-relaxed text-[#5C5C5C]">
+                This reads unassigned conversations and proposes projects. You still control the final structure.
               </p>
+              <Button className="mt-4 w-full" onClick={handleCluster} disabled={clustering || aiCluster.isPending}>
+                {clustering || aiCluster.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Run clustering
+              </Button>
+            </div>
 
-              {projects.length === 0 ? (
-                <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-8 text-center shadow-sm">
-                  <p className="mb-4 text-[13px] text-[#717182]">No projects yet. Create one manually or run free clustering.</p>
-                  <Button
-                    variant="outline"
-                    disabled={clusterMutation.isPending}
-                    onClick={() => {
-                      clusterMutation.mutate(undefined, {
-                        onSuccess: (data: any) => {
-                          const n = data?.projects?.length ?? data?.project_count ?? 0;
-                          toast.success(`Clustering complete — ${n} project${n !== 1 ? "s" : ""} created`);
-                          qc.invalidateQueries({ queryKey: ["projects"] });
-                          qc.invalidateQueries({ queryKey: ["pool"] });
-                        },
-                        onError: (err: any) => toast.error(err?.message ?? "Clustering failed"),
-                      });
-                    }}
-                  >
-                    {clusterMutation.isPending ? (
-                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Clustering...</>
-                    ) : (
-                      <>Run Free Clustering</>
-                    )}
-                  </Button>
-                </Card>
+            <div className="mt-4 rounded-lg border border-[#D8D2C4] bg-white p-4">
+              <div className="text-[15px]">Unassigned conversations</div>
+              {unassigned === null ? (
+                <p className="mt-2 text-[13px] text-[#5C5C5C]">Load them to see what still needs to be placed.</p>
+              ) : unassigned.length === 0 ? (
+                <p className="mt-2 text-[13px] text-[#5C5C5C]">Everything is assigned.</p>
               ) : (
-                <div className="space-y-4">
-                  {projects.map((project: any) => (
-                    <Link
-                      key={project.id}
-                      to={`/app/projects/${project.id}`}
-                      className="block"
-                    >
-                      <Card className="border border-[rgba(0,0,0,0.08)] bg-white shadow-sm hover:shadow-md transition-shadow">
-                        <div className="px-6 py-5">
-                          <div className="flex items-start justify-between gap-6">
-                            <div className="flex-1">
-                              <div className="mb-1 flex items-center gap-3">
-                                <FolderKanban className="h-4 w-4" style={{ color: 'var(--score-execution)' }} />
-                                <div className="text-[15px]">{project.title ?? project.name ?? "Untitled project"}</div>
-                              </div>
-                              <p className="mb-3 ml-7 text-[13px] text-[#717182]">{project.description ?? ""}</p>
-                              <div className="ml-7 flex items-center gap-4 text-[13px] text-[#717182]">
-                                <span>{project.conversation_count ?? 0} conversations</span>
-                                <span className="font-mono">
-                                  Created{" "}
-                                  {new Date(project.created_at ?? Date.now()).toLocaleDateString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                  })}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <ChevronRight className="h-5 w-5 text-[#717182]" />
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
-                    </Link>
+                <div className="mt-3 space-y-2">
+                  {unassigned.slice(0, 6).map((conversation) => (
+                    <div key={conversation.upload_id} className="rounded-md border border-[#D8D2C4] bg-[#FBF8F1] px-3 py-2">
+                      <div className="text-[13px]">{conversation.title}</div>
+                      <div className="mt-1 text-[12px] text-[#6B6B66]">{conversation.turn_count} turns</div>
+                    </div>
                   ))}
                 </div>
               )}
+              {unassigned && unassigned.length > 6 ? (
+                <div className="mt-3 text-[12px] text-[#6B6B66]">Showing 6 of {unassigned.length} unassigned conversations.</div>
+              ) : null}
             </div>
-          </>
-        )}
+          </Card>
+        </div>
       </div>
-
-      <CreateProjectDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
-      <PaymentModal
-        open={paymentModalOpen}
-        onOpenChange={setPaymentModalOpen}
-        onComplete={() => {}}
-      />
     </div>
   );
 }

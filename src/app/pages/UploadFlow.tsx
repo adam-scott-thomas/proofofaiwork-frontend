@@ -1,449 +1,58 @@
-import { Upload, Sparkles, Lock, FolderKanban, TrendingUp, CheckCircle2 } from "lucide-react";
+import { Link, Navigate } from "react-router";
+import { ArrowRight, Upload } from "lucide-react";
+import { useAuthStore } from "../../stores/authStore";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
-import { Progress } from "../components/ui/progress";
-import { useState } from "react";
-import { useNavigate, Link } from "react-router";
-import { PaymentModal } from "../components/PaymentModal";
-import { useDirectUpload, useAssessment, useAssessmentResults, useProjects } from "../../hooks/useApi";
-import { useAuthStore } from "../../stores/authStore";
-
-type FlowStep = "upload" | "processing" | "partial-results" | "unlock";
-
-// Map backend assessment status to UI processing step index (0–3)
-function statusToStepIndex(status: string): number {
-  switch (status) {
-    case "pending":
-    case "parsing":
-      return 0;
-    case "normalizing":
-      return 1;
-    case "gating":
-    case "evaluating":
-      return 2;
-    case "aggregating":
-      return 3;
-    default:
-      return 0;
-  }
-}
-
-// Map backend status to approximate progress percentage
-function statusToProgress(status: string): number {
-  switch (status) {
-    case "pending":
-      return 5;
-    case "parsing":
-      return 20;
-    case "normalizing":
-      return 40;
-    case "gating":
-      return 55;
-    case "evaluating":
-      return 70;
-    case "aggregating":
-      return 85;
-    case "complete":
-    case "partial":
-      return 100;
-    default:
-      return 5;
-  }
-}
-
-const processingStepLabels = [
-  "Reading conversations",
-  "Detecting patterns",
-  "Mapping projects",
-  "Generating insights",
-];
 
 export default function UploadFlow() {
-  const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
-  const authed = isAuthenticated();
-  const [step, setStep] = useState<FlowStep>("upload");
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-  const [assessmentId, setAssessmentId] = useState<string | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const directUpload = useDirectUpload();
-
-  // Poll assessment status every 2s while in processing step
-  const { data: assessmentData } = useAssessment(assessmentId ?? "", {
-    refetchInterval: step === "processing" ? 2000 : false,
-  });
-
-  const currentStatus: string = assessmentData?.status ?? "pending";
-  const isDone = currentStatus === "complete" || currentStatus === "partial";
-  const currentProcessingStep = statusToStepIndex(currentStatus);
-  const progress = statusToProgress(currentStatus);
-
-  // When polling detects done, advance to partial-results
-  if (step === "processing" && isDone && assessmentId) {
-    setStep("partial-results");
+  if (isAuthenticated()) {
+    return <Navigate to="/app/upload/new" replace />;
   }
 
-  // Partial results data
-  const { data: resultsData } = useAssessmentResults(
-    step === "partial-results" && assessmentId ? assessmentId : ""
-  );
-  const { data: projectsData } = useProjects();
+  return (
+    <div className="min-h-screen bg-[#F7F4ED] text-[#161616]">
+      <div className="mx-auto max-w-3xl px-8 py-20">
+        <div className="text-[12px] uppercase tracking-[0.16em] text-[#6B6B66]">Upload entry</div>
+        <h1 className="mt-4 text-6xl leading-[0.96] tracking-tight">Sign in, then upload.</h1>
+        <p className="mt-6 max-w-2xl text-[20px] leading-9 text-[#5C5C5C]">
+          The upload path is part of the authenticated workspace. Once signed in, you land on the real upload form,
+          not a separate pricing or teaser flow.
+        </p>
 
-  const projects: any[] = projectsData?.items ?? projectsData ?? [];
-  const conversationCount: number =
-    resultsData?.conversation_count ??
-    resultsData?.observations?.length ??
-    null;
-  const projectCount: number = projects.length || null;
+        <div className="mt-10 grid grid-cols-2 gap-4">
+          <Card className="border border-[#D8D2C4] bg-white p-6 shadow-sm">
+            <div className="flex items-center gap-3">
+              <Upload className="h-5 w-5 text-[#315D8A]" />
+              <div className="text-[18px] tracking-tight">What happens after sign-in</div>
+            </div>
+            <div className="mt-4 space-y-2 text-[14px] leading-7 text-[#5C5C5C]">
+              <div>1. Upload one or more conversation files.</div>
+              <div>2. The backend creates an assessment and starts processing.</div>
+              <div>3. Parsed conversations appear in the pool and can be moved into projects.</div>
+            </div>
+          </Card>
 
-  // Compute "days of work" from project date ranges if available
-  let daysOfWork: number | null = null;
-  if (projects.length > 0) {
-    const timestamps = projects
-      .flatMap((p: any) => [p.start_date, p.end_date, p.first_seen, p.last_seen])
-      .filter(Boolean)
-      .map((d: string) => new Date(d).getTime())
-      .filter((t) => !isNaN(t));
-    if (timestamps.length >= 2) {
-      const span = Math.max(...timestamps) - Math.min(...timestamps);
-      daysOfWork = Math.max(1, Math.round(span / (1000 * 60 * 60 * 24)));
-    }
-  }
+          <Card className="border border-[#D8D2C4] bg-[#FBF8F1] p-6 shadow-sm">
+            <div className="text-[14px] leading-8 text-[#5C5C5C]">
+              The working route after authentication is <span className="font-mono text-[#161616]">/app/upload/new</span>.
+            </div>
+          </Card>
+        </div>
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      setUploadError(null);
-    }
-  };
-
-  const handleUpload = () => {
-    if (!file) return;
-    setUploadError(null);
-
-    directUpload.mutate(
-      { files: [file] },
-      {
-        onSuccess: (result: any) => {
-          const id: string =
-            result?.assessment_id ??
-            result?.assessmentId ??
-            result?.id ??
-            null;
-          if (id) {
-            setAssessmentId(id);
-            setStep("processing");
-          } else {
-            setUploadError("Upload completed but no assessment was created. Please try again.");
-          }
-        },
-        onError: (err: any) => {
-          const msg =
-            err?.message ??
-            err?.detail ??
-            "Upload failed. Please try again.";
-          setUploadError(msg);
-        },
-      }
-    );
-  };
-
-  const handleUnlock = () => {
-    setPaymentModalOpen(true);
-  };
-
-  // Auth gate — must be signed in before seeing the upload UI
-  if (!authed) {
-    return (
-      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center px-8">
-        <div className="w-full max-w-md text-center">
-          <h1 className="mb-4 text-4xl tracking-tight">Sign in to upload</h1>
-          <p className="mb-8 text-lg text-[#717182]">
-            Sign in to upload your conversations and get your AI work profile.
-          </p>
-          <Link to="/sign-in?next=/upload">
-            <Button size="lg" className="min-w-[220px] text-lg">
-              Sign in
+        <div className="mt-10 flex gap-4">
+          <Link to="/sign-in?next=/app/upload/new">
+            <Button size="lg">
+              Sign in to upload
+              <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
+          </Link>
+          <Link to="/directory">
+            <Button size="lg" variant="outline">Browse directory</Button>
           </Link>
         </div>
       </div>
-    );
-  }
-
-  // Upload Step
-  if (step === "upload") {
-    return (
-      <div className="min-h-screen bg-[#FAFAFA] flex items-start justify-center px-8 py-16 overflow-y-auto">
-        <div className="w-full max-w-2xl">
-          <div className="mb-8 text-center">
-            <h1 className="mb-4 text-5xl tracking-tight">Upload your conversations</h1>
-            <p className="text-xl text-[#717182]">
-              ChatGPT, Claude, or Grok exports accepted
-            </p>
-          </div>
-
-          <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-12">
-            <label
-              htmlFor="file-upload"
-              className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-[rgba(0,0,0,0.12)] bg-[#FAFAFA] px-8 py-16 transition-colors hover:border-[rgba(0,0,0,0.24)] hover:bg-[#F5F5F7]"
-            >
-              <Upload className="mb-4 h-12 w-12 text-[#717182]" />
-              <div className="mb-2 text-lg">
-                {file ? file.name : "Click to upload or drag and drop"}
-              </div>
-              <div className="text-[13px] text-[#717182]">
-                ZIP, JSON, or TXT files accepted
-              </div>
-              <input
-                id="file-upload"
-                type="file"
-                className="hidden"
-                accept=".zip,.json,.txt"
-                onChange={handleFileSelect}
-              />
-            </label>
-
-            {uploadError && (
-              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
-                {uploadError}
-              </div>
-            )}
-
-            {file && (
-              <Button
-                size="lg"
-                className="mt-6 w-full text-lg"
-                onClick={handleUpload}
-                disabled={directUpload.isPending}
-              >
-                {directUpload.isPending ? "Uploading..." : "Start Analysis"}
-              </Button>
-            )}
-          </Card>
-
-          <div className="mt-8 text-center text-[13px] text-[#717182]">
-            Your data is processed securely and never shared
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Processing Step
-  if (step === "processing") {
-    return (
-      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center p-8">
-        <div className="w-full max-w-xl text-center">
-          <div className="mb-8 flex justify-center">
-            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#F5F5F7]">
-              <Sparkles className="h-12 w-12 text-[#030213] animate-pulse" />
-            </div>
-          </div>
-
-          <h2 className="mb-3 text-3xl tracking-tight">
-            We're analyzing your work
-          </h2>
-          <p className="mb-8 text-lg text-[#717182]">
-            {processingStepLabels[currentProcessingStep]}
-          </p>
-
-          <div className="mb-3">
-            <Progress value={progress} className="h-2" />
-          </div>
-          <div className="text-[13px] text-[#717182]">{progress}%</div>
-        </div>
-      </div>
-    );
-  }
-
-  // Partial Results Step
-  if (step === "partial-results") {
-    return (
-      <div className="min-h-screen bg-[#FAFAFA] p-8">
-        <div className="mx-auto max-w-4xl">
-          <div className="mb-12 text-center">
-            <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#00C853]">
-              <CheckCircle2 className="h-8 w-8 text-white" />
-            </div>
-            <h1 className="mb-3 text-5xl tracking-tight">We've mapped your work</h1>
-            <p className="text-xl text-[#717182]">
-              Here's what we found in your conversations
-            </p>
-          </div>
-
-          {/* Detected Projects */}
-          <Card className="mb-6 border border-[rgba(0,0,0,0.08)] bg-white p-8">
-            <div className="mb-6 flex items-center gap-3">
-              <FolderKanban className="h-6 w-6" />
-              <h2 className="text-2xl tracking-tight">Detected Projects</h2>
-            </div>
-
-            <div className="space-y-3">
-              {projects.length > 0 ? (
-                projects.slice(0, 3).map((project: any) => {
-                  const convCount =
-                    project.conversation_count ??
-                    project.conversations?.length ??
-                    project.count ??
-                    null;
-                  const startDate = project.start_date ?? project.first_seen ?? null;
-                  const endDate = project.end_date ?? project.last_seen ?? null;
-                  const dateRange =
-                    startDate && endDate
-                      ? `${new Date(startDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${new Date(endDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
-                      : null;
-
-                  return (
-                    <div
-                      key={project.id}
-                      className="flex items-center justify-between rounded-lg border border-[rgba(0,0,0,0.06)] bg-[#FAFAFA] p-4"
-                    >
-                      <div>
-                        <div className="mb-1 text-[15px] font-medium">
-                          {project.name ?? project.title ?? "Unnamed Project"}
-                        </div>
-                        {convCount !== null && (
-                          <div className="text-[13px] text-[#717182]">
-                            {convCount} conversation{convCount !== 1 ? "s" : ""}
-                          </div>
-                        )}
-                      </div>
-                      {dateRange && (
-                        <div className="text-[13px] text-[#717182]">{dateRange}</div>
-                      )}
-                    </div>
-                  );
-                })
-              ) : (
-                // Loading skeleton while project data is being fetched
-                <div className="flex items-center justify-center py-6 text-[13px] text-[#717182]">
-                  Detecting projects...
-                </div>
-              )}
-            </div>
-          </Card>
-
-          {/* Quick Stats */}
-          <div className="mb-6 grid grid-cols-3 gap-4">
-            <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-6 text-center">
-              <div className="mb-2 text-3xl tracking-tight">
-                {conversationCount !== null ? conversationCount : "87"}
-              </div>
-              <div className="text-[13px] text-[#717182]">Total Conversations</div>
-            </Card>
-            <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-6 text-center">
-              <div className="mb-2 text-3xl tracking-tight">
-                {projectCount !== null ? projectCount : "6"}
-              </div>
-              <div className="text-[13px] text-[#717182]">Projects Identified</div>
-            </Card>
-            <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-6 text-center">
-              <div className="mb-2 text-3xl tracking-tight">
-                {daysOfWork !== null ? daysOfWork : "42"}
-              </div>
-              <div className="text-[13px] text-[#717182]">Days of Work</div>
-            </Card>
-          </div>
-
-          {/* Locked Section */}
-          <Card className="relative overflow-hidden border-2 border-[rgba(0,0,0,0.12)] bg-white p-8">
-            {/* Blurred Preview */}
-            <div className="blur-sm select-none pointer-events-none">
-              <div className="mb-6 flex items-center gap-3">
-                <TrendingUp className="h-6 w-6" />
-                <h2 className="text-2xl tracking-tight">Your Full Profile</h2>
-              </div>
-
-              <div className="mb-6 rounded-lg bg-[#FAFAFA] p-6">
-                <div className="mb-3 text-[11px] uppercase tracking-wider text-[#717182]">
-                  Operator Level
-                </div>
-                <div className="text-5xl tracking-tight">ADVANCED–INTERMEDIATE</div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <div className="mb-2 text-[13px] uppercase tracking-wider text-[#717182]">
-                    Strengths
-                  </div>
-                  <div className="text-[15px]">
-                    You control direction and get outcomes
-                  </div>
-                </div>
-                <div>
-                  <div className="mb-2 text-[13px] uppercase tracking-wider text-[#717182]">
-                    Gaps
-                  </div>
-                  <div className="text-[15px]">
-                    You don't define constraints early
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Unlock Overlay */}
-            <div className="absolute inset-0 flex items-center justify-center bg-white/90 backdrop-blur-sm">
-              <div className="max-w-md text-center">
-                <div className="mb-6 flex justify-center">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#F5F5F7]">
-                    <Lock className="h-10 w-10 text-[#030213]" />
-                  </div>
-                </div>
-
-                <h3 className="mb-4 text-3xl tracking-tight">
-                  Unlock your full analysis
-                </h3>
-
-                <ul className="mb-8 space-y-2 text-left text-[15px] text-[#717182]">
-                  <li className="flex items-start gap-2">
-                    <span>—</span>
-                    <span>Your operator level (ADVANCED, INTERMEDIATE, etc.)</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span>—</span>
-                    <span>Detailed strengths and gaps analysis</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span>—</span>
-                    <span>Shareable proof page</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span>—</span>
-                    <span>Knowledge map visualization</span>
-                  </li>
-                </ul>
-
-                <Button
-                  size="lg"
-                  className="h-14 min-w-[240px] text-lg font-medium"
-                  onClick={handleUnlock}
-                >
-                  Unlock full analysis — $5
-                </Button>
-
-                <p className="mt-4 text-[13px] text-[#717182]">
-                  One-time payment. Card unlock is $5 and crypto unlock is $4.20.
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        <PaymentModal
-          open={paymentModalOpen}
-          onOpenChange={setPaymentModalOpen}
-          onComplete={() => {
-            setPaymentModalOpen(false);
-            navigate("/app");
-          }}
-        />
-      </div>
-    );
-  }
-
-  return null;
+    </div>
+  );
 }
