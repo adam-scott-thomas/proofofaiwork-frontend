@@ -14,6 +14,16 @@ function isCompletedStatus(status: string | undefined) {
   return status === "complete" || status === "completed";
 }
 
+function assessmentTitle(a: any) {
+  if (a?.project_title) return a.project_title;
+  if (a?.task_context) return a.task_context;
+  if (a?.name) return a.name;
+  const date = a?.created_at
+    ? new Date(a.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : "";
+  return date ? `Assessment · ${date}` : "Assessment";
+}
+
 function StatusBadge({ status, progress }: { status: string; progress?: number }) {
   if (isCompletedStatus(status)) {
     return (
@@ -135,7 +145,7 @@ export default function Assessments() {
                         <div className="flex items-start justify-between gap-6">
                           <div className="flex-1">
                             <div className="mb-2 flex items-center gap-3">
-                              <div className="text-[15px]">{assessment.name ?? assessment.id}</div>
+                              <div className="text-[15px]">{assessmentTitle(assessment)}</div>
                               <StatusBadge status={assessment.status} progress={assessment.progress} />
                             </div>
 
@@ -207,7 +217,7 @@ export default function Assessments() {
                         <div className="flex items-start justify-between gap-6">
                           <div className="flex-1">
                             <div className="mb-2 flex items-center gap-3">
-                              <div className="text-[14px] text-[#717182]">{assessment.name ?? assessment.id}</div>
+                              <div className="text-[14px] text-[#717182]">{assessmentTitle(assessment)}</div>
                               <StatusBadge status={assessment.status} progress={assessment.progress} />
                             </div>
 
