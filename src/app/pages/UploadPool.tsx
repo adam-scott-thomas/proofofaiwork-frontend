@@ -7,7 +7,7 @@ import { useState } from "react";
 import { UploadDialog } from "../components/UploadDialog";
 import { PaymentModal } from "../components/PaymentModal";
 import ProgressSteps from "../components/ProgressSteps";
-import { usePool, useTriggerClustering, useDirectUpload } from "../../hooks/useApi";
+import { usePool, useTriggerClustering, useDirectUpload, useAiCluster } from "../../hooks/useApi";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiDelete, apiPost } from "../../lib/api";
@@ -53,6 +53,7 @@ export default function UploadPool() {
   const [clusterResult, setClusterResult] = useState<{ projects: number; unclustered: number } | null>(null);
   const qc = useQueryClient();
   const clusterMutation = useTriggerClustering();
+  const aiClusterMutation = useAiCluster();
   const retryUpload = useDirectUpload();
 
   const handleCleanupUnparsed = async () => {
@@ -195,10 +196,27 @@ export default function UploadPool() {
               Free Clustering
               <span className="ml-2 text-[11px] text-[#717182]">Rule-based</span>
             </Button>
-            <Button onClick={() => setPaymentModalOpen(true)}>
-              <Sparkles className="mr-2 h-4 w-4" />
+            <Button
+              disabled={aiClusterMutation.isPending}
+              onClick={() => {
+                aiClusterMutation.mutate(undefined, {
+                  onSuccess: (data: any) => {
+                    setClusterDone(true);
+                    setClusterResult({
+                      projects: data?.projects?.length ?? data?.project_count ?? 0,
+                      unclustered: data?.unclustered_count ?? data?.unclustered ?? 0,
+                    });
+                    qc.invalidateQueries({ queryKey: ["projects"] });
+                    qc.invalidateQueries({ queryKey: ["pool"] });
+                    toast.success("AI clustering complete");
+                  },
+                  onError: (err: any) => toast.error(err?.message ?? "AI clustering failed"),
+                });
+              }}
+            >
+              {aiClusterMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
               AI Clustering
-              <span className="ml-2 text-[11px]">$5</span>
+              <span className="ml-2 text-[11px]">$0 · Free until Friday</span>
             </Button>
           </div>
 
