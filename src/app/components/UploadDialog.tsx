@@ -88,7 +88,7 @@ export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
       const file = files[i];
       try {
         // Step 1: Presign
-        const ext = file.name.includes(".") ? file.name.split(".").pop()! : "txt";
+        const ext = (file.name.includes(".") ? file.name.split(".").pop()! : "txt").toLowerCase();
         const presign = await apiPost<any>("/uploads/presign", {
           file_name: file.name,
           file_type: ext,
