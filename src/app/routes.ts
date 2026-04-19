@@ -25,6 +25,7 @@ import PublicProofPage from "./pages/PublicProofPage";
 import PublicPortfolio from "./pages/PublicPortfolio";
 import Explore from "./pages/Explore";
 import Search from "./pages/Search";
+import Webhooks from "./pages/Webhooks";
 import NotFound from "./pages/NotFound";
 
 function protect(Component: React.ComponentType) {
@@ -56,6 +57,7 @@ export const router = createBrowserRouter([
       { path: "portfolios/:id", Component: PortfolioDetail },
       { path: "work-profile", Component: WorkProfile },
       { path: "search", Component: Search },
+      { path: "settings/webhooks", Component: Webhooks },
     ],
   },
   { path: "/p/:slug", Component: PublicProofPage, ErrorBoundary },
