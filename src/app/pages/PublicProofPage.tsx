@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router";
-import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, Check, ExternalLink, MoonStar, Share2, SunMedium, X } from "lucide-react";
-import { apiFetch } from "../../lib/api";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { AlertCircle, Check, ExternalLink, Loader2, Mail, MoonStar, Send, Share2, SunMedium, X } from "lucide-react";
+import { apiFetch, apiPost } from "../../lib/api";
 import "./PublicProofPage.css";
 
 type PublicObservation = {
@@ -71,6 +71,12 @@ type PublicProofResponse = {
   excerpts: PublicExcerpt[];
   trust_panel: TrustPanel;
   github_panels: GitHubPanel[];
+};
+
+type PageConfig = {
+  contact_enabled?: boolean;
+  show_weaknesses?: boolean;
+  show_skipped_dimensions?: boolean;
 };
 
 type ShareCardPayload =
@@ -641,6 +647,24 @@ export default function PublicProofPage() {
         </section>
       </main>
 
+      {((data.custom_meta as PageConfig)?.contact_enabled !== false) ? (
+        <section className="pp-section pp-section-contact">
+          <div className="pp-shell">
+            <div className="pp-section-head">
+              <div>
+                <div className="pp-section-eyebrow">Contact</div>
+                <h2 className="pp-section-title">Request a conversation.</h2>
+              </div>
+              <div className="pp-section-sub">
+                Requests are relayed through the platform. The author decides whether to reply. No email is
+                exposed either way.
+              </div>
+            </div>
+            <ContactForm slugOrToken={data.slug || data.public_token} />
+          </div>
+        </section>
+      ) : null}
+
       <footer className="pp-footer">
         <div className="pp-shell">
           <div className="brand">
@@ -656,5 +680,89 @@ export default function PublicProofPage() {
 
       <ShareOverlay payload={sharePayload} onClose={() => setSharePayload(null)} />
     </div>
+  );
+}
+
+function ContactForm({ slugOrToken }: { slugOrToken: string }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [organization, setOrganization] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  const submit = useMutation({
+    mutationFn: () =>
+      apiPost(`/p/${slugOrToken}/request`, {
+        name: name.trim(),
+        email: email.trim(),
+        organization: organization.trim() || null,
+        message: message.trim() || null,
+      }),
+    onSuccess: () => setSubmitted(true),
+  });
+
+  if (submitted) {
+    return (
+      <div className="pp-contact-thanks">
+        <Check size={14} />
+        Request sent. The author will see it in their dashboard.
+      </div>
+    );
+  }
+
+  const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const canSubmit = name.trim().length > 0 && validEmail && !submit.isPending;
+
+  return (
+    <form
+      className="pp-contact"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (canSubmit) submit.mutate();
+      }}
+    >
+      <div className="pp-contact-row">
+        <label>
+          <span>Name</span>
+          <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Jane Doe" required />
+        </label>
+        <label>
+          <span>Email</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="you@company.com"
+            required
+          />
+        </label>
+      </div>
+      <label>
+        <span>Organization</span>
+        <input value={organization} onChange={(event) => setOrganization(event.target.value)} placeholder="Optional." />
+      </label>
+      <label>
+        <span>Message</span>
+        <textarea
+          value={message}
+          onChange={(event) => setMessage(event.target.value)}
+          rows={4}
+          placeholder="Why you're reaching out. Keep it direct."
+        />
+      </label>
+      {submit.isError ? (
+        <div className="pp-contact-error">
+          <Mail size={12} />
+          {(submit.error as any)?.message || "Could not send the request. Try again."}
+        </div>
+      ) : null}
+      <div className="pp-contact-footer">
+        <span className="pp-contact-hint">No email is exposed. Requests are rate-limited per IP.</span>
+        <button type="submit" disabled={!canSubmit}>
+          {submit.isPending ? <Loader2 size={12} className="spin" /> : <Send size={12} />}
+          Send request
+        </button>
+      </div>
+    </form>
   );
 }

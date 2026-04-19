@@ -1052,3 +1052,135 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Contact form */
+.pp-section-contact {
+  background: var(--pp-surface-alt);
+}
+
+.pp-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+  max-width: 640px;
+}
+
+.pp-contact-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.pp-contact label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pp-muted);
+}
+
+.pp-contact label > span {
+  font-size: 11px;
+}
+
+.pp-contact input,
+.pp-contact textarea {
+  border: 1px solid var(--pp-border);
+  background: var(--pp-surface);
+  color: var(--pp-ink);
+  border-radius: 6px;
+  padding: 9px 11px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  text-transform: none;
+  letter-spacing: 0;
+  transition: border-color 160ms ease;
+}
+
+.pp-contact input:focus,
+.pp-contact textarea:focus {
+  border-color: var(--pp-purple);
+}
+
+.pp-contact textarea {
+  resize: vertical;
+  min-height: 92px;
+}
+
+.pp-contact-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.pp-contact-hint {
+  font-size: 11px;
+  color: var(--pp-muted);
+  max-width: 340px;
+}
+
+.pp-contact button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--pp-ink);
+  color: var(--pp-bg);
+  border: none;
+  padding: 9px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: opacity 160ms ease;
+}
+
+.pp-contact button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pp-contact button .spin {
+  animation: pp-spin 900ms linear infinite;
+}
+
+@keyframes pp-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.pp-contact-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: color-mix(in srgb, #8B2F2F 14%, transparent);
+  color: #8B2F2F;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
+.pp-contact-thanks {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: color-mix(in srgb, #1F6A3F 14%, transparent);
+  color: #1F6A3F;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  margin-top: 24px;
+  border: 1px solid color-mix(in srgb, #1F6A3F 24%, transparent);
+}
+
+@media (max-width: 720px) {
+  .pp-contact-row {
+    grid-template-columns: 1fr;
+  }
+}
+
