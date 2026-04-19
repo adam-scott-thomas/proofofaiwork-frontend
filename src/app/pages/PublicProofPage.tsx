@@ -1,21 +1,237 @@
+import { useMemo, useState } from "react";
 import { useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, Globe, ShieldCheck } from "lucide-react";
-import { Card } from "../components/ui/card";
+import { AlertCircle, Check, ExternalLink, MoonStar, Share2, SunMedium, X } from "lucide-react";
 import { apiFetch } from "../../lib/api";
-import { dateTime } from "../lib/poaw";
+import "./PublicProofPage.css";
+
+type PublicObservation = {
+  dimension: string | null;
+  score: number | null;
+  label: string | null;
+  summary: string | null;
+  confidence_label: string | null;
+  confidence_score: number | null;
+};
+
+type PublicExcerpt = {
+  id: string;
+  display_order: number;
+  excerpt_text: string;
+  redacted_text: string | null;
+  annotation: string | null;
+  dimension: string | null;
+  claim: string | null;
+};
+
+type TrustPanel = {
+  sample_size?: {
+    sessions?: number;
+    uploads?: number;
+  };
+  evidence_classes?: {
+    A_plus?: number;
+    A?: number;
+    B?: number;
+    C?: number;
+    D?: number;
+  };
+  censorship_coverage_pct?: number;
+  hash_integrity?: boolean;
+  github_repos_linked?: number;
+  github_correlation_score?: number | null;
+  engine_version?: string;
+  dimensions_evaluated?: number;
+  dimensions_skipped?: number;
+  page_version?: number;
+  last_modified?: string | null;
+};
+
+type GitHubPanel = {
+  repo_name: string;
+  repo_owner: string;
+  language: string | null;
+  stars: number | null;
+  commit_count: number | null;
+  correlation_score: number | null;
+  repo_url: string;
+};
+
+type PublicProofResponse = {
+  public_token: string;
+  slug: string | null;
+  project_title: string | null;
+  project_description: string | null;
+  headline: string | null;
+  summary: string | null;
+  custom_meta: Record<string, unknown>;
+  view_count: number;
+  published_at: string | null;
+  observations: PublicObservation[];
+  excerpts: PublicExcerpt[];
+  trust_panel: TrustPanel;
+  github_panels: GitHubPanel[];
+};
+
+type ShareCardPayload =
+  | { kind: "page"; title: string; body: string; url: string }
+  | { kind: "archetype"; title: string; body: string; url: string }
+  | { kind: "observation"; title: string; body: string; url: string }
+  | { kind: "score"; title: string; body: string; url: string };
+
+function fmtInt(value?: number | null) {
+  return (value ?? 0).toLocaleString("en-US");
+}
+
+function fmtDate(value?: string | null) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+}
+
+function fmtTime(value?: string | null) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+}
+
+function scorePercent(value: number | null | undefined) {
+  if (value == null) return null;
+  if (value <= 1) return Math.round(value * 100);
+  return Math.round(value);
+}
+
+function confidenceClass(label?: string | null) {
+  const normalized = (label || "").toLowerCase();
+  if (normalized === "high") return "high";
+  if (normalized === "medium") return "medium";
+  return "low";
+}
+
+function hashPreview(token: string) {
+  const base = token.replace(/[^a-zA-Z0-9]/g, "").padEnd(32, "0").slice(0, 32);
+  return `sha256:${base.slice(0, 8)}…${base.slice(-8)}`;
+}
+
+function primaryVerdict(observations: PublicObservation[]) {
+  const sorted = [...observations]
+    .filter((item) => item.score != null)
+    .sort((a, b) => (scorePercent(b.score) ?? 0) - (scorePercent(a.score) ?? 0));
+  return sorted[0] ?? null;
+}
+
+function shareText(payload: ShareCardPayload) {
+  return `${payload.title}\n${payload.body}\n${payload.url}`;
+}
+
+function detailLabel(observation: PublicObservation) {
+  return observation.label || observation.dimension || "Observation";
+}
+
+function usePublicProof(slug?: string) {
+  return useQuery({
+    queryKey: ["public-proof", slug],
+    queryFn: () => apiFetch<PublicProofResponse>(`/p/${slug}`),
+    enabled: !!slug,
+  });
+}
+
+function ShareOverlay({
+  payload,
+  onClose,
+}: {
+  payload: ShareCardPayload | null;
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  if (!payload) return null;
+
+  const url = payload.url;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(shareText(payload));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  const openWindow = (target: "x" | "linkedin") => {
+    const encodedUrl = encodeURIComponent(url);
+    const encodedText = encodeURIComponent(`${payload.title} — ${payload.body}`);
+    const href =
+      target === "x"
+        ? `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedText}`
+        : `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`;
+    window.open(href, "_blank", "noopener,noreferrer");
+  };
+
+  return (
+    <div className="pp-share-overlay" onClick={onClose}>
+      <div className="pp-share-panel" onClick={(event) => event.stopPropagation()}>
+        <div className="pp-share-head">
+          <div className="pp-share-eyebrow">Share</div>
+          <button type="button" className="pp-share-close" onClick={onClose} aria-label="Close share panel">
+            <X size={14} />
+          </button>
+        </div>
+
+        <div className="pp-share-card">
+          <div className="pp-share-card-eyebrow">{payload.kind}</div>
+          <div className="pp-share-card-title">{payload.title}</div>
+          <div className="pp-share-card-body">{payload.body}</div>
+        </div>
+
+        <div className="pp-share-targets">
+          <button type="button" className="pp-share-target" onClick={handleCopy}>
+            <Share2 size={14} />
+            {copied ? "Copied" : "Copy"}
+          </button>
+          <button type="button" className="pp-share-target" onClick={() => openWindow("x")}>
+            <Share2 size={14} />
+            X
+          </button>
+          <button type="button" className="pp-share-target" onClick={() => openWindow("linkedin")}>
+            <Share2 size={14} />
+            LinkedIn
+          </button>
+          <a className="pp-share-target" href={url} target="_blank" rel="noreferrer">
+            <ExternalLink size={14} />
+            Open
+          </a>
+        </div>
+
+        <div className="pp-share-copy">
+          <input readOnly value={url} />
+          <button type="button" onClick={handleCopy}>
+            {copied ? "Copied" : "Copy link"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function PublicProofPage() {
   const { slug } = useParams<{ slug?: string }>();
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["public-proof", slug],
-    queryFn: () => apiFetch<any>(`/p/${slug}`),
-    enabled: !!slug,
-  });
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [sharePayload, setSharePayload] = useState<ShareCardPayload | null>(null);
+  const { data, isLoading, error } = usePublicProof(slug);
+
+  const verdict = useMemo(() => (data ? primaryVerdict(data.observations || []) : null), [data]);
+  const pageUrl =
+    typeof window !== "undefined"
+      ? window.location.href
+      : `https://proofofaiwork.com/p/${slug ?? ""}`;
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F7F4ED] text-[13px] text-[#6B6B66]">
+      <div className="pp-loading">
         Loading proof page...
       </div>
     );
@@ -23,116 +239,422 @@ export default function PublicProofPage() {
 
   if (error || !data) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#F7F4ED] px-8 text-center">
-        <AlertCircle className="h-8 w-8 text-[#8E3B34]" />
-        <div className="text-2xl tracking-tight text-[#161616]">Proof page not found.</div>
-        <div className="max-w-md text-[14px] leading-7 text-[#5C5C5C]">
-          This page may have been unpublished or the link may be invalid.
-        </div>
+      <div className="pp-error">
+        <AlertCircle className="pp-error-icon" />
+        <h1>Proof page not found.</h1>
+        <p>This page may have been unpublished or the link may be invalid.</p>
       </div>
     );
   }
 
-  const observations = Array.isArray(data?.observations) ? data.observations : [];
-  const excerpts = Array.isArray(data?.excerpts) ? data.excerpts : [];
-  const githubPanels = Array.isArray(data?.github_panels) ? data.github_panels : [];
-  const trustPanel = data?.trust_panel ?? {};
+  const archetype = data.headline || data.project_title || "Untitled proof";
+  const subcopy =
+    data.summary ||
+    data.project_description ||
+    "A public record of human-led AI work, grounded in observations, excerpts, and trust metadata.";
+  const trust = data.trust_panel || {};
+  const evidence = trust.evidence_classes || {};
 
   return (
-    <div className="min-h-screen bg-[#F7F4ED] text-[#161616]">
-      <div className="mx-auto max-w-5xl px-8 py-12">
-        <div className="text-[12px] uppercase tracking-[0.16em] text-[#6B6B66]">Public proof</div>
-        <div className="mt-4 flex items-start justify-between gap-6">
-          <div className="max-w-3xl">
-            <h1 className="text-5xl leading-[1] tracking-tight">{data.headline || data.project_title || "Proof of AI Work"}</h1>
-            <div className="mt-4 text-[18px] leading-9 text-[#5C5C5C]">
-              {data.summary || data.project_description || "No summary provided."}
-            </div>
-            <div className="mt-4 text-[13px] text-[#6B6B66]">
-              published {dateTime(data.published_at)} • {data.view_count ?? 0} views
-            </div>
+    <div className="pp-page" data-theme={theme}>
+      <div className="pp-topbar">
+        <div className="pp-topbar-inner">
+          <div className="pp-top-left">
+            <span className="pp-brand">Proof of AI Work</span>
+            <span className="pp-top-url">
+              <span className="host">proofofaiwork.com</span>/p/
+              <span className="slug">{data.slug || data.public_token.slice(0, 10)}</span>
+            </span>
           </div>
-          <div className="rounded-full border border-[#D8D2C4] bg-white px-4 py-2 text-[13px] text-[#315D8A]">
-            <Globe className="mr-2 inline h-4 w-4" />
-            public
-          </div>
-        </div>
-
-        <div className="mt-8 grid grid-cols-[1.3fr_0.7fr] gap-6">
-          <div className="space-y-6">
-            <Card className="border border-[#D8D2C4] bg-white p-6 shadow-sm">
-              <div className="text-[13px] uppercase tracking-[0.14em] text-[#6B6B66]">Observations</div>
-              <div className="mt-4 space-y-3">
-                {observations.map((observation: any, index: number) => (
-                  <div key={`${observation.dimension}-${index}`} className="rounded-md border border-[#D8D2C4] bg-[#FBF8F1] px-4 py-3">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="text-[14px]">{observation.dimension}</div>
-                      {observation.score != null ? (
-                        <div className="text-[13px] text-[#315D8A]">{Math.round(observation.score * 100)}%</div>
-                      ) : (
-                        <div className="text-[12px] text-[#6B6B66]">{observation.label || "skipped"}</div>
-                      )}
-                    </div>
-                    {observation.summary ? (
-                      <div className="mt-1 text-[12px] text-[#5C5C5C]">{observation.summary}</div>
-                    ) : null}
-                  </div>
-                ))}
-                {observations.length === 0 ? (
-                  <div className="text-[14px] text-[#5C5C5C]">No public observations available.</div>
-                ) : null}
-              </div>
-            </Card>
-
-            <Card className="border border-[#D8D2C4] bg-white p-6 shadow-sm">
-              <div className="text-[13px] uppercase tracking-[0.14em] text-[#6B6B66]">Excerpts</div>
-              <div className="mt-4 space-y-3">
-                {excerpts.map((excerpt: any, index: number) => (
-                  <div key={excerpt.id ?? index} className="rounded-md border border-[#D8D2C4] bg-[#FBF8F1] px-4 py-3 text-[14px] leading-7 text-[#2A2A28]">
-                    {excerpt.text || excerpt.content || JSON.stringify(excerpt)}
-                  </div>
-                ))}
-                {excerpts.length === 0 ? (
-                  <div className="text-[14px] text-[#5C5C5C]">No excerpts published.</div>
-                ) : null}
-              </div>
-            </Card>
-          </div>
-
-          <div className="space-y-4">
-            <Card className="border border-[#D8D2C4] bg-white p-6 shadow-sm">
-              <div className="flex items-center gap-2 text-[13px] uppercase tracking-[0.14em] text-[#6B6B66]">
-                <ShieldCheck className="h-4 w-4" />
-                Trust panel
-              </div>
-              <div className="mt-4 space-y-2 text-[13px] text-[#5C5C5C]">
-                <div>dimensions evaluated: {trustPanel.dimensions_evaluated ?? 0}</div>
-                <div>dimensions skipped: {trustPanel.dimensions_skipped ?? 0}</div>
-                <div>hash integrity: {trustPanel.hash_integrity ? "verified" : "not verified"}</div>
-                <div>page version: {trustPanel.page_version ?? 1}</div>
-                <div>sample uploads: {trustPanel.sample_size?.uploads ?? 0}</div>
-              </div>
-            </Card>
-
-            <Card className="border border-[#D8D2C4] bg-white p-6 shadow-sm">
-              <div className="text-[13px] uppercase tracking-[0.14em] text-[#6B6B66]">GitHub evidence</div>
-              <div className="mt-4 space-y-3">
-                {githubPanels.map((panel: any, index: number) => (
-                  <a key={`${panel.repo_owner}-${panel.repo_name}-${index}`} href={panel.repo_url} target="_blank" rel="noreferrer" className="block rounded-md border border-[#D8D2C4] bg-[#FBF8F1] px-4 py-3">
-                    <div className="text-[14px]">{panel.repo_owner}/{panel.repo_name}</div>
-                    <div className="mt-1 text-[12px] text-[#5C5C5C]">
-                      {panel.language || "unknown language"} • correlation {panel.correlation_score ?? "—"}
-                    </div>
-                  </a>
-                ))}
-                {githubPanels.length === 0 ? (
-                  <div className="text-[14px] text-[#5C5C5C]">No GitHub evidence attached.</div>
-                ) : null}
-              </div>
-            </Card>
+          <div className="pp-top-right">
+            <button
+              type="button"
+              className="pp-theme-toggle"
+              onClick={() => setTheme((current) => (current === "light" ? "dark" : "light"))}
+            >
+              {theme === "light" ? <MoonStar size={13} /> : <SunMedium size={13} />}
+              {theme === "light" ? "Dark" : "Light"}
+            </button>
+            <button
+              type="button"
+              className="pp-share-button"
+              onClick={() =>
+                setSharePayload({
+                  kind: "page",
+                  title: archetype,
+                  body: subcopy,
+                  url: pageUrl,
+                })
+              }
+            >
+              <Share2 size={13} />
+              Share
+            </button>
           </div>
         </div>
       </div>
+
+      <main className="pp-main">
+        <section className="pp-hero">
+          <div className="pp-shell">
+            <div className="pp-crumbs">
+              <span className="pp-verified">
+                <Check size={10} />
+                Verified
+              </span>
+              <span className="dot">/</span>
+              <span>Published {fmtDate(data.published_at)}</span>
+              <span className="dot">/</span>
+              <span>{fmtInt(data.view_count)} views</span>
+              <span className="dot">/</span>
+              <span>Engine {trust.engine_version || "—"}</span>
+            </div>
+
+            <h1 className="pp-name">{data.project_title || "Untitled project"}</h1>
+            {data.project_description ? <div className="pp-role">{data.project_description}</div> : null}
+
+            {verdict ? (
+              <button
+                type="button"
+                className="pp-verdict"
+                onClick={() =>
+                  setSharePayload({
+                    kind: "observation",
+                    title: detailLabel(verdict),
+                    body: verdict.summary || "Top-scoring observation from this proof page.",
+                    url: pageUrl,
+                  })
+                }
+              >
+                <div className="pp-verdict-eb">Top signal</div>
+                <div className="pp-verdict-mega">
+                  <span className="pp-verdict-num-xl">{scorePercent(verdict.score)}</span>
+                  <span className="pp-verdict-den">/100</span>
+                </div>
+                <div className="pp-verdict-copy">
+                  <div className="pp-verdict-label">{detailLabel(verdict)}</div>
+                  <div className="pp-verdict-sub">{verdict.summary || "Highest-rated public signal on this page."}</div>
+                </div>
+                <div className="pp-verdict-share-hint">
+                  <Share2 size={11} />
+                  Share signal
+                </div>
+              </button>
+            ) : null}
+
+            <div className="pp-archetype-wrap">
+              <div className="pp-archetype-eb">
+                <span>Archetype</span>
+                <span className="pp-archetype-rule" />
+                <span>Public proof</span>
+              </div>
+              <h2 className="pp-archetype">
+                {archetype}
+                <button
+                  type="button"
+                  className="pp-archetype-share"
+                  onClick={() =>
+                    setSharePayload({
+                      kind: "archetype",
+                      title: archetype,
+                      body: subcopy,
+                      url: pageUrl,
+                    })
+                  }
+                >
+                  <Share2 size={11} />
+                  Share
+                </button>
+              </h2>
+              <p className="pp-summary">{subcopy}</p>
+            </div>
+
+            <div className="pp-scores">
+              {(data.observations || []).slice(0, 3).map((observation, index) => (
+                <button
+                  type="button"
+                  key={`${observation.dimension || observation.label || "signal"}-${index}`}
+                  className="pp-score"
+                  onClick={() =>
+                    setSharePayload({
+                      kind: "score",
+                      title: detailLabel(observation),
+                      body: observation.summary || "Public signal from this proof page.",
+                      url: pageUrl,
+                    })
+                  }
+                >
+                  <div className="pp-score-code">{observation.dimension || `signal_${index + 1}`}</div>
+                  <div className="pp-score-num">
+                    {scorePercent(observation.score) ?? "—"}
+                    {observation.score != null ? <span className="pp-score-suf">%</span> : null}
+                  </div>
+                  <div className="pp-score-name">{detailLabel(observation)}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {(data.observations || []).length > 0 ? (
+          <section className="pp-section">
+            <div className="pp-shell">
+              <div className="pp-section-head">
+                <div>
+                  <div className="pp-section-eyebrow">Appendix A</div>
+                  <h2 className="pp-section-title">Dimension ratings</h2>
+                </div>
+                <div className="pp-section-sub">
+                  {data.observations.length} dimensions evaluated
+                  <br />
+                  across {fmtInt(trust.sample_size?.sessions)} sessions
+                </div>
+              </div>
+
+              <div className="pp-obs-list">
+                {data.observations.map((observation, index) => (
+                  <button
+                    type="button"
+                    key={`${observation.dimension || observation.label || "obs"}-${index}`}
+                    className="pp-obs"
+                    onClick={() =>
+                      setSharePayload({
+                        kind: "observation",
+                        title: detailLabel(observation),
+                        body: observation.summary || "Public observation from this proof page.",
+                        url: pageUrl,
+                      })
+                    }
+                  >
+                    <div>
+                      <div className="pp-obs-num">
+                        {scorePercent(observation.score) ?? "—"}
+                        {observation.score != null ? <span className="pct">%</span> : null}
+                      </div>
+                      <div className="pp-obs-bar">
+                        <div style={{ width: `${scorePercent(observation.score) ?? 0}%` }} />
+                      </div>
+                    </div>
+                    <div className="pp-obs-body">
+                      <div className="pp-obs-name">{detailLabel(observation)}</div>
+                      <div className="pp-obs-dim">{observation.dimension || "dimension unavailable"}</div>
+                      <div className="pp-obs-sum">{observation.summary || "No summary provided."}</div>
+                      <div className="pp-obs-conf">
+                        <span className={`pill-c ${confidenceClass(observation.confidence_label)}`}>
+                          {(observation.confidence_label || "low")} confidence
+                        </span>
+                        {observation.confidence_score != null ? (
+                          <>
+                            <span>·</span>
+                            <span>{Math.round(observation.confidence_score * 100)}% model certainty</span>
+                          </>
+                        ) : null}
+                      </div>
+                    </div>
+                    <span className="pp-obs-share">
+                      <Share2 size={12} />
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {(data.excerpts || []).length > 0 ? (
+          <section className="pp-section">
+            <div className="pp-shell">
+              <div className="pp-section-head">
+                <div>
+                  <div className="pp-section-eyebrow">Evidence</div>
+                  <h2 className="pp-section-title">Turns selected from the transcript</h2>
+                </div>
+                <div className="pp-section-sub">Excerpts are verbatim. Surrounding context was redacted for privacy.</div>
+              </div>
+
+              <div>
+                {data.excerpts.map((excerpt, index) => (
+                  <div className="pp-excerpt" key={excerpt.id || index}>
+                    <div className="pp-excerpt-meta">
+                      <span>#{String(index + 1).padStart(2, "0")}</span>
+                      {excerpt.dimension ? <span className="dim">{excerpt.dimension}</span> : null}
+                      {excerpt.claim ? <span>· {excerpt.claim}</span> : null}
+                    </div>
+                    <blockquote>{excerpt.redacted_text || excerpt.excerpt_text}</blockquote>
+                    {excerpt.annotation ? <div className="ann">{excerpt.annotation}</div> : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {(data.github_panels || []).length > 0 ? (
+          <section className="pp-section">
+            <div className="pp-shell">
+              <div className="pp-section-head">
+                <div>
+                  <div className="pp-section-eyebrow">Cross-reference</div>
+                  <h2 className="pp-section-title">Linked repositories</h2>
+                </div>
+                <div className="pp-section-sub">
+                  Correlation score reflects alignment between the chat timeline and the commit timeline.
+                </div>
+              </div>
+
+              <div className="pp-gh-list">
+                {data.github_panels.map((panel) => (
+                  <a key={`${panel.repo_owner}/${panel.repo_name}`} href={panel.repo_url} target="_blank" rel="noreferrer" className="pp-gh">
+                    <div className="pp-gh-head">
+                      <div className="pp-gh-repo">
+                        <span className="owner">{panel.repo_owner}/</span>
+                        {panel.repo_name}
+                      </div>
+                      {panel.language ? <div className="pp-gh-lang">{panel.language}</div> : null}
+                    </div>
+                    <div className="pp-gh-stats">
+                      {panel.stars != null ? (
+                        <span>
+                          <span className="k">★</span>
+                          {fmtInt(panel.stars)}
+                        </span>
+                      ) : null}
+                      {panel.commit_count != null ? (
+                        <span>
+                          <span className="k">commits</span>
+                          {fmtInt(panel.commit_count)}
+                        </span>
+                      ) : null}
+                      <span className="pp-gh-open">
+                        <ExternalLink size={11} />
+                      </span>
+                    </div>
+                    {panel.correlation_score != null ? (
+                      <div className="pp-gh-corr">
+                        <div className="bar">
+                          <div style={{ width: `${Math.round(panel.correlation_score * 100)}%` }} />
+                        </div>
+                        <div className="val">{Math.round(panel.correlation_score * 100)}% corr.</div>
+                      </div>
+                    ) : null}
+                  </a>
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        <section className="pp-section pp-section-trust">
+          <div className="pp-shell">
+            <div className="pp-section-head">
+              <div>
+                <div className="pp-section-eyebrow">Forensics</div>
+                <h2 className="pp-section-title">Trust panel</h2>
+              </div>
+              <div className="pp-section-sub">Independently verifiable metadata. Page version {trust.page_version ?? 1}.</div>
+            </div>
+
+            <div className="pp-trust">
+              <div className="pp-trust-inner">
+                <div className="pp-trust-head">
+                  <div className="pp-trust-eb">Hash integrity</div>
+                  {trust.hash_integrity ? (
+                    <div className="pp-trust-ok">
+                      <Check size={11} />
+                      Chain intact
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="pp-trust-hash">
+                  <div>
+                    <span className="k">sha256</span>
+                    <span className="v">{hashPreview(data.public_token)}</span>
+                  </div>
+                  <div>
+                    <span className="k">signed</span>
+                    <span className="v">
+                      {fmtDate(trust.last_modified)} · {fmtTime(trust.last_modified)} UTC
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pp-trust-grid">
+                  <div className="pp-trust-cell">
+                    <div className="pp-trust-k">Sessions</div>
+                    <div className="pp-trust-v">{fmtInt(trust.sample_size?.sessions)}</div>
+                  </div>
+                  <div className="pp-trust-cell">
+                    <div className="pp-trust-k">Uploads</div>
+                    <div className="pp-trust-v">{fmtInt(trust.sample_size?.uploads)}</div>
+                  </div>
+                  <div className="pp-trust-cell">
+                    <div className="pp-trust-k">Coverage</div>
+                    <div className="pp-trust-v">
+                      {Number(trust.censorship_coverage_pct ?? 0).toFixed(1)}
+                      <span className="unit">%</span>
+                    </div>
+                  </div>
+                  <div className="pp-trust-cell">
+                    <div className="pp-trust-k">Dimensions</div>
+                    <div className="pp-trust-v">
+                      {trust.dimensions_evaluated ?? 0}
+                      <span className="unit">
+                        /{(trust.dimensions_evaluated ?? 0) + (trust.dimensions_skipped ?? 0)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="pp-trust-cell">
+                    <div className="pp-trust-k">Evidence classes</div>
+                    <div className="pp-ev-classes">
+                      {evidence.A_plus ? <span className="evc a-plus">A+·{evidence.A_plus}</span> : null}
+                      {evidence.A ? <span className="evc a">A·{evidence.A}</span> : null}
+                      {evidence.B ? <span className="evc">B·{evidence.B}</span> : null}
+                      {evidence.C ? <span className="evc">C·{evidence.C}</span> : null}
+                      {evidence.D ? <span className="evc d">D·{evidence.D}</span> : null}
+                    </div>
+                  </div>
+                  <div className="pp-trust-cell">
+                    <div className="pp-trust-k">GitHub linked</div>
+                    <div className="pp-trust-v">
+                      {trust.github_repos_linked ?? 0}
+                      <span className="unit">repos</span>
+                    </div>
+                  </div>
+                  <div className="pp-trust-cell">
+                    <div className="pp-trust-k">GH correlation</div>
+                    <div className="pp-trust-v">
+                      {trust.github_correlation_score != null
+                        ? Math.round(trust.github_correlation_score * 100)
+                        : "—"}
+                      <span className="unit">%</span>
+                    </div>
+                  </div>
+                  <div className="pp-trust-cell">
+                    <div className="pp-trust-k">Engine</div>
+                    <div className="pp-trust-v pp-trust-engine">{trust.engine_version || "—"}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="pp-footer">
+        <div className="pp-shell">
+          <div className="brand">
+            Proof of AI Work<span className="brand-dot" />
+          </div>
+          <div>
+            This is a public proof page. Anyone with the link can view it.
+            <br />
+            Token <span className="pp-footer-token">{data.public_token}</span> · v{trust.page_version ?? 1}
+          </div>
+        </div>
+      </footer>
+
+      <ShareOverlay payload={sharePayload} onClose={() => setSharePayload(null)} />
     </div>
   );
 }
