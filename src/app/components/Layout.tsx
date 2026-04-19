@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
-import { FolderKanban, Globe, LayoutDashboard, LogOut, MessageSquare, Upload, FileBarChart } from "lucide-react";
+import { FolderKanban, Globe, LayoutDashboard, LogOut, MessageSquare, Upload, FileBarChart, Activity } from "lucide-react";
 import { Button } from "./ui/button";
 import { useAuthStore } from "../../stores/authStore";
 
@@ -9,6 +9,7 @@ const items = [
   { name: "Conversations", href: "/app/conversations", icon: MessageSquare },
   { name: "Projects", href: "/app/projects", icon: FolderKanban },
   { name: "Assessments", href: "/app/assessments", icon: FileBarChart },
+  { name: "Work Profile", href: "/app/work-profile", icon: Activity },
   { name: "Proof Pages", href: "/app/proof-pages", icon: Globe },
 ];
 

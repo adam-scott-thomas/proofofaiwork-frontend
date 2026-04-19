@@ -18,6 +18,7 @@ import Assessments from "./pages/Assessments";
 import Processing from "./pages/Processing";
 import Results from "./pages/Results";
 import ProofPages from "./pages/ProofPages";
+import WorkProfile from "./pages/WorkProfile";
 import PublicProofPage from "./pages/PublicProofPage";
 import Explore from "./pages/Explore";
 import NotFound from "./pages/NotFound";
@@ -47,6 +48,7 @@ export const router = createBrowserRouter([
       { path: "assessment/:id/processing", Component: Processing },
       { path: "assessment/:id/results", Component: Results },
       { path: "proof-pages", Component: ProofPages },
+      { path: "work-profile", Component: WorkProfile },
     ],
   },
   { path: "/p/:slug", Component: PublicProofPage, ErrorBoundary },
