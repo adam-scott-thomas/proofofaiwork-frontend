@@ -158,7 +158,7 @@ export default function Dashboard() {
     uploads: totalConversations,
     projects: projects.length,
     assessments: assessments.length,
-    profilesHlsAvailable: !!workProfile?.human_leadership_score,
+    profilesHlsAvailable: workProfile?.human_leadership_score != null,
     proofsPublished: publishedProofs.length,
   });
 
