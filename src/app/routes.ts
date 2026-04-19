@@ -22,6 +22,7 @@ import Portfolios from "./pages/Portfolios";
 import PortfolioDetail from "./pages/PortfolioDetail";
 import WorkProfile from "./pages/WorkProfile";
 import PublicProofPage from "./pages/PublicProofPage";
+import PublicPortfolio from "./pages/PublicPortfolio";
 import Explore from "./pages/Explore";
 import NotFound from "./pages/NotFound";
 
@@ -56,6 +57,7 @@ export const router = createBrowserRouter([
     ],
   },
   { path: "/p/:slug", Component: PublicProofPage, ErrorBoundary },
+  { path: "/u/:slug", Component: PublicPortfolio, ErrorBoundary },
   { path: "/directory", Component: Explore, ErrorBoundary },
   { path: "*", Component: NotFound },
 ]);
