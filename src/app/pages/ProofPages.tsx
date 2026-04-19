@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  ArrowDown,
+  ArrowUp,
   Check,
   Copy,
   Eye,
@@ -692,6 +694,7 @@ type ExcerptDraft = {
   is_visible: boolean;
   redacted_text: string;
   annotation: string;
+  display_order: number;
 };
 
 function ExcerptApprovalDialog({ page, onClose }: { page: ProofPage | null; onClose: () => void }) {
@@ -713,6 +716,7 @@ function ExcerptApprovalDialog({ page, onClose }: { page: ProofPage | null; onCl
         is_visible: excerpt.is_visible,
         redacted_text: excerpt.redacted_text ?? "",
         annotation: excerpt.annotation ?? "",
+        display_order: excerpt.display_order,
       };
     }
     setDrafts(next);
@@ -731,6 +735,7 @@ function ExcerptApprovalDialog({ page, onClose }: { page: ProofPage | null; onCl
             is_visible: draft.is_visible,
             redacted_text: draft.redacted_text,
             annotation: draft.annotation,
+            display_order: draft.display_order,
           };
         })
         .filter(Boolean);
@@ -749,6 +754,18 @@ function ExcerptApprovalDialog({ page, onClose }: { page: ProofPage | null; onCl
     setDirty((prev) => new Set(prev).add(id));
   };
 
+  const swapOrder = (idA: string, idB: string) => {
+    const draftA = drafts[idA];
+    const draftB = drafts[idB];
+    if (!draftA || !draftB) return;
+    setDrafts((prev) => ({
+      ...prev,
+      [idA]: { ...draftA, display_order: draftB.display_order },
+      [idB]: { ...draftB, display_order: draftA.display_order },
+    }));
+    setDirty((prev) => new Set(prev).add(idA).add(idB));
+  };
+
   const excerpts = query.data ?? [];
   const grouped = useMemo(() => {
     const groups = new Map<string, ExcerptDetail[]>();
@@ -758,8 +775,16 @@ function ExcerptApprovalDialog({ page, onClose }: { page: ProofPage | null; onCl
       list.push(excerpt);
       groups.set(key, list);
     }
+    // Sort each group by current draft.display_order so reordered items move live
+    for (const list of groups.values()) {
+      list.sort((a, b) => {
+        const orderA = drafts[a.id]?.display_order ?? a.display_order;
+        const orderB = drafts[b.id]?.display_order ?? b.display_order;
+        return orderA - orderB;
+      });
+    }
     return Array.from(groups.entries());
-  }, [excerpts]);
+  }, [excerpts, drafts]);
 
   const visibleCount = excerpts.filter((excerpt) => drafts[excerpt.id]?.is_visible).length;
 
@@ -796,20 +821,46 @@ function ExcerptApprovalDialog({ page, onClose }: { page: ProofPage | null; onCl
                   </span>
                 </div>
                 <div className="space-y-2">
-                  {group.map((excerpt) => {
+                  {group.map((excerpt, index) => {
                     const draft = drafts[excerpt.id] ?? {
                       is_visible: excerpt.is_visible,
                       redacted_text: excerpt.redacted_text ?? "",
                       annotation: excerpt.annotation ?? "",
+                      display_order: excerpt.display_order,
                     };
                     const isDirty = dirty.has(excerpt.id);
                     const tooLong = draft.redacted_text.length > excerpt.excerpt_text.length;
+                    const canMoveUp = index > 0;
+                    const canMoveDown = index < group.length - 1;
                     return (
                       <Card
                         key={excerpt.id}
                         className={`border p-3 ${draft.is_visible ? "border-[#A88F5F] bg-white" : "border-[#D8D2C4] bg-[#FBF8F1]"}`}
                       >
                         <div className="mb-2 flex flex-wrap items-center gap-2">
+                          <div className="flex flex-col gap-0.5">
+                            <button
+                              type="button"
+                              className="rounded p-0.5 text-[#6B6B66] hover:bg-[#EAE3CF] disabled:opacity-30"
+                              disabled={!canMoveUp}
+                              onClick={() => swapOrder(excerpt.id, group[index - 1].id)}
+                              title="Move up"
+                            >
+                              <ArrowUp className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded p-0.5 text-[#6B6B66] hover:bg-[#EAE3CF] disabled:opacity-30"
+                              disabled={!canMoveDown}
+                              onClick={() => swapOrder(excerpt.id, group[index + 1].id)}
+                              title="Move down"
+                            >
+                              <ArrowDown className="h-3 w-3" />
+                            </button>
+                          </div>
+                          <span className="text-[10px] tracking-[0.08em] text-[#6B6B66]">
+                            #{draft.display_order}
+                          </span>
                           {excerpt.observation_dimension ? (
                             <span className="rounded-full bg-[#DCE4F0] px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-[#315D8A]">
                               {excerpt.observation_dimension}
