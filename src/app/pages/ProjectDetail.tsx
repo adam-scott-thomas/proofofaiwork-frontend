@@ -4,6 +4,7 @@ import {
   ArrowRight,
   CheckCircle2,
   FileBarChart,
+  Flame,
   FolderKanban,
   Hash,
   Loader2,
@@ -83,6 +84,20 @@ export default function ProjectDetail() {
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [knowledgeOpen, setKnowledgeOpen] = useState(false);
+  const [scuttleOpen, setScuttleOpen] = useState(false);
+
+  const scuttle = useMutation({
+    mutationFn: () => apiPost(`/projects/${id}/scuttle`, {}),
+    onSuccess: (result: any) => {
+      const files = result?.upload_count ?? 0;
+      const bytes = result?.bytes_destroyed ?? 0;
+      toast.success(`Scuttled ${files} upload${files === 1 ? "" : "s"} (${(bytes / 1024).toFixed(1)} KB)`);
+      setScuttleOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["project", id] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+    onError: (error: any) => toast.error(error?.message ?? "Scuttle failed"),
+  });
 
   const save = useMutation({
     mutationFn: (body: { title: string; description: string | null }) =>
@@ -211,6 +226,17 @@ export default function ProjectDetail() {
                 >
                   {triggerEvaluation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlayCircle className="mr-2 h-4 w-4" />}
                   Run assessment
+                </Button>
+              ) : null}
+              {!project.raw_data_scuttled ? (
+                <Button
+                  variant="ghost"
+                  className="text-[#8A5F10] hover:bg-[#FDF4DC] hover:text-[#8A5F10]"
+                  onClick={() => setScuttleOpen(true)}
+                  title="Destroy the raw uploaded files (observations and scores are kept)"
+                >
+                  <Flame className="mr-2 h-4 w-4" />
+                  Scuttle raw data
                 </Button>
               ) : null}
               <Button
@@ -367,6 +393,29 @@ export default function ProjectDetail() {
         projectId={project.id}
         onClose={() => setKnowledgeOpen(false)}
       />
+
+      <Dialog open={scuttleOpen} onOpenChange={setScuttleOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Scuttle raw data for {project.title}?</DialogTitle>
+            <DialogDescription>
+              Destroys the raw uploaded files on disk. Canonical excerpts, observations, assessment scores,
+              and the audit log are preserved. This is a compliance-grade burn — not reversible.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setScuttleOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-[#8A5F10] hover:bg-[#6F4E0D]"
+              disabled={scuttle.isPending}
+              onClick={() => scuttle.mutate()}
+            >
+              {scuttle.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Flame className="mr-2 h-4 w-4" />}
+              Scuttle
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={deleting} onOpenChange={setDeleting}>
         <DialogContent>

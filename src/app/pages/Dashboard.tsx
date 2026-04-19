@@ -8,11 +8,15 @@ import {
   FolderKanban,
   Globe,
   Loader2,
+  Mail,
   Sparkles,
   Upload as UploadIcon,
+  UserCheck,
+  UserX,
 } from "lucide-react";
 import { Link } from "react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import {
@@ -23,7 +27,7 @@ import {
   useProofPages,
   useWorkProfile,
 } from "../../hooks/useApi";
-import { apiFetch } from "../../lib/api";
+import { apiFetch, apiPost } from "../../lib/api";
 import { asArray, dateTime, proofPagePath } from "../lib/poaw";
 
 type ActivityEvent = {
@@ -40,6 +44,19 @@ type DirectoryStatus = {
   total_published: number;
   threshold: number;
   message?: string;
+};
+
+type ViewerRequest = {
+  id: string;
+  proof_page_id: string;
+  name: string;
+  email: string;
+  organization: string | null;
+  reason: string | null;
+  message: string | null;
+  status: "pending" | "accepted" | "rejected" | string;
+  responded_at: string | null;
+  created_at: string;
 };
 
 type Dispute = {
@@ -125,6 +142,20 @@ export default function Dashboard() {
     queryFn: () => apiFetch<Dispute[]>(`/disputes`),
     retry: false,
   });
+  const requestsQuery = useQuery<ViewerRequest[]>({
+    queryKey: ["viewer-requests"],
+    queryFn: () => apiFetch<ViewerRequest[]>(`/requests`),
+    retry: false,
+  });
+  const queryClient = useQueryClient();
+  const respondRequest = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: "accept" | "reject" }) =>
+      apiPost(`/requests/${id}/respond`, { action }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["viewer-requests"] });
+    },
+    onError: (error: any) => toast.error(error?.message ?? "Response failed"),
+  });
 
   const loading = poolLoading || projectsLoading || assessmentsLoading || proofPagesLoading;
 
@@ -143,6 +174,8 @@ export default function Dashboard() {
   const activity = activityQuery.data ?? [];
   const disputes = disputesQuery.data ?? [];
   const activeDisputes = disputes.filter((d) => d.status === "open" || d.status === "reviewed");
+  const requests = requestsQuery.data ?? [];
+  const pendingRequests = requests.filter((r) => r.status === "pending");
   const handle = me?.handle ? `@${String(me.handle).replace(/^@/, "")}` : me?.email ?? "operator";
 
   if (loading) {
@@ -326,6 +359,73 @@ export default function Dashboard() {
                             <div className="mt-1 truncate text-[12px] text-[#6B6B66]">{dispute.reason}</div>
                           </div>
                           <span className="shrink-0 text-[11px] text-[#6B6B66]">{dateTime(dispute.created_at)}</span>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {pendingRequests.length > 0 ? (
+                <div className="mt-6">
+                  <div className="mb-2 flex items-baseline justify-between">
+                    <div>
+                      <div className="text-[12px] uppercase tracking-[0.16em] text-[#5D3FA0]">Contact requests</div>
+                      <h2 className="text-lg tracking-tight">{pendingRequests.length} pending intro{pendingRequests.length === 1 ? "" : "s"}</h2>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {pendingRequests.slice(0, 4).map((request) => (
+                      <Card key={request.id} className="border border-[#D8D2C4] bg-white p-3">
+                        <div className="flex items-start gap-3">
+                          <Mail className="mt-0.5 h-4 w-4 shrink-0 text-[#5D3FA0]" />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <div className="text-[13px] text-[#161616]">{request.name}</div>
+                              {request.organization ? (
+                                <span className="text-[11px] text-[#6B6B66]">· {request.organization}</span>
+                              ) : null}
+                              <span className="ml-auto text-[11px] text-[#6B6B66]">{dateTime(request.created_at)}</span>
+                            </div>
+                            {request.message ? (
+                              <div className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-[#5C5C5C]">
+                                {request.message}
+                              </div>
+                            ) : null}
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              <span className="text-[11px] text-[#6B6B66]">{request.email}</span>
+                              <div className="ml-auto flex gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    respondRequest.mutate(
+                                      { id: request.id, action: "accept" },
+                                      { onSuccess: () => toast.success("Accepted") },
+                                    )
+                                  }
+                                  disabled={respondRequest.isPending}
+                                  className="inline-flex items-center gap-1 rounded-md border border-[#1F6A3F] bg-[#D3E9D9] px-2 py-0.5 text-[11px] text-[#1F6A3F] disabled:opacity-50"
+                                >
+                                  <UserCheck className="h-3 w-3" />
+                                  Accept
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    respondRequest.mutate(
+                                      { id: request.id, action: "reject" },
+                                      { onSuccess: () => toast.success("Declined") },
+                                    )
+                                  }
+                                  disabled={respondRequest.isPending}
+                                  className="inline-flex items-center gap-1 rounded-md border border-[#D8D2C4] bg-white px-2 py-0.5 text-[11px] text-[#6B6B66] hover:border-[#8B2F2F] hover:text-[#8B2F2F] disabled:opacity-50"
+                                >
+                                  <UserX className="h-3 w-3" />
+                                  Decline
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </Card>
                     ))}
