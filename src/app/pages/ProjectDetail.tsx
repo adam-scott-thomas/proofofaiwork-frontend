@@ -3,15 +3,18 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
+  ExternalLink,
   FileBarChart,
   Flame,
   FolderKanban,
+  Github,
   Hash,
   Loader2,
   MessagesSquare,
   Network,
   Pencil,
   PlayCircle,
+  Plus,
   Trash2,
 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
@@ -306,6 +309,9 @@ export default function ProjectDetail() {
             </section>
           ) : null}
 
+          {/* Repos */}
+          <ReposSection projectId={project.id} />
+
           {/* Conversations */}
           <section>
             <div className="mb-3 flex items-baseline justify-between">
@@ -447,6 +453,170 @@ export default function ProjectDetail() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+type RepoSummary = {
+  id: string;
+  repo_url: string;
+  repo_owner: string;
+  repo_name: string;
+  description: string | null;
+  language: string | null;
+  stars: number | null;
+  commit_count: number | null;
+  correlation_score: number | null;
+  parse_status: string;
+  created_at: string;
+};
+
+function ReposSection({ projectId }: { projectId: string }) {
+  const queryClient = useQueryClient();
+  const [attachOpen, setAttachOpen] = useState(false);
+  const [repoUrl, setRepoUrl] = useState("");
+
+  const listQuery = useQuery<RepoSummary[]>({
+    queryKey: ["project-repos", projectId],
+    queryFn: () => apiFetch<RepoSummary[]>(`/projects/${projectId}/repos`),
+    retry: false,
+  });
+
+  const attach = useMutation({
+    mutationFn: (url: string) => apiPost<RepoSummary>(`/projects/${projectId}/repos`, { repo_url: url }),
+    onSuccess: () => {
+      toast.success("Repo attached");
+      setAttachOpen(false);
+      setRepoUrl("");
+      queryClient.invalidateQueries({ queryKey: ["project-repos", projectId] });
+    },
+    onError: (error: any) => toast.error(error?.message ?? "Attach failed"),
+  });
+
+  const detach = useMutation({
+    mutationFn: (repoId: string) => apiFetch(`/projects/${projectId}/repos/${repoId}`, { method: "DELETE" }),
+    onSuccess: () => {
+      toast.success("Repo detached");
+      queryClient.invalidateQueries({ queryKey: ["project-repos", projectId] });
+    },
+    onError: (error: any) => toast.error(error?.message ?? "Detach failed"),
+  });
+
+  const repos = listQuery.data ?? [];
+
+  return (
+    <section>
+      <div className="mb-3 flex items-baseline justify-between">
+        <div>
+          <div className="text-[12px] uppercase tracking-[0.16em] text-[#6B6B66]">Repos</div>
+          <h2 className="text-xl tracking-tight">
+            Linked code
+            {repos.length > 0 ? <span className="ml-2 text-[13px] font-normal text-[#6B6B66]">({repos.length})</span> : null}
+          </h2>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setAttachOpen(true)}>
+          <Plus className="mr-2 h-3.5 w-3.5" />
+          Attach repo
+        </Button>
+      </div>
+
+      {listQuery.isLoading ? (
+        <Card className="border border-[#D8D2C4] bg-white p-4 text-[13px] text-[#6B6B66]">
+          <Loader2 className="mr-2 inline h-3.5 w-3.5 animate-spin" />
+          Loading repos...
+        </Card>
+      ) : repos.length === 0 ? (
+        <Card className="border border-dashed border-[#D8D2C4] bg-[#FBF8F1] p-6 text-center text-[13px] text-[#5C5C5C]">
+          <Github className="mx-auto mb-2 h-4 w-4 text-[#6B6B66]" />
+          No repos attached. Link a GitHub repo to cross-reference your chat timeline with commit history.
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {repos.map((repo) => (
+            <Card key={repo.id} className="border border-[#D8D2C4] bg-white p-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <Github className="h-4 w-4 shrink-0 text-[#161616]" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={repo.repo_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="truncate text-[14px] text-[#315D8A] hover:underline"
+                    >
+                      <span className="text-[#6B6B66]">{repo.repo_owner}/</span>
+                      {repo.repo_name}
+                    </a>
+                    <ExternalLink className="h-3 w-3 shrink-0 text-[#6B6B66]" />
+                    {repo.language ? (
+                      <span className="rounded-full border border-[#D8D2C4] px-2 py-0.5 text-[10px] tracking-[0.08em] text-[#6B6B66]">
+                        {repo.language}
+                      </span>
+                    ) : null}
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] tracking-[0.08em] uppercase ${
+                      repo.parse_status === "parsed" ? "bg-[#D3E9D9] text-[#1F6A3F]" :
+                      repo.parse_status === "failed" ? "bg-[#F3D1D1] text-[#8B2F2F]" :
+                      "bg-[#EAE3CF] text-[#6B6B66]"
+                    }`}>
+                      {repo.parse_status}
+                    </span>
+                  </div>
+                  {repo.description ? (
+                    <div className="mt-1 line-clamp-1 text-[12px] text-[#5C5C5C]">{repo.description}</div>
+                  ) : null}
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[#6B6B66]">
+                    {repo.stars != null ? <span>★ {repo.stars}</span> : null}
+                    {repo.commit_count != null ? <span>{repo.commit_count} commits</span> : null}
+                    {repo.correlation_score != null ? (
+                      <span>correlation {Math.round(repo.correlation_score * 100)}%</span>
+                    ) : null}
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-[#8B2F2F] hover:bg-[#F3D1D1]/40 hover:text-[#8B2F2F]"
+                  onClick={() => detach.mutate(repo.id)}
+                  disabled={detach.isPending}
+                >
+                  <Trash2 className="mr-1 h-3.5 w-3.5" />
+                  Detach
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={attachOpen} onOpenChange={setAttachOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Attach a GitHub repo</DialogTitle>
+            <DialogDescription>
+              Paste a public repo URL. The backend parses commits and correlates them with this project's
+              conversation timeline, so the public proof page can show a correlation score.
+            </DialogDescription>
+          </DialogHeader>
+          <div>
+            <Input
+              value={repoUrl}
+              onChange={(event) => setRepoUrl(event.target.value)}
+              placeholder="https://github.com/owner/repo"
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setAttachOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => attach.mutate(repoUrl.trim())}
+              disabled={attach.isPending || !repoUrl.trim().startsWith("http")}
+            >
+              {attach.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Github className="mr-2 h-4 w-4" />}
+              Attach
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </section>
   );
 }
 
