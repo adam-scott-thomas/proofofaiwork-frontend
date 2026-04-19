@@ -188,6 +188,11 @@ export default function Results() {
     queryFn: () => apiFetch<{ files: NormalizedFile[] }>(`/assessments/${id}/normalized`),
     enabled: !!id,
   });
+  const disputesQuery = useQuery<Array<{ observation_id: string; status: string }>>({
+    queryKey: ["disputes"],
+    queryFn: () => apiFetch<Array<{ observation_id: string; status: string }>>("/disputes"),
+    retry: false,
+  });
 
   const createProofPage = useMutation({
     mutationFn: () => apiPost<{ id: string; slug?: string }>("/proof-pages", { assessment_id: id }),
@@ -200,13 +205,35 @@ export default function Results() {
   });
 
   const [disputeTarget, setDisputeTarget] = useState<Observation | null>(null);
-  const [disputedDims, setDisputedDims] = useState<Set<string>>(new Set());
+  const [disputedDimsLocal, setDisputedDimsLocal] = useState<Set<string>>(new Set());
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [skippedOpen, setSkippedOpen] = useState(false);
 
   const assessment = assessmentQuery.data;
   const results = resultsQuery.data;
   const normalized = normalizedQuery.data;
+
+  // Merge server-side active disputes (open/reviewed for this assessment's
+  // observations) with any disputes this session filed locally.
+  const disputedObsIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const dispute of disputesQuery.data ?? []) {
+      if (dispute.status === "open" || dispute.status === "reviewed") {
+        set.add(dispute.observation_id);
+      }
+    }
+    return set;
+  }, [disputesQuery.data]);
+
+  const disputedDims = useMemo(() => {
+    const set = new Set(disputedDimsLocal);
+    for (const observation of results?.observations ?? []) {
+      if (observation.id && disputedObsIds.has(observation.id)) {
+        set.add(observation.dimension);
+      }
+    }
+    return set;
+  }, [disputedDimsLocal, disputedObsIds, results?.observations]);
 
   const status = assessment?.status ?? results?.status ?? "pending";
   const statusStyle = STATUS_STYLE[status] || STATUS_STYLE.pending;
@@ -683,7 +710,7 @@ export default function Results() {
         observation={disputeTarget}
         onClose={() => setDisputeTarget(null)}
         onSubmitted={(dim) => {
-          setDisputedDims((prev) => new Set(prev).add(dim));
+          setDisputedDimsLocal((prev) => new Set(prev).add(dim));
           setDisputeTarget(null);
           queryClient.invalidateQueries({ queryKey: ["disputes"] });
         }}

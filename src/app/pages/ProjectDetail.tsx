@@ -14,7 +14,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -34,7 +34,7 @@ import {
   useProject,
   useTriggerEvaluation,
 } from "../../hooks/useApi";
-import { apiPatch, apiPost } from "../../lib/api";
+import { apiFetch, apiPatch, apiPost } from "../../lib/api";
 import { asArray, dateTime } from "../lib/poaw";
 
 type ProjectConversation = {
@@ -82,6 +82,7 @@ export default function ProjectDetail() {
 
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [knowledgeOpen, setKnowledgeOpen] = useState(false);
 
   const save = useMutation({
     mutationFn: (body: { title: string; description: string | null }) =>
@@ -289,14 +290,10 @@ export default function ProjectDetail() {
                 </h2>
               </div>
               <div className="flex gap-2">
-                {id ? (
-                  <Link to={`/app/projects/${id}/knowledge-map`} onClick={(event) => event.preventDefault()}>
-                    <Button variant="ghost" size="sm" className="text-[#6B6B66]" disabled>
-                      <Network className="mr-2 h-3.5 w-3.5" />
-                      Knowledge map
-                    </Button>
-                  </Link>
-                ) : null}
+                <Button variant="ghost" size="sm" onClick={() => setKnowledgeOpen(true)}>
+                  <Network className="mr-2 h-3.5 w-3.5" />
+                  Knowledge map
+                </Button>
                 <Link to="/app/upload">
                   <Button variant="outline" size="sm">
                     Add from pool
@@ -365,6 +362,12 @@ export default function ProjectDetail() {
         saving={save.isPending}
       />
 
+      <KnowledgeMapDialog
+        open={knowledgeOpen}
+        projectId={project.id}
+        onClose={() => setKnowledgeOpen(false)}
+      />
+
       <Dialog open={deleting} onOpenChange={setDeleting}>
         <DialogContent>
           <DialogHeader>
@@ -394,6 +397,102 @@ export default function ProjectDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function KnowledgeMapDialog({
+  open,
+  projectId,
+  onClose,
+}: {
+  open: boolean;
+  projectId: string;
+  onClose: () => void;
+}) {
+  const query = useQuery<any>({
+    queryKey: ["knowledge-map", projectId],
+    queryFn: () => apiFetch<any>(`/projects/${projectId}/knowledge-map`),
+    enabled: open,
+  });
+
+  const data = query.data;
+  const entities = Array.isArray(data?.entities) ? data.entities : [];
+  const topics = Array.isArray(data?.topics) ? data.topics : [];
+  const fingerprints = Array.isArray(data?.code_fingerprints) ? data.code_fingerprints : [];
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Knowledge map</DialogTitle>
+          <DialogDescription>
+            Entities, topics, and code fingerprints the parser pulled out of this project's conversations.
+          </DialogDescription>
+        </DialogHeader>
+        {query.isLoading ? (
+          <div className="flex items-center gap-2 p-4 text-[13px] text-[#6B6B66]">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Building map...
+          </div>
+        ) : query.error ? (
+          <div className="rounded-md border border-[#E8B8B8] bg-[#FBEAEA] p-3 text-[13px] text-[#8B2F2F]">
+            Could not build the knowledge map right now.
+          </div>
+        ) : !data ? (
+          <div className="text-[13px] text-[#6B6B66]">No data yet.</div>
+        ) : (
+          <div className="max-h-[60vh] space-y-4 overflow-y-auto">
+            {entities.length > 0 ? (
+              <MapSection title="Entities" items={entities} />
+            ) : null}
+            {topics.length > 0 ? (
+              <MapSection title="Topics" items={topics} />
+            ) : null}
+            {fingerprints.length > 0 ? (
+              <MapSection title="Code fingerprints" items={fingerprints} />
+            ) : null}
+            {entities.length === 0 && topics.length === 0 && fingerprints.length === 0 ? (
+              <div className="rounded-md border border-dashed border-[#D8D2C4] bg-[#FBF8F1] p-4 text-center text-[13px] text-[#6B6B66]">
+                Map is empty. Parse more conversations to populate it.
+              </div>
+            ) : null}
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function MapSection({ title, items }: { title: string; items: any[] }) {
+  return (
+    <div>
+      <div className="text-[11px] uppercase tracking-[0.12em] text-[#6B6B66]">{title} ({items.length})</div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {items.slice(0, 60).map((item, index) => {
+          const label = typeof item === "string" ? item : item?.label || item?.name || item?.value || item?.text || JSON.stringify(item);
+          const count = typeof item === "object" ? (item.count ?? item.frequency ?? null) : null;
+          return (
+            <span
+              key={index}
+              className="inline-flex items-center gap-1 rounded-full border border-[#D8D2C4] bg-[#FBF8F1] px-2 py-0.5 text-[11px] text-[#5C5C5C]"
+            >
+              {String(label)}
+              {count != null ? (
+                <span className="text-[10px] text-[#A88F5F]">×{count}</span>
+              ) : null}
+            </span>
+          );
+        })}
+        {items.length > 60 ? (
+          <span className="inline-flex items-center rounded-full bg-[#F3EEE2] px-2 py-0.5 text-[10px] text-[#6B6B66]">
+            +{items.length - 60}
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }
