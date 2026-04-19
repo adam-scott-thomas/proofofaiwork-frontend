@@ -1,332 +1,206 @@
-import { Search as SearchIcon } from "lucide-react";
-import { Badge } from "../components/ui/badge";
-import { Button } from "../components/ui/button";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router";
+import {
+  ArrowRight,
+  FileBarChart,
+  FolderKanban,
+  Globe,
+  Loader2,
+  MessagesSquare,
+  Search as SearchIcon,
+} from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { useState, useEffect } from "react";
-import { Link } from "react-router";
 import { useGlobalSearch } from "../../hooks/useApi";
+import { dateTime } from "../lib/poaw";
+
+type SearchResult = {
+  type: "project" | "conversation" | "proof_page" | string;
+  id: string;
+  title: string;
+  description?: string | null;
+  status?: string;
+  source_format?: string;
+  turn_count?: number;
+  published_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+type FilterKey = "all" | "projects" | "conversations" | "proofs";
 
 export default function Search() {
-  const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initial = searchParams.get("q") ?? "";
+  const [query, setQuery] = useState(initial);
+  const [debounced, setDebounced] = useState(initial);
+  const [filter, setFilter] = useState<FilterKey>("all");
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedQuery(query);
-    }, 300);
+    const timer = setTimeout(() => setDebounced(query), 250);
     return () => clearTimeout(timer);
   }, [query]);
 
-  const { data: searchResults, isLoading } = useGlobalSearch(debouncedQuery);
+  useEffect(() => {
+    if (debounced) {
+      setSearchParams({ q: debounced }, { replace: true });
+    } else {
+      setSearchParams({}, { replace: true });
+    }
+  }, [debounced, setSearchParams]);
 
-  const conversations: any[] = searchResults?.conversations ?? [];
-  const projects: any[] = searchResults?.projects ?? [];
-  const proofPages: any[] = searchResults?.proof_pages ?? searchResults?.proofPages ?? [];
+  const { data, isLoading } = useGlobalSearch(debounced);
 
-  const totalCount = conversations.length + projects.length + proofPages.length;
+  const results: SearchResult[] = Array.isArray(data?.results) ? data.results : [];
+
+  const buckets = useMemo(() => {
+    const projects: SearchResult[] = [];
+    const conversations: SearchResult[] = [];
+    const proofs: SearchResult[] = [];
+    for (const result of results) {
+      if (result.type === "project") projects.push(result);
+      else if (result.type === "conversation") conversations.push(result);
+      else if (result.type === "proof_page") proofs.push(result);
+    }
+    return { projects, conversations, proofs };
+  }, [results]);
+
+  const visible = useMemo(() => {
+    if (filter === "projects") return buckets.projects;
+    if (filter === "conversations") return buckets.conversations;
+    if (filter === "proofs") return buckets.proofs;
+    return results;
+  }, [filter, results, buckets]);
 
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="border-b border-[rgba(0,0,0,0.08)] bg-white">
-        <div className="px-8 py-6">
-          <h1 className="text-xl tracking-tight">Search</h1>
-          <p className="mt-1 text-[13px] text-[#717182]">
-            Search across conversations, projects, and proof pages
+    <div className="min-h-screen bg-[#F7F4ED] text-[#161616]">
+      <header className="border-b border-[#D8D2C4] bg-[#FBF8F1]">
+        <div className="px-8 py-7">
+          <div className="text-[12px] uppercase tracking-[0.16em] text-[#6B6B66]">Search</div>
+          <h1 className="mt-2 text-3xl tracking-tight">Find anything across your workspace.</h1>
+          <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-[#5C5C5C]">
+            Searches project titles / descriptions, conversation titles, and proof page headlines.
           </p>
+
+          <div className="relative mt-5 max-w-xl">
+            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6B6B66]" />
+            <Input
+              autoFocus
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search by keyword..."
+              className="h-11 pl-9 text-[14px]"
+            />
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {(["all", "projects", "conversations", "proofs"] as FilterKey[]).map((key) => {
+              const count =
+                key === "all" ? results.length :
+                key === "projects" ? buckets.projects.length :
+                key === "conversations" ? buckets.conversations.length :
+                buckets.proofs.length;
+              const active = filter === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setFilter(key)}
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[12px] transition-colors ${
+                    active
+                      ? "border-[#315D8A] bg-[#EEF2F9] text-[#161616]"
+                      : "border-[#D8D2C4] bg-white text-[#5C5C5C] hover:bg-[#FBF8F1]"
+                  }`}
+                >
+                  <span className="capitalize">{key}</span>
+                  <span className="rounded-full bg-[#F3EEE2] px-1.5 py-0.5 text-[10px] text-[#6B6B66]">{count}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </header>
 
-      <div className="p-8">
-        {/* Search Bar */}
-        <Card className="mb-6 border border-[rgba(0,0,0,0.08)] bg-white p-6 shadow-sm">
-          <div className="relative">
-            <SearchIcon className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#717182]" />
-            <Input
-              placeholder="Search by keyword, project, tag, or content..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="h-12 pl-12 text-[15px] border-none bg-transparent focus-visible:ring-0"
-            />
-          </div>
-        </Card>
-
-        {/* Loading state */}
-        {isLoading && debouncedQuery.length >= 2 && (
-          <div className="mb-6 text-center text-[13px] text-[#717182]">Searching...</div>
-        )}
-
-        {/* Empty state — query entered but no results */}
-        {!isLoading && debouncedQuery.length >= 2 && totalCount === 0 && (
-          <div className="mb-6 rounded-md border border-[rgba(0,0,0,0.08)] bg-white p-8 text-center shadow-sm">
-            <p className="text-[14px] text-[#717182]">No results found for "{debouncedQuery}"</p>
-          </div>
-        )}
-
-        {/* Prompt state — nothing typed yet */}
-        {debouncedQuery.length < 2 && !isLoading && (
-          <div className="mb-6 rounded-md border border-[rgba(0,0,0,0.08)] bg-white p-8 text-center shadow-sm">
-            <p className="text-[13px] text-[#717182]">Type at least 2 characters to search</p>
-          </div>
-        )}
-
-        {/* Results Tabs */}
-        {totalCount > 0 && (
-          <Tabs defaultValue="all" className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="all">
-                All Results <Badge variant="secondary" className="ml-2 bg-[#F5F5F7]">{totalCount}</Badge>
-              </TabsTrigger>
-              <TabsTrigger value="conversations">
-                Conversations <Badge variant="secondary" className="ml-2 bg-[#F5F5F7]">{conversations.length}</Badge>
-              </TabsTrigger>
-              <TabsTrigger value="projects">
-                Projects <Badge variant="secondary" className="ml-2 bg-[#F5F5F7]">{projects.length}</Badge>
-              </TabsTrigger>
-              <TabsTrigger value="proofs">
-                Proof Pages <Badge variant="secondary" className="ml-2 bg-[#F5F5F7]">{proofPages.length}</Badge>
-              </TabsTrigger>
-            </TabsList>
-
-            {/* All Results */}
-            <TabsContent value="all" className="space-y-6">
-              {/* Projects Section */}
-              {projects.length > 0 && (
-                <div>
-                  <div className="mb-3 text-[13px] uppercase tracking-wider text-[#717182]">
-                    Projects
-                  </div>
-                  <div className="space-y-3">
-                    {projects.map((project: any) => (
-                      <Link key={project.id} to={`/app/projects/${project.id}`} className="block">
-                        <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm hover:border-[rgba(0,0,0,0.15)] transition-all">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <div className="mb-1 flex items-center gap-3">
-                                <h3 className="text-[14px]">{project.title ?? project.name ?? "Untitled project"}</h3>
-                                {project.relevance != null && (
-                                  <div className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-mono text-blue-700">
-                                    {Math.round(project.relevance * 100)}% match
-                                  </div>
-                                )}
-                              </div>
-                              <p className="mb-2 text-[13px] text-[#717182]">{project.description}</p>
-                              {project.conversationCount != null && (
-                                <div className="text-[13px] text-[#717182]">
-                                  {project.conversationCount} conversations
-                                </div>
-                              )}
-                            </div>
-                            <Button variant="outline" size="sm" asChild>
-                              <span>View Project</span>
-                            </Button>
-                          </div>
-                        </Card>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Conversations Section */}
-              {conversations.length > 0 && (
-                <div>
-                  <div className="mb-3 text-[13px] uppercase tracking-wider text-[#717182]">
-                    Conversations
-                  </div>
-                  <div className="space-y-3">
-                    {conversations.map((conv: any) => (
-                      <Link key={conv.id} to={`/app/conversations/${conv.id}`} className="block">
-                        <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm hover:border-[rgba(0,0,0,0.15)] transition-all">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <div className="mb-1 flex items-center gap-3">
-                                <h3 className="text-[14px]">{conv.title}</h3>
-                                {conv.relevance != null && (
-                                  <div className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-mono text-blue-700">
-                                    {Math.round(conv.relevance * 100)}% match
-                                  </div>
-                                )}
-                              </div>
-                              {conv.snippet && (
-                                <p className="mb-2 text-[13px] text-[#717182] italic">{conv.snippet}</p>
-                              )}
-                              {conv.project && (
-                                <Badge variant="secondary" className="bg-[#F5F5F7]">
-                                  {conv.project}
-                                </Badge>
-                              )}
-                            </div>
-                            <Button variant="outline" size="sm" asChild>
-                              <span>View Conversation</span>
-                            </Button>
-                          </div>
-                        </Card>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Proof Pages Section */}
-              {proofPages.length > 0 && (
-                <div>
-                  <div className="mb-3 text-[13px] uppercase tracking-wider text-[#717182]">
-                    Proof Pages
-                  </div>
-                  <div className="space-y-3">
-                    {proofPages.map((proof: any) => (
-                      <Link key={proof.id} to={`/p/${proof.slug ?? proof.id}`} className="block">
-                        <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm hover:border-[rgba(0,0,0,0.15)] transition-all">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <div className="mb-2 flex items-center gap-3">
-                                <h3 className="text-[14px]">{proof.projectName ?? proof.project_name}</h3>
-                                {proof.relevance != null && (
-                                  <div className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-mono text-blue-700">
-                                    {Math.round(proof.relevance * 100)}% match
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-4">
-                                {proof.cai != null && (
-                                  <div className="flex items-baseline gap-1.5">
-                                    <span className="text-[11px] uppercase tracking-wider text-[#717182]">CAI</span>
-                                    <span className="font-mono text-[15px]" style={{ color: 'var(--score-cai)' }}>
-                                      {proof.cai}
-                                    </span>
-                                  </div>
-                                )}
-                                {proof.hls != null && (
-                                  <div className="flex items-baseline gap-1.5">
-                                    <span className="text-[11px] uppercase tracking-wider text-[#717182]">HLS</span>
-                                    <span className="font-mono text-[15px]" style={{ color: 'var(--score-hls)' }}>
-                                      {proof.hls}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <Button variant="outline" size="sm" asChild>
-                              <span>View Proof Page</span>
-                            </Button>
-                          </div>
-                        </Card>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="conversations" className="space-y-3">
-              {conversations.map((conv: any) => (
-                <Link key={conv.id} to={`/app/conversations/${conv.id}`} className="block">
-                  <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm hover:border-[rgba(0,0,0,0.15)] transition-all">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="mb-1 flex items-center gap-3">
-                          <h3 className="text-[14px]">{conv.title}</h3>
-                          {conv.relevance != null && (
-                            <div className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-mono text-blue-700">
-                              {Math.round(conv.relevance * 100)}% match
-                            </div>
-                          )}
-                        </div>
-                        {conv.snippet && (
-                          <p className="mb-2 text-[13px] text-[#717182] italic">{conv.snippet}</p>
-                        )}
-                        {conv.project && (
-                          <Badge variant="secondary" className="bg-[#F5F5F7]">
-                            {conv.project}
-                          </Badge>
-                        )}
-                      </div>
-                      <Button variant="outline" size="sm" asChild>
-                        <span>View Conversation</span>
-                      </Button>
-                    </div>
-                  </Card>
-                </Link>
+      <div className="px-8 py-8">
+        <div className="mx-auto max-w-4xl">
+          {debounced.length < 2 ? (
+            <Card className="border border-dashed border-[#D8D2C4] bg-[#FBF8F1] p-10 text-center text-[13px] text-[#5C5C5C]">
+              Type at least 2 characters to search.
+            </Card>
+          ) : isLoading ? (
+            <div className="flex items-center gap-2 p-8 text-[13px] text-[#6B6B66]">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Searching "{debounced}"...
+            </div>
+          ) : visible.length === 0 ? (
+            <Card className="border border-dashed border-[#D8D2C4] bg-[#FBF8F1] p-10 text-center text-[13px] text-[#5C5C5C]">
+              No results for <span className="text-[#161616]">"{debounced}"</span>
+              {filter !== "all" ? <span> in {filter}.</span> : "."}
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {visible.map((result) => (
+                <ResultRow key={`${result.type}-${result.id}`} result={result} />
               ))}
-            </TabsContent>
-
-            <TabsContent value="projects" className="space-y-3">
-              {projects.map((project: any) => (
-                <Link key={project.id} to={`/app/projects/${project.id}`} className="block">
-                  <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm hover:border-[rgba(0,0,0,0.15)] transition-all">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="mb-1 flex items-center gap-3">
-                          <h3 className="text-[14px]">{project.title ?? project.name ?? "Untitled project"}</h3>
-                          {project.relevance != null && (
-                            <div className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-mono text-blue-700">
-                              {Math.round(project.relevance * 100)}% match
-                            </div>
-                          )}
-                        </div>
-                        <p className="mb-2 text-[13px] text-[#717182]">{project.description}</p>
-                        {project.conversationCount != null && (
-                          <div className="text-[13px] text-[#717182]">
-                            {project.conversationCount} conversations
-                          </div>
-                        )}
-                      </div>
-                      <Button variant="outline" size="sm" asChild>
-                        <span>View Project</span>
-                      </Button>
-                    </div>
-                  </Card>
-                </Link>
-              ))}
-            </TabsContent>
-
-            <TabsContent value="proofs" className="space-y-3">
-              {proofPages.map((proof: any) => (
-                <Link key={proof.id} to={`/p/${proof.slug ?? proof.id}`} className="block">
-                  <Card className="border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm hover:border-[rgba(0,0,0,0.15)] transition-all">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="mb-2 flex items-center gap-3">
-                          <h3 className="text-[14px]">{proof.projectName ?? proof.project_name}</h3>
-                          {proof.relevance != null && (
-                            <div className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-mono text-blue-700">
-                              {Math.round(proof.relevance * 100)}% match
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-4">
-                          {proof.cai != null && (
-                            <div className="flex items-baseline gap-1.5">
-                              <span className="text-[11px] uppercase tracking-wider text-[#717182]">CAI</span>
-                              <span className="font-mono text-[15px]" style={{ color: 'var(--score-cai)' }}>
-                                {proof.cai}
-                              </span>
-                            </div>
-                          )}
-                          {proof.hls != null && (
-                            <div className="flex items-baseline gap-1.5">
-                              <span className="text-[11px] uppercase tracking-wider text-[#717182]">HLS</span>
-                              <span className="font-mono text-[15px]" style={{ color: 'var(--score-hls)' }}>
-                                {proof.hls}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <Button variant="outline" size="sm" asChild>
-                        <span>View Proof Page</span>
-                      </Button>
-                    </div>
-                  </Card>
-                </Link>
-              ))}
-            </TabsContent>
-          </Tabs>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
+}
+
+function ResultRow({ result }: { result: SearchResult }) {
+  const meta = typeMeta(result.type);
+  const href = result.type === "project" ? `/app/projects/${result.id}`
+    : result.type === "conversation" ? `/app/conversations/${result.id}`
+    : result.type === "proof_page" ? `/app/proof-pages`
+    : null;
+
+  if (!href) return null;
+  const Icon = meta.icon;
+
+  return (
+    <Link to={href}>
+      <Card className="group border border-[#D8D2C4] bg-white p-4 transition-colors hover:border-[#A88F5F] hover:bg-[#FBF8F1]">
+        <div className="flex items-start gap-3">
+          <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${meta.color}`} />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-[#D8D2C4] px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-[#6B6B66]">
+                {meta.label}
+              </span>
+              {result.status ? (
+                <span className="text-[10px] uppercase tracking-[0.08em] text-[#6B6B66]">{result.status}</span>
+              ) : null}
+            </div>
+            <div className="mt-1 truncate text-[14px] text-[#161616] group-hover:text-[#315D8A]">{result.title}</div>
+            {result.description ? (
+              <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-[#6B6B66]">{result.description}</p>
+            ) : null}
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[#6B6B66]">
+              {result.source_format ? <span>{result.source_format}</span> : null}
+              {result.turn_count != null ? <span>{result.turn_count} turns</span> : null}
+              {result.published_at ? <span>published {dateTime(result.published_at)}</span> : null}
+              {result.updated_at ? <span>updated {dateTime(result.updated_at)}</span> : null}
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 shrink-0 text-[#6B6B66] opacity-0 transition-opacity group-hover:opacity-100" />
+        </div>
+      </Card>
+    </Link>
+  );
+}
+
+function typeMeta(type: string) {
+  switch (type) {
+    case "project":
+      return { label: "Project", icon: FolderKanban, color: "text-[#315D8A]" };
+    case "conversation":
+      return { label: "Conversation", icon: MessagesSquare, color: "text-[#315D8A]" };
+    case "proof_page":
+      return { label: "Proof page", icon: Globe, color: "text-[#2F6B3B]" };
+    default:
+      return { label: type, icon: FileBarChart, color: "text-[#6B6B66]" };
+  }
 }

@@ -24,6 +24,7 @@ import WorkProfile from "./pages/WorkProfile";
 import PublicProofPage from "./pages/PublicProofPage";
 import PublicPortfolio from "./pages/PublicPortfolio";
 import Explore from "./pages/Explore";
+import Search from "./pages/Search";
 import NotFound from "./pages/NotFound";
 
 function protect(Component: React.ComponentType) {
@@ -54,6 +55,7 @@ export const router = createBrowserRouter([
       { path: "portfolios", Component: Portfolios },
       { path: "portfolios/:id", Component: PortfolioDetail },
       { path: "work-profile", Component: WorkProfile },
+      { path: "search", Component: Search },
     ],
   },
   { path: "/p/:slug", Component: PublicProofPage, ErrorBoundary },

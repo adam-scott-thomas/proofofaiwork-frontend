@@ -1,4 +1,5 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
+import { useEffect, useState } from "react";
 import {
   Activity,
   FolderKanban,
@@ -7,6 +8,7 @@ import {
   LayoutDashboard,
   LogOut,
   MessageSquare,
+  Search as SearchIcon,
   Upload,
   FileBarChart,
 } from "lucide-react";
@@ -131,6 +133,28 @@ export default function Layout() {
   const navigate = useNavigate();
   const { clearToken } = useAuthStore();
   const context = useSidebarContext();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Cmd/Ctrl+K focuses the search input
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        const input = document.getElementById("layout-search-input") as HTMLInputElement | null;
+        input?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const submitSearch = (event: React.FormEvent) => {
+    event.preventDefault();
+    const query = searchQuery.trim();
+    if (query.length >= 2) {
+      navigate(`/app/search?q=${encodeURIComponent(query)}`);
+    }
+  };
 
   const active = (href: string) =>
     href === "/app" ? location.pathname === "/app" : location.pathname === href || location.pathname.startsWith(`${href}/`);
@@ -141,6 +165,20 @@ export default function Layout() {
         <div className="border-b border-[#D8D2C4] px-6 py-6">
           <div className="text-[12px] uppercase tracking-[0.16em] text-[#6B6B66]">Workspace</div>
           <div className="mt-2 text-[18px] tracking-tight">Proof of AI Work</div>
+          <form onSubmit={submitSearch} className="relative mt-4">
+            <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#6B6B66]" />
+            <input
+              id="layout-search-input"
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search..."
+              className="h-8 w-full rounded-md border border-[#D8D2C4] bg-white pl-8 pr-12 text-[12px] text-[#161616] placeholder:text-[#6B6B66] focus:border-[#315D8A] focus:outline-none"
+            />
+            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded bg-[#F3EEE2] px-1 py-0.5 font-mono text-[9px] text-[#6B6B66]">
+              ⌘K
+            </span>
+          </form>
         </div>
 
         <nav className="px-3 py-4">
