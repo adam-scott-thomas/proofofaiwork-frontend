@@ -3,6 +3,7 @@ import { useParams } from "react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { AlertCircle, Check, ExternalLink, Loader2, Mail, MoonStar, Send, Share2, SunMedium, X } from "lucide-react";
 import { apiFetch, apiPost } from "../../lib/api";
+import Seo from "../components/Seo";
 import "./PublicProofPage.css";
 
 type PublicObservation = {
@@ -136,6 +137,31 @@ function detailLabel(observation: PublicObservation) {
   return observation.label || observation.dimension || "Observation";
 }
 
+function scoreHeadline(observation: PublicObservation | null | undefined) {
+  if (!observation) return "Evidence-backed AI work profile";
+  const score = scorePercent(observation.score);
+  const label = detailLabel(observation).toLowerCase();
+  if (score == null) return "Evidence-backed AI work profile";
+  if (score >= 85) return `Exceptional ${label}, backed by real workflow evidence`;
+  if (score >= 70) return `Strong ${label} under real working conditions`;
+  if (score >= 55) return `Clear ${label} signal in this public proof`;
+  return `Visible ${label} signal from real AI work`;
+}
+
+function scoreBody(
+  observation: PublicObservation | null | undefined,
+  trust: TrustPanel,
+) {
+  const sessions = fmtInt(trust.sample_size?.sessions);
+  const uploads = fmtInt(trust.sample_size?.uploads);
+  const detail = observation ? detailLabel(observation) : "AI work pattern";
+  const summary = observation?.summary;
+  if (summary) {
+    return `${summary} Based on ${sessions} sessions and ${uploads} uploads.`;
+  }
+  return `${detail} surfaced from ${sessions} sessions and ${uploads} uploads, not self-reported claims.`;
+}
+
 function usePublicProof(slug?: string) {
   return useQuery({
     queryKey: ["public-proof", slug],
@@ -260,9 +286,32 @@ export default function PublicProofPage() {
     "A public record of human-led AI work, grounded in observations, excerpts, and trust metadata.";
   const trust = data.trust_panel || {};
   const evidence = trust.evidence_classes || {};
+  const canonicalUrl = pageUrl;
+  const ogImageUrl = `https://api.proofofaiwork.com/api/v1/p/${data.slug || data.public_token}/og.png?v=${encodeURIComponent(
+    String(data.published_at || trust.page_version || "1"),
+  )}`;
 
   return (
     <div className="pp-page" data-theme={theme}>
+      <Seo
+        title={`${data.project_title || archetype} | Proof of AI Work`}
+        description={`Evidence-backed proof page for ${data.project_title || archetype}. Review process, observations, excerpts, and trust signals behind this AI-assisted work.`}
+        canonical={canonicalUrl}
+        image={ogImageUrl}
+        type="article"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "ProfilePage",
+          name: data.project_title || archetype,
+          description: subcopy,
+          url: canonicalUrl,
+          mainEntity: {
+            "@type": "CreativeWork",
+            name: data.project_title || archetype,
+            description: subcopy,
+          },
+        }}
+      />
       <div className="pp-topbar">
         <div className="pp-topbar-inner">
           <div className="pp-top-left">
@@ -326,8 +375,8 @@ export default function PublicProofPage() {
                 onClick={() =>
                   setSharePayload({
                     kind: "observation",
-                    title: detailLabel(verdict),
-                    body: verdict.summary || "Top-scoring observation from this proof page.",
+                    title: scoreHeadline(verdict),
+                    body: scoreBody(verdict, trust),
                     url: pageUrl,
                   })
                 }
@@ -362,8 +411,8 @@ export default function PublicProofPage() {
                   onClick={() =>
                     setSharePayload({
                       kind: "archetype",
-                      title: archetype,
-                      body: subcopy,
+                      title: `${archetype} · evidence-backed AI work profile`,
+                      body: `${subcopy} Built from ${fmtInt(trust.sample_size?.sessions)} sessions and ${fmtInt(trust.sample_size?.uploads)} uploads.`,
                       url: pageUrl,
                     })
                   }
@@ -384,8 +433,8 @@ export default function PublicProofPage() {
                   onClick={() =>
                     setSharePayload({
                       kind: "score",
-                      title: detailLabel(observation),
-                      body: observation.summary || "Public signal from this proof page.",
+                      title: `${scorePercent(observation.score) ?? "—"}/100 ${detailLabel(observation)}`,
+                      body: scoreBody(observation, trust),
                       url: pageUrl,
                     })
                   }
@@ -426,8 +475,8 @@ export default function PublicProofPage() {
                     onClick={() =>
                       setSharePayload({
                         kind: "observation",
-                        title: detailLabel(observation),
-                        body: observation.summary || "Public observation from this proof page.",
+                        title: `${detailLabel(observation)} · evidence-backed signal`,
+                        body: scoreBody(observation, trust),
                         url: pageUrl,
                       })
                     }

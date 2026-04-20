@@ -12,6 +12,7 @@ import {
 import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { apiFetch } from "../../lib/api";
+import Seo from "../components/Seo";
 import "./Explore.css";
 
 type ExploreSignal = {
@@ -257,6 +258,11 @@ export default function Explore() {
 
   return (
     <div className="explore-page">
+      <Seo
+        title="Explore Verified AI Work | Public Proof Pages and AI Portfolios"
+        description="Browse public proof pages, AI work profiles, and verified portfolios. See how people document AI-assisted work with evidence, scores, and public proof."
+        canonical="https://proofofaiwork.com/explore"
+      />
       <header className="explore-hero">
         <div className="explore-shell">
           <div className="explore-nav">

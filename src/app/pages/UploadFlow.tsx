@@ -15,6 +15,7 @@ import {
 import { useAuthStore } from "../../stores/authStore";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
+import Seo from "../components/Seo";
 
 type EvidenceClass = {
   key: "A" | "B" | "C" | "D";
@@ -115,6 +116,11 @@ export default function UploadFlow() {
 
   return (
     <div className="min-h-screen bg-[#F7F4ED] text-[#161616]">
+      <Seo
+        title="Upload AI Work | Build a Verified AI Portfolio"
+        description="Upload conversations, exports, and artifacts to turn AI-assisted work into an evidence-backed proof page and verified AI portfolio."
+        canonical="https://proofofaiwork.com/upload"
+      />
       <div className="mx-auto max-w-5xl px-8 py-16">
         <div className="text-[12px] uppercase tracking-[0.16em] text-[#6B6B66]">Upload flow</div>
         <h1 className="mt-3 text-5xl leading-[1.02] tracking-tight md:text-6xl">

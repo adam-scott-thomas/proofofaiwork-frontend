@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, ExternalLink, FolderKanban, Github, Layers, ShieldCheck } from "lucide-react";
 import { apiFetch } from "../../lib/api";
+import Seo from "../components/Seo";
 
 type ProjectCard = {
   project_id: string;
@@ -74,6 +75,18 @@ export default function PublicPortfolio() {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] text-[#030213]">
+      <Seo
+        title={`${data.title} | Verified AI Portfolio`}
+        description={`Public portfolio of AI-assisted work, proof pages, and evidence-backed projects from ${data.title}.`}
+        canonical={`https://proofofaiwork.com/u/${data.slug || data.public_token}`}
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "ProfilePage",
+          name: data.title,
+          description: data.summary || data.headline || "Verified AI portfolio",
+          url: `https://proofofaiwork.com/u/${data.slug || data.public_token}`,
+        }}
+      />
       {/* Topbar */}
       <div className="sticky top-0 z-30 border-b border-[rgba(0,0,0,0.06)] bg-[rgba(250,250,250,0.9)] backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-8 py-3">

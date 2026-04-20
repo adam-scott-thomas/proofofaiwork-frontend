@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowRight, Check, MoonStar, SunMedium } from "lucide-react";
 import { apiFetch } from "../../lib/api";
+import Seo from "../components/Seo";
 import "./Landing.css";
 
 type Archetype = {
@@ -175,6 +176,19 @@ export default function Landing() {
 
   return (
     <div className="po-home" data-theme={theme}>
+      <Seo
+        title="ProofOfAIWork | Verified AI Portfolios for Students, Builders, and Employers"
+        description="Turn AI-assisted work into a verified portfolio. ProofOfAIWork helps students, builders, and employers document process, judgment, and evidence behind AI-assisted projects."
+        canonical="https://proofofaiwork.com/"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "ProofOfAIWork",
+          url: "https://proofofaiwork.com/",
+          description:
+            "Verified AI portfolios and AI work verification for students, builders, and employers.",
+        }}
+      />
       <header className="po-nav">
         <div className="po-wrap po-nav-inner">
           <Link className="po-brand" to="/">
@@ -217,22 +231,19 @@ export default function Landing() {
               </div>
 
               <h1 className="po-hero-title">
-                AI didn&apos;t
+                Turn
                 <br />
-                do the
+                AI-assisted work
                 <br />
-                work.
+                into
                 <br />
-                <em>You did.</em>
-                <br />
-                Prove it.
+                <em>proof.</em>
               </h1>
 
               <p className="po-hero-lede">
-                Turn your AI conversations into a verifiable record of how you think, direct, and execute.
+                Build a verified AI portfolio from the work you already did. ProofOfAIWork turns your AI conversations into a verifiable record of how you think, direct, and execute.
                 <span>
-                  Anyone can use AI. Almost no one can show what they contributed. This shows what&apos;s left of{" "}
-                  <em>you</em> in the work.
+                  Anyone can use AI. Almost no one can prove what they contributed. This is AI work verification for people who need evidence, not vibes.
                 </span>
               </p>
 
