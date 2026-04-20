@@ -285,7 +285,7 @@ export default function Landing() {
                   </div>
 
                   <h2>Adam Scott Thomas</h2>
-                  <div className="po-proof-sub">Infrastructure &amp; product · based in Austin, TX</div>
+                  <div className="po-proof-sub">Infrastructure &amp; product · based in Detroit, MI</div>
 
                   <div className="po-proof-verdict">
                     <div className="po-verdict-eyebrow">Archetype</div>
@@ -533,7 +533,7 @@ turn_01HX4E · user · 2026-04-12T09:20:11Z
               <div>
                 <div className="po-card-eyebrow">Archetype · confidence High</div>
                 <h2>Adam Scott Thomas</h2>
-                <div className="po-proof-sub">Infrastructure &amp; product · based in Austin, TX</div>
+                <div className="po-proof-sub">Infrastructure &amp; product · based in Detroit, MI</div>
                 <div className="po-card-eyebrow po-mt">Verdict</div>
                 <div className="po-sample-archetype">ARCHITECT-DELEGATOR</div>
                 <p className="po-sample-narrative">
