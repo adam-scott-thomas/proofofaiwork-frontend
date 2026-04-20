@@ -6,9 +6,11 @@ import {
   Clock,
   FileBarChart,
   FolderKanban,
+  Github,
   Globe,
   Loader2,
   Mail,
+  Network,
   Sparkles,
   Upload as UploadIcon,
   UserCheck,
@@ -21,6 +23,8 @@ import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import {
   useAssessments,
+  useAiCluster,
+  useAiClusterEstimate,
   useCurrentUser,
   usePool,
   useProjects,
@@ -138,6 +142,8 @@ export default function Dashboard() {
   const { data: assessmentsData, isLoading: assessmentsLoading } = useAssessments();
   const { data: proofPagesData, isLoading: proofPagesLoading } = useProofPages();
   const { data: workProfile } = useWorkProfile();
+  const aiClusterEstimate = useAiClusterEstimate();
+  const aiCluster = useAiCluster();
 
   const directoryQuery = useQuery<DirectoryStatus>({
     queryKey: ["directory-status"],
@@ -174,6 +180,9 @@ export default function Dashboard() {
   const projects = asArray<any>(projectsData);
   const assessments = asArray<any>(assessmentsData);
   const proofPages = asArray<any>(proofPagesData);
+  const latestProject = [...projects]
+    .sort((a, b) => new Date(b.updated_at ?? b.created_at).getTime() - new Date(a.updated_at ?? a.created_at).getTime())[0];
+  const confirmedProject = projects.find((project) => project?.status === "confirmed") ?? latestProject;
   const totalConversations = poolData?.total ?? 0;
   const unassigned = poolData?.unassigned ?? 0;
   const publishedProofs = proofPages.filter((page) => page?.status === "published");
@@ -339,6 +348,96 @@ export default function Dashboard() {
               </Card>
             </section>
           ) : null}
+
+          <section className="grid gap-3 lg:grid-cols-[1.2fr_1fr]">
+            <Card className="border border-[#D8D2C4] bg-[#111114] p-5 text-white shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="max-w-2xl">
+                  <div className="text-[12px] uppercase tracking-[0.14em] text-[rgba(255,255,255,0.58)]">AI controls</div>
+                  <h2 className="mt-2 text-2xl tracking-tight">Turn the pool into project intelligence.</h2>
+                  <p className="mt-2 text-[13px] leading-relaxed text-[rgba(255,255,255,0.72)]">
+                    Payments can wait. The useful buttons are here: cluster the pool, shape the projects, then push the strongest stream into assessment.
+                  </p>
+                </div>
+                <div className="min-w-[220px] rounded-lg border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] p-4">
+                  <div className="text-[11px] uppercase tracking-[0.12em] text-[rgba(255,255,255,0.52)]">Cluster estimate</div>
+                  <div className="mt-2 text-3xl tracking-tight">
+                    {aiClusterEstimate.data?.projected_projects != null ? aiClusterEstimate.data.projected_projects : "—"}
+                  </div>
+                  <div className="mt-1 text-[12px] leading-snug text-[rgba(255,255,255,0.68)]">
+                    {aiClusterEstimate.data
+                      ? `${unassigned} unassigned conversation${unassigned === 1 ? "" : "s"} could resolve into roughly ${aiClusterEstimate.data.projected_projects ?? "?"} project${aiClusterEstimate.data?.projected_projects === 1 ? "" : "s"}.`
+                      : "Estimate appears once the clustering service has enough pool state to read."}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  onClick={() =>
+                    aiCluster.mutate(undefined, {
+                      onSuccess: (result: any) => {
+                        const count = result?.projects?.length ?? 0;
+                        toast.success(`AI clustering created ${count} project${count === 1 ? "" : "s"}`);
+                        queryClient.invalidateQueries({ queryKey: ["projects"] });
+                        queryClient.invalidateQueries({ queryKey: ["pool"] });
+                      },
+                      onError: (error: any) => toast.error(error?.message ?? "AI clustering failed"),
+                    })
+                  }
+                  disabled={aiCluster.isPending || totalConversations === 0}
+                  className="bg-white text-[#111114] hover:bg-[#F3EEE2]"
+                >
+                  {aiCluster.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                  Run AI clustering
+                </Button>
+                <Link to="/app/projects">
+                  <Button type="button" variant="outline" className="border-[rgba(255,255,255,0.18)] bg-transparent text-white hover:bg-[rgba(255,255,255,0.08)] hover:text-white">
+                    <FolderKanban className="mr-2 h-4 w-4" />
+                    Review project streams
+                  </Button>
+                </Link>
+                <Link to="/app/upload">
+                  <Button type="button" variant="outline" className="border-[rgba(255,255,255,0.18)] bg-transparent text-white hover:bg-[rgba(255,255,255,0.08)] hover:text-white">
+                    <UploadIcon className="mr-2 h-4 w-4" />
+                    Feed the pool
+                  </Button>
+                </Link>
+              </div>
+            </Card>
+
+            <Card className="border border-[#D8D2C4] bg-white p-5">
+              <div className="text-[12px] uppercase tracking-[0.14em] text-[#6B6B66]">Project intelligence</div>
+              <h2 className="mt-2 text-xl tracking-tight">
+                {confirmedProject?.title || "No project selected yet"}
+              </h2>
+              <p className="mt-2 text-[13px] leading-relaxed text-[#5C5C5C]">
+                {confirmedProject
+                  ? "Attach code, inspect the knowledge map, and run the next assessment from the strongest project stream."
+                  : "Once clustering or manual setup creates a project, repo correlation and the knowledge map become the next leverage layer."}
+              </p>
+              <div className="mt-4 space-y-2">
+                <NextStep
+                  icon={<Github className="h-4 w-4 text-[#315D8A]" />}
+                  to={confirmedProject ? `/app/projects/${confirmedProject.id}` : "/app/projects"}
+                  title="Attach a repo"
+                  detail={confirmedProject ? "Link GitHub and correlate commits with the chat timeline." : "Create or confirm a project first."}
+                />
+                <NextStep
+                  icon={<Network className="h-4 w-4 text-[#315D8A]" />}
+                  to={confirmedProject ? `/app/projects/${confirmedProject.id}` : "/app/projects"}
+                  title="Open the knowledge map"
+                  detail={confirmedProject ? "Inspect entities, topics, and code fingerprints extracted from that stream." : "Knowledge maps appear at the project level."}
+                />
+                <NextStep
+                  icon={<FileBarChart className="h-4 w-4 text-[#315D8A]" />}
+                  to={confirmedProject ? `/app/projects/${confirmedProject.id}` : "/app/assessments"}
+                  title="Run the next assessment"
+                  detail={confirmedProject ? "Push the current project into evidence and scoring." : "No confirmed project is ready yet."}
+                />
+              </div>
+            </Card>
+          </section>
 
           <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
             <section>
