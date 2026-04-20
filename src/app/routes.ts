@@ -24,6 +24,9 @@ import WorkProfile from "./pages/WorkProfile";
 import PublicProofPage from "./pages/PublicProofPage";
 import PublicPortfolio from "./pages/PublicPortfolio";
 import Explore, { DirectoryRedirect } from "./pages/Explore";
+import Students from "./pages/Students";
+import Employers from "./pages/Employers";
+import HowItWorks from "./pages/HowItWorks";
 import Search from "./pages/Search";
 import Webhooks from "./pages/Webhooks";
 import Settings from "./pages/Settings";
@@ -40,6 +43,9 @@ export const router = createBrowserRouter([
   { path: "/sign-in", Component: SignIn, ErrorBoundary },
   { path: "/auth/callback", Component: AuthCallback, ErrorBoundary },
   { path: "/upload", Component: UploadFlow, ErrorBoundary },
+  { path: "/students", Component: Students, ErrorBoundary },
+  { path: "/employers", Component: Employers, ErrorBoundary },
+  { path: "/how-it-works", Component: HowItWorks, ErrorBoundary },
   {
     path: "/app",
     Component: protect(Layout),

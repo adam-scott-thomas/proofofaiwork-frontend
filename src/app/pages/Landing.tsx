@@ -197,9 +197,9 @@ export default function Landing() {
           </Link>
           <nav className="po-nav-links">
             <a href="#how">From chats to proof</a>
-            <a href="#measure">Three scores</a>
-            <a href="#sample">See a real proof</a>
-            <a href="#pillars">Not a black box</a>
+            <Link to="/students">For students</Link>
+            <Link to="/employers">For employers</Link>
+            <Link to="/how-it-works">How it works</Link>
           </nav>
           <div className="po-nav-actions">
             <button
