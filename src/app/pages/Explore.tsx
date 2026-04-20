@@ -284,11 +284,11 @@ export default function Explore() {
                 Public explore · published work profiles you can actually inspect
               </div>
               <h1 className="explore-title">
-                The public record of
+                Anyone can claim
                 <br />
-                people shipping with
+                they&apos;re good with AI.
                 <br />
-                <em>visible signal.</em>
+                <em>Show the proof.</em>
               </h1>
               <p className="explore-subtitle">
                 Browse published public proofs, scan archetypes, compare HLS, AEL, and CAI, and open the underlying dossier. This is the live explore feed backed by public proof pages and completed work profiles.

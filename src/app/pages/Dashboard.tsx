@@ -100,14 +100,26 @@ function StatCard({
   value,
   detail,
   href,
+  tone = "neutral",
 }: {
   label: string;
   value: string | number;
   detail: string;
   href?: string;
+  tone?: "neutral" | "blue" | "green" | "amber" | "violet";
 }) {
+  const toneClass =
+    tone === "blue"
+      ? "before:bg-[#315D8A]"
+      : tone === "green"
+      ? "before:bg-[#1F6A3F]"
+      : tone === "amber"
+      ? "before:bg-[#A8741A]"
+      : tone === "violet"
+      ? "before:bg-[#5D3FA0]"
+      : "before:bg-[#D8D2C4]";
   const content = (
-    <Card className="group border border-[#D8D2C4] bg-white p-5 shadow-sm transition-colors hover:border-[#A88F5F] hover:bg-[#FBF8F1]">
+    <Card className={`group relative overflow-hidden border border-[#D8D2C4] bg-white p-5 shadow-sm transition-colors hover:border-[#A88F5F] hover:bg-[#FBF8F1] before:absolute before:inset-x-0 before:top-0 before:h-1 ${toneClass}`}>
       <div className="flex items-baseline justify-between gap-2">
         <div className="text-[12px] uppercase tracking-[0.12em] text-[#6B6B66]">{label}</div>
         {href ? <ArrowUpRight className="h-3.5 w-3.5 text-[#6B6B66] opacity-0 transition-opacity group-hover:opacity-100" /> : null}
@@ -177,6 +189,24 @@ export default function Dashboard() {
   const requests = requestsQuery.data ?? [];
   const pendingRequests = requests.filter((r) => r.status === "pending");
   const handle = me?.handle ? `@${String(me.handle).replace(/^@/, "")}` : me?.email ?? "operator";
+  const pulse = dashboardPulse({
+    assessments: assessments.length,
+    publishedProofs: publishedProofs.length,
+    activeDisputes: activeDisputes.length,
+    pendingRequests: pendingRequests.length,
+    totalConversations,
+    archetype: workProfile?.archetype?.label || null,
+  });
+  const wins = dashboardWins({
+    totalConversations,
+    projects: projects.length,
+    assessments: assessments.length,
+    publishedProofs: publishedProofs.length,
+    archetype: workProfile?.archetype?.label || null,
+    pendingRequests: pendingRequests.length,
+    activeDisputes: activeDisputes.length,
+    directoryEnabled: directoryQuery.data?.enabled ?? false,
+  });
 
   if (loading) {
     return (
@@ -204,14 +234,25 @@ export default function Dashboard() {
               <div className="text-[12px] uppercase tracking-[0.16em] text-[#6B6B66]">Evidence Desk</div>
               <h1 className="mt-2 text-3xl tracking-tight">Welcome back, {handle}.</h1>
               <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-[#5C5C5C]">
-                {assessments.length === 0
-                  ? "You haven't run an assessment yet. Upload a conversation to get started."
-                  : publishedProofs.length === 0
-                  ? `${assessments.length} assessment${assessments.length === 1 ? "" : "s"} in the drawer. Publish one to make your work visible.`
-                  : `${assessments.length} assessments, ${publishedProofs.length} published proof${publishedProofs.length === 1 ? "" : "s"}, ${activeDisputes.length} active dispute${activeDisputes.length === 1 ? "" : "s"}.`}
+                {pulse.lede}
               </p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                {wins.slice(0, 4).map((win) => (
+                  <div
+                    key={win.label}
+                    className="inline-flex items-center gap-2 rounded-full border border-[#D8D2C4] bg-white px-3 py-1.5 text-[12px] text-[#4F4F49]"
+                  >
+                    <span className="h-2 w-2 rounded-full" style={{ background: win.color }} />
+                    <span className="text-[#161616]">{win.value}</span>
+                    <span>{win.label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <CompletenessPanel completeness={completeness} />
+            <div className="grid min-w-[280px] gap-3">
+              <PulsePanel pulse={pulse} />
+              <CompletenessPanel completeness={completeness} />
+            </div>
           </div>
         </div>
       </header>
@@ -224,25 +265,39 @@ export default function Dashboard() {
               value={totalConversations}
               detail={unassigned > 0 ? `${unassigned} still need a project` : "Everything is assigned"}
               href="/app/upload"
+              tone="blue"
             />
             <StatCard
               label="Projects"
               value={projects.length}
               detail={projects.length === 0 ? "Create your first project" : "Confirmed and suggested streams"}
               href="/app/projects"
+              tone="amber"
             />
             <StatCard
               label="Assessments"
               value={assessments.length}
               detail={assessments.length === 0 ? "No evaluations yet" : "Results ready for review"}
               href="/app/assessments"
+              tone="violet"
             />
             <StatCard
               label="Published"
               value={publishedProofs.length}
               detail={publishedProofs.length === 0 ? "Nothing public yet" : "Live proof pages in explore"}
               href="/explore"
+              tone="green"
             />
+          </section>
+
+          <section className="grid gap-3 md:grid-cols-4">
+            {wins.map((win) => (
+              <Card key={win.label} className="border border-[#D8D2C4] bg-[#FBF8F1] p-4 shadow-sm">
+                <div className="text-[11px] uppercase tracking-[0.12em] text-[#6B6B66]">{win.label}</div>
+                <div className="mt-2 text-[22px] tracking-tight text-[#161616]">{win.value}</div>
+                <div className="mt-1 text-[12px] leading-snug text-[#6B6B66]">{win.detail}</div>
+              </Card>
+            ))}
           </section>
 
           {workProfile ? (
@@ -573,9 +628,134 @@ function CompletenessPanel({ completeness }: { completeness: Completeness }) {
       </div>
       {completeness.nextLabel ? (
         <div className="mt-2 text-[11px] text-[#6B6B66]">Next: <span className="text-[#161616]">{completeness.nextLabel}</span></div>
-      ) : null}
+      ) : (
+        <div className="mt-2 text-[11px] text-[#1F6A3F]">Everything critical is live. Now compound it.</div>
+      )}
     </div>
   );
+}
+
+type DashboardPulse = {
+  title: string;
+  lede: string;
+  badge: string;
+  accent: string;
+  stats: Array<{ label: string; value: string }>;
+};
+
+function dashboardPulse(input: {
+  assessments: number;
+  publishedProofs: number;
+  activeDisputes: number;
+  pendingRequests: number;
+  totalConversations: number;
+  archetype: string | null;
+}): DashboardPulse {
+  if (input.publishedProofs > 0) {
+    return {
+      title: "Public momentum",
+      badge: "LIVE",
+      accent: "#1F6A3F",
+      lede:
+        input.pendingRequests > 0
+          ? `Your proof is live and pulling people in. ${input.pendingRequests} pending intro${input.pendingRequests === 1 ? "" : "s"} waiting on you.`
+          : `You have public proof in the world. Now the game is compounding signal, not wondering if the work is legible.`,
+      stats: [
+        { label: "published", value: String(input.publishedProofs) },
+        { label: "assessments", value: String(input.assessments) },
+        { label: "active disputes", value: String(input.activeDisputes) },
+      ],
+    };
+  }
+  if (input.assessments > 0) {
+    return {
+      title: "Private momentum",
+      badge: "READY",
+      accent: "#5D3FA0",
+      lede: `You already have evidence in the system. ${input.assessments} assessment${input.assessments === 1 ? "" : "s"} are sitting there waiting to become public proof.`,
+      stats: [
+        { label: "assessments", value: String(input.assessments) },
+        { label: "conversations", value: String(input.totalConversations) },
+        { label: "archetype", value: input.archetype || "pending" },
+      ],
+    };
+  }
+  return {
+    title: "Cold start",
+    badge: "START",
+    accent: "#315D8A",
+    lede: "Nothing is broken. You just have no evidence in motion yet. Upload something real and the dashboard starts breathing.",
+    stats: [
+      { label: "conversations", value: String(input.totalConversations) },
+      { label: "assessments", value: String(input.assessments) },
+      { label: "published", value: String(input.publishedProofs) },
+    ],
+  };
+}
+
+function PulsePanel({ pulse }: { pulse: DashboardPulse }) {
+  return (
+    <div className="min-w-[240px] rounded-lg border border-[#D8D2C4] bg-[#111114] p-4 text-white shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[11px] uppercase tracking-[0.14em] text-[rgba(255,255,255,0.58)]">Current pulse</div>
+        <span
+          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] tracking-[0.08em] uppercase"
+          style={{ background: `${pulse.accent}33`, color: "#fff" }}
+        >
+          <span className="h-1.5 w-1.5 rounded-full" style={{ background: pulse.accent }} />
+          {pulse.badge}
+        </span>
+      </div>
+      <div className="mt-2 text-2xl tracking-tight">{pulse.title}</div>
+      <p className="mt-2 text-[12px] leading-relaxed text-[rgba(255,255,255,0.72)]">{pulse.lede}</p>
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        {pulse.stats.map((stat) => (
+          <div key={stat.label} className="rounded-md border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-2 py-2">
+            <div className="text-[18px] tracking-tight">{stat.value}</div>
+            <div className="text-[10px] uppercase tracking-[0.08em] text-[rgba(255,255,255,0.52)]">{stat.label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function dashboardWins(input: {
+  totalConversations: number;
+  projects: number;
+  assessments: number;
+  publishedProofs: number;
+  archetype: string | null;
+  pendingRequests: number;
+  activeDisputes: number;
+  directoryEnabled: boolean;
+}) {
+  return [
+    {
+      label: "evidence captured",
+      value: `${input.totalConversations}`,
+      detail: input.totalConversations > 0 ? "raw conversations in the system" : "nothing ingested yet",
+      color: "#315D8A",
+    },
+    {
+      label: "work shape",
+      value: input.archetype || (input.projects > 0 ? `${input.projects} projects` : "unformed"),
+      detail: input.archetype ? "latest work-profile read" : "projects become profile signal",
+      color: "#A8741A",
+    },
+    {
+      label: "public surface",
+      value: input.publishedProofs > 0 ? `${input.publishedProofs} live` : "private",
+      detail: input.directoryEnabled ? "eligible for explore discovery" : "publish to become visible",
+      color: "#1F6A3F",
+    },
+    {
+      label: "inbound heat",
+      value: input.pendingRequests > 0 ? `${input.pendingRequests} waiting` : input.activeDisputes > 0 ? `${input.activeDisputes} challenged` : "quiet",
+      detail: input.pendingRequests > 0 ? "people want access or contact" : input.activeDisputes > 0 ? "observations need review" : "good time to publish harder",
+      color: "#5D3FA0",
+    },
+  ];
 }
 
 function ActivityRow({ event }: { event: ActivityEvent }) {
