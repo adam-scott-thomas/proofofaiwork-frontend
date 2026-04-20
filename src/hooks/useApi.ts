@@ -207,7 +207,7 @@ export const useAiCluster = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body?: { source_id?: string }) =>
-      apiPost<any>("/projects/ai-cluster", body ?? {}),
+      apiPost<any>("/projects/cluster", body ?? {}),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
   });
 };

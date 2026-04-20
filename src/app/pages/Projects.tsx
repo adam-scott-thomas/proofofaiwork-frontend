@@ -280,8 +280,7 @@ export default function Projects() {
             <div className="rounded-md border border-[#D8D2C4] bg-[#FBF8F1] p-3 text-[13px] text-[#5C5C5C]">
               <div className="text-[11px] uppercase tracking-[0.12em] text-[#6B6B66]">Estimate</div>
               <div className="mt-1">
-                ~{estimate.data.projected_projects ?? "?"} project{estimate.data.projected_projects === 1 ? "" : "s"}
-                {estimate.data.free === true ? " · free until Friday" : ""}
+                {estimate.data.conversation_count ?? 0} unassigned conversation{estimate.data.conversation_count === 1 ? "" : "s"} ready for grouping
               </div>
             </div>
           ) : null}
@@ -299,14 +298,14 @@ export default function Projects() {
                     queryClient.invalidateQueries({ queryKey: ["pool"] });
                   },
                   onError: (error: any) => {
-                    toast.error(error?.message ?? "Cluster failed");
+                    toast.error(error?.message ?? "Grouping failed");
                     setClusterOpen(false);
                   },
                 })
               }
             >
               {aiCluster.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-              Run clustering
+              Run AI grouping
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -362,11 +362,11 @@ export default function Dashboard() {
                 <div className="min-w-[220px] rounded-lg border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] p-4">
                   <div className="text-[11px] uppercase tracking-[0.12em] text-[rgba(255,255,255,0.52)]">Cluster estimate</div>
                   <div className="mt-2 text-3xl tracking-tight">
-                    {aiClusterEstimate.data?.projected_projects != null ? aiClusterEstimate.data.projected_projects : "—"}
+                    {aiClusterEstimate.data?.conversation_count != null ? aiClusterEstimate.data.conversation_count : "—"}
                   </div>
                   <div className="mt-1 text-[12px] leading-snug text-[rgba(255,255,255,0.68)]">
                     {aiClusterEstimate.data
-                      ? `${unassigned} unassigned conversation${unassigned === 1 ? "" : "s"} could resolve into roughly ${aiClusterEstimate.data.projected_projects ?? "?"} project${aiClusterEstimate.data?.projected_projects === 1 ? "" : "s"}.`
+                      ? `${aiClusterEstimate.data.conversation_count} conversation${aiClusterEstimate.data.conversation_count === 1 ? "" : "s"} are ready for grouping right now.`
                       : "Estimate appears once the clustering service has enough pool state to read."}
                   </div>
                 </div>
@@ -378,18 +378,18 @@ export default function Dashboard() {
                     aiCluster.mutate(undefined, {
                       onSuccess: (result: any) => {
                         const count = result?.projects?.length ?? 0;
-                        toast.success(`AI clustering created ${count} project${count === 1 ? "" : "s"}`);
+                        toast.success(`Grouping created ${count} project${count === 1 ? "" : "s"}`);
                         queryClient.invalidateQueries({ queryKey: ["projects"] });
                         queryClient.invalidateQueries({ queryKey: ["pool"] });
                       },
-                      onError: (error: any) => toast.error(error?.message ?? "AI clustering failed"),
+                      onError: (error: any) => toast.error(error?.message ?? "Grouping failed"),
                     })
                   }
                   disabled={aiCluster.isPending || totalConversations === 0}
                   className="bg-white text-[#111114] hover:bg-[#F3EEE2]"
                 >
                   {aiCluster.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                  Run AI clustering
+                  Run AI grouping
                 </Button>
                 <Link to="/app/projects">
                   <Button type="button" variant="outline" className="border-[rgba(255,255,255,0.18)] bg-transparent text-white hover:bg-[rgba(255,255,255,0.08)] hover:text-white">
