@@ -513,8 +513,8 @@ turn_01HX4E · user · 2026-04-12T09:20:11Z
                 <span className="po-inline-code">proofofaiwork.com/p/adamthomas</span>
               </h2>
             </div>
-            <Link className="po-btn po-btn-outline" to="/directory">
-              Browse public directory
+            <Link className="po-btn po-btn-outline" to="/explore">
+              Browse explore
               <ArrowRight size={16} />
             </Link>
           </div>
@@ -666,13 +666,13 @@ turn_01HX4E · user · 2026-04-12T09:20:11Z
           <div>
             <div className="po-footer-head">Trust</div>
             <a href="#pillars">Evidence standard</a>
-            <Link to="/directory">Public directory</Link>
+            <Link to="/explore">Public explore</Link>
             <span>Security</span>
           </div>
           <div>
             <div className="po-footer-head">Flow</div>
             <Link to="/upload">Start your proof</Link>
-            <Link to="/directory">Browse proof</Link>
+            <Link to="/explore">Browse proof</Link>
             <span>Contact</span>
           </div>
         </div>

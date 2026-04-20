@@ -23,7 +23,7 @@ import PortfolioDetail from "./pages/PortfolioDetail";
 import WorkProfile from "./pages/WorkProfile";
 import PublicProofPage from "./pages/PublicProofPage";
 import PublicPortfolio from "./pages/PublicPortfolio";
-import Explore from "./pages/Explore";
+import Explore, { DirectoryRedirect } from "./pages/Explore";
 import Search from "./pages/Search";
 import Webhooks from "./pages/Webhooks";
 import Settings from "./pages/Settings";
@@ -68,6 +68,7 @@ export const router = createBrowserRouter([
   },
   { path: "/p/:slug", Component: PublicProofPage, ErrorBoundary },
   { path: "/u/:slug", Component: PublicPortfolio, ErrorBoundary },
-  { path: "/directory", Component: Explore, ErrorBoundary },
+  { path: "/explore", Component: Explore, ErrorBoundary },
+  { path: "/directory", Component: DirectoryRedirect, ErrorBoundary },
   { path: "*", Component: NotFound },
 ]);

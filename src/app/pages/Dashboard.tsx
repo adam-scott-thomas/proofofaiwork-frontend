@@ -240,8 +240,8 @@ export default function Dashboard() {
             <StatCard
               label="Published"
               value={publishedProofs.length}
-              detail={publishedProofs.length === 0 ? "Nothing public yet" : "Live proof pages in discovery"}
-              href="/directory"
+              detail={publishedProofs.length === 0 ? "Nothing public yet" : "Live proof pages in explore"}
+              href="/explore"
             />
           </section>
 
@@ -509,7 +509,7 @@ export default function Dashboard() {
                 <NextStep icon={<FolderKanban className="h-4 w-4 text-[#315D8A]" />} to="/app/projects" title="Cluster into projects" detail="Confirm or rename suggested work streams." />
                 <NextStep icon={<FileBarChart className="h-4 w-4 text-[#315D8A]" />} to="/app/assessments" title="Run an assessment" detail="Turn confirmed projects into evidence." />
                 <NextStep icon={<Globe className="h-4 w-4 text-[#315D8A]" />} to="/app/proof-pages" title="Publish proof" detail="Curate excerpts and go public." />
-                <NextStep icon={<ArrowUpRight className="h-4 w-4 text-[#315D8A]" />} to="/directory" title="Browse discovery" detail="See every published proof page in the public directory." />
+                <NextStep icon={<ArrowUpRight className="h-4 w-4 text-[#315D8A]" />} to="/explore" title="Browse explore" detail="See every published proof page in the public explore feed." />
               </div>
             </Card>
           </section>
@@ -644,7 +644,7 @@ function DirectoryCard({ data }: { data?: DirectoryStatus }) {
   if (!data) {
     return (
       <Card className="border border-[#D8D2C4] bg-white p-5">
-        <div className="text-[12px] uppercase tracking-[0.14em] text-[#6B6B66]">Public directory</div>
+        <div className="text-[12px] uppercase tracking-[0.14em] text-[#6B6B66]">Public explore</div>
         <div className="mt-3 text-[13px] text-[#5C5C5C]">Checking directory status...</div>
       </Card>
     );
@@ -653,7 +653,7 @@ function DirectoryCard({ data }: { data?: DirectoryStatus }) {
   return (
     <Card className="border border-[#D8D2C4] bg-white p-5">
       <div className="flex items-center justify-between">
-        <div className="text-[12px] uppercase tracking-[0.14em] text-[#6B6B66]">Public directory</div>
+        <div className="text-[12px] uppercase tracking-[0.14em] text-[#6B6B66]">Public explore</div>
         <span className="inline-flex items-center gap-1 text-[11px] uppercase tracking-[0.08em] text-[#6B6B66]">
           {data.enabled ? <><Check className="h-3 w-3 text-[#1F6A3F]" /> Live</> : <><Clock className="h-3 w-3" /> Gated</>}
         </span>
@@ -667,11 +667,11 @@ function DirectoryCard({ data }: { data?: DirectoryStatus }) {
       </div>
       <div className="mt-3 text-[12px] leading-relaxed text-[#5C5C5C]">
         {data.enabled
-          ? "The directory is live. Published proof pages now show up there automatically."
-          : `${data.threshold - data.total_published} more proof page${data.threshold - data.total_published === 1 ? "" : "s"} until browsing opens.`}
+          ? "Explore is live. Published proof pages now show up there automatically."
+          : `${data.threshold - data.total_published} more proof page${data.threshold - data.total_published === 1 ? "" : "s"} until the public explore feed opens.`}
       </div>
-      <Link to="/directory" className="mt-4 inline-flex items-center gap-1 text-[12px] text-[#315D8A] hover:underline">
-        Open discovery <ArrowRight className="h-3.5 w-3.5" />
+      <Link to="/explore" className="mt-4 inline-flex items-center gap-1 text-[12px] text-[#315D8A] hover:underline">
+        Open explore <ArrowRight className="h-3.5 w-3.5" />
       </Link>
     </Card>
   );
