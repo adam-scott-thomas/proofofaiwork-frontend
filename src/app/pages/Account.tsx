@@ -20,8 +20,8 @@ export default function Account() {
   useEffect(() => {
     if (user) {
       setFormData({
-        name: user.name ?? user.full_name ?? "",
-        handle: user.handle ?? user.username ?? "",
+        name: user.name ?? "",
+        handle: user.handle ?? "",
       });
     }
   }, [user]);
