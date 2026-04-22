@@ -10,8 +10,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     htmlMetaPage({
       title: "AI Work Style Quiz | Are You Leading AI or Letting It Lead You?",
       description:
-        "Take the AI Work Style Quiz to see whether you work like an Architect, Operator, Explorer, Synthesizer, or something more dangerous.",
+        "Think you’re good with AI? Prove it. Take the quiz and see how you actually stack up.",
       pageUrl,
+      imageUrl: `${SITE_BASE}/og/quiz-share.svg`,
       type: "article",
       cta: "Take the quiz on Proof of AI Work",
     }),

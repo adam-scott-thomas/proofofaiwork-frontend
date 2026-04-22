@@ -37,13 +37,15 @@ export default function Quiz() {
 
   if (result) {
     const canonical = `https://proofofaiwork.com/quiz/${result.slug}`;
+    const ogImage = "https://proofofaiwork.com/og/quiz-share.svg";
     const tone = RESULT_TONES[result.slug] ?? RESULT_TONES.architect;
     return (
       <div className="min-h-screen overflow-hidden bg-[#07111f] text-white">
         <Seo
           title={`${result.name} | AI Work Style Quiz`}
-          description={result.shareDescription}
+          description="Think you’re good with AI? Prove it. Take the quiz and see how you actually stack up."
           canonical={canonical}
+          image={ogImage}
         />
         <AmbientBackdrop tone={tone} />
         <main className="relative mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">
@@ -128,17 +130,22 @@ export default function Quiz() {
 
               <div className="rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(135deg,#eef6ff,#dff3eb_48%,#fff0d3)] p-5 text-[#07111f] sm:rounded-[28px] sm:p-6">
                 <div className="text-[11px] uppercase tracking-[0.16em] text-[rgba(7,17,31,0.56)]">Next step</div>
-                <h2 className="mt-3 text-[28px] tracking-tight sm:text-3xl">See your real proof profile.</h2>
+                <h2 className="mt-3 text-[28px] tracking-tight sm:text-3xl">Email the result. Then open your dashboard.</h2>
                 <p className="mt-3 text-[15px] leading-[1.8] text-[rgba(7,17,31,0.72)]">
-                  Quizzes are fun. Actual evidence is stronger. Upload your chats and projects to build a verified AI portfolio with public proof behind it.
+                  Send yourself the result so it follows you out of social, then move into the product and turn actual workflow into proof.
                 </p>
                 <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                  <Link to="/upload" className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#07111f] px-4 py-2 text-[14px] font-medium text-white sm:w-auto">
-                    Build your proof
+                  <a
+                    href={`mailto:?subject=${encodeURIComponent(`My AI Work Style Quiz result: ${result.name}`)}&body=${encodeURIComponent(
+                      `${result.shareDescription}\n\nResult: ${canonical}\nDashboard: https://proofofaiwork.com/app`
+                    )}`}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#07111f] px-4 py-2 text-[14px] font-medium text-white sm:w-auto"
+                  >
+                    Email my result
                     <ArrowRight className="h-4 w-4" />
-                  </Link>
-                  <Link to="/explore" className="inline-flex w-full items-center justify-center rounded-xl border border-[rgba(7,17,31,0.12)] px-4 py-2 text-[14px] text-[#07111f] sm:w-auto">
-                    Explore public proof
+                  </a>
+                  <Link to="/app" className="inline-flex w-full items-center justify-center rounded-xl border border-[rgba(7,17,31,0.12)] px-4 py-2 text-[14px] text-[#07111f] sm:w-auto">
+                    Open dashboard
                   </Link>
                 </div>
               </div>
@@ -150,13 +157,15 @@ export default function Quiz() {
   }
 
   const canonical = "https://proofofaiwork.com/quiz";
+  const ogImage = "https://proofofaiwork.com/og/quiz-share.svg";
 
   return (
     <div className="min-h-screen overflow-hidden bg-[#07111f] text-white">
       <Seo
         title="AI Work Style Quiz | Are You Leading AI or Letting It Lead You?"
-        description="Take the AI Work Style Quiz to see whether you work like an Architect, Operator, Explorer, Synthesizer, or something more dangerous."
+        description="Think you’re good with AI? Prove it. Take the quiz and see how you actually stack up."
         canonical={canonical}
+        image={ogImage}
       />
       <AmbientBackdrop tone={RESULT_TONES.architect} />
       <main className="relative mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">

@@ -16,8 +16,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   return new Response(
     htmlMetaPage({
       title: `${result.name} | AI Work Style Quiz`,
-      description: result.shareDescription,
+      description: "Think you’re good with AI? Prove it. Take the quiz and see how you actually stack up.",
       pageUrl,
+      imageUrl: `${SITE_BASE}/og/quiz-share.svg`,
       type: "article",
       cta: "See the full quiz result on Proof of AI Work",
     }),

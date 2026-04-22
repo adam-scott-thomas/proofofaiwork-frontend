@@ -1,0 +1,27 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#07111F"/>
+  <circle cx="1030" cy="78" r="210" fill="#DFF3EB" fill-opacity="0.18"/>
+  <circle cx="111" cy="556" r="224" fill="#EEF6FF" fill-opacity="0.12"/>
+  <circle cx="920" cy="612" r="180" fill="#FFF0D3" fill-opacity="0.18"/>
+  <rect x="58" y="54" width="1084" height="522" rx="36" fill="url(#panel)"/>
+  <rect x="86" y="88" width="186" height="34" rx="17" fill="rgba(255,255,255,0.08)"/>
+  <text x="108" y="110" fill="#D8E5F5" font-family="Inter, Arial, sans-serif" font-size="18" letter-spacing="2.88">AI WORK STYLE QUIZ</text>
+  <text x="88" y="212" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="62" font-weight="700">
+    <tspan x="88" dy="0">Think you’re good</tspan>
+    <tspan x="88" dy="74">with AI? Prove it.</tspan>
+  </text>
+  <text x="88" y="362" fill="#C8D6E8" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="500">
+    <tspan x="88" dy="0">Take the quiz and see how you actually stack up.</tspan>
+  </text>
+  <rect x="88" y="446" width="394" height="72" rx="20" fill="#F4F8FF"/>
+  <text x="124" y="490" fill="#07111F" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700">Take the quiz on ProofOfAIWork</text>
+  <rect x="881" y="441" width="207" height="81" rx="24" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)"/>
+  <text x="914" y="479" fill="#9DB3CB" font-family="Inter, Arial, sans-serif" font-size="17" letter-spacing="2.72">OUTCOME</text>
+  <text x="914" y="511" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700">Real signal.</text>
+  <defs>
+    <linearGradient id="panel" x1="600" y1="54" x2="600" y2="576" gradientUnits="userSpaceOnUse">
+      <stop stop-color="rgba(255,255,255,0.08)"/>
+      <stop offset="1" stop-color="rgba(255,255,255,0.03)"/>
+    </linearGradient>
+  </defs>
+</svg>
