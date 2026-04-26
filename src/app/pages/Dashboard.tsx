@@ -17,6 +17,7 @@ import {
   UserX,
 } from "lucide-react";
 import { Link } from "react-router";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card } from "../components/ui/card";
@@ -25,6 +26,7 @@ import {
   useAssessments,
   useAiCluster,
   useAiClusterEstimate,
+  useClusterStatus,
   useCurrentUser,
   usePool,
   useProjects,
@@ -144,6 +146,9 @@ export default function Dashboard() {
   const { data: workProfile } = useWorkProfile();
   const aiClusterEstimate = useAiClusterEstimate();
   const aiCluster = useAiCluster();
+  const [clusterJobId, setClusterJobId] = useState<string | null>(null);
+  const [clusterFinalized, setClusterFinalized] = useState(false);
+  const clusterStatus = useClusterStatus(clusterJobId, !clusterFinalized);
 
   const directoryQuery = useQuery<DirectoryStatus>({
     queryKey: ["directory-status"],
@@ -206,6 +211,30 @@ export default function Dashboard() {
     totalConversations,
     archetype: workProfile?.archetype?.label || null,
   });
+
+  useEffect(() => {
+    const status = clusterStatus.data?.status;
+    if (!clusterJobId || clusterFinalized || !status) return;
+
+    if (status === "complete") {
+      const count = clusterStatus.data.result?.projects?.length ?? 0;
+      setClusterFinalized(true);
+      toast.success(`Grouping created ${count} project${count === 1 ? "" : "s"}`);
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["pool"] });
+    }
+
+    if (status === "failed") {
+      setClusterFinalized(true);
+      toast.error(clusterStatus.data.error_message || "Grouping failed");
+    }
+  }, [clusterFinalized, clusterJobId, clusterStatus.data, queryClient]);
+
+  const clusterJobActive =
+    !!clusterJobId &&
+    !clusterFinalized &&
+    clusterStatus.data?.status !== "complete" &&
+    clusterStatus.data?.status !== "failed";
   const wins = dashboardWins({
     totalConversations,
     projects: projects.length,
@@ -371,25 +400,53 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
+              {aiCluster.isPending || clusterJobId ? (
+                <div className={`mt-4 rounded-md border px-3 py-2 text-[12px] ${
+                  clusterStatus.data?.status === "failed"
+                    ? "border-[#E8B8B8] bg-[#FBEAEA] text-[#8B2F2F]"
+                    : clusterStatus.data?.status === "complete"
+                      ? "border-[#BFD8C5] bg-[#EFF8F1] text-[#1F6A3F]"
+                      : "border-[rgba(255,255,255,0.18)] bg-[rgba(255,255,255,0.06)] text-[rgba(255,255,255,0.78)]"
+                }`}>
+                  <div className="flex items-center gap-2">
+                    {aiCluster.isPending || clusterJobActive ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                    <span>
+                      {aiCluster.isPending
+                        ? "Calling clustering API..."
+                        : clusterStatus.data?.status === "complete"
+                          ? "AI grouping complete."
+                          : clusterStatus.data?.status === "failed"
+                            ? "AI grouping failed."
+                            : clusterStatus.data?.status === "running"
+                              ? "AI is grouping conversations..."
+                              : "AI grouping job queued."}
+                    </span>
+                  </div>
+                </div>
+              ) : null}
               <div className="mt-5 flex flex-wrap gap-2">
                 <Button
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    toast.info("Calling clustering API...");
                     aiCluster.mutate({ tier: "free" }, {
                       onSuccess: (result: any) => {
-                        const count = result?.projects?.length ?? 0;
-                        toast.success(`Grouping created ${count} project${count === 1 ? "" : "s"}`);
-                        queryClient.invalidateQueries({ queryKey: ["projects"] });
-                        queryClient.invalidateQueries({ queryKey: ["pool"] });
+                        if (!result?.job_id) {
+                          toast.error("Grouping did not return a job id");
+                          return;
+                        }
+                        setClusterFinalized(false);
+                        setClusterJobId(result.job_id);
+                        toast.success("AI grouping job queued");
                       },
                       onError: (error: any) => toast.error(error?.message ?? "Grouping failed"),
-                    })
-                  }
-                  disabled={aiCluster.isPending || totalConversations === 0}
+                    });
+                  }}
+                  disabled={aiCluster.isPending || clusterJobActive || totalConversations === 0}
                   className="bg-white text-[#111114] hover:bg-[#F3EEE2]"
                 >
-                  {aiCluster.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                  Run AI grouping
+                  {aiCluster.isPending || clusterJobActive ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                  {aiCluster.isPending ? "Calling API..." : clusterJobActive ? "AI thinking..." : "Run AI grouping"}
                 </Button>
                 <Link to="/app/projects">
                   <Button type="button" variant="outline" className="border-[rgba(255,255,255,0.18)] bg-transparent text-white hover:bg-[rgba(255,255,255,0.08)] hover:text-white">

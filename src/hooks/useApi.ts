@@ -18,6 +18,27 @@ export type ClusterStatusResponse = {
   error_message?: string;
 };
 
+export type BulkDeleteProjectsResponse = {
+  dissolved: number;
+  skipped: number;
+};
+
+export type ClearSuggestedProjectsResponse = {
+  dissolved: number;
+};
+
+export type ReclusterProjectsResponse = {
+  dissolved_suggestions: number;
+  job_id: string;
+  status: "queued";
+  mode: "rule" | "ai" | string;
+};
+
+export type ClearUnassignedPoolResponse = {
+  deleted: number;
+  skipped_assigned: number;
+};
+
 export function getClusterStatus(jobId: string) {
   return apiFetch<ClusterStatusResponse>(`/projects/cluster-status/${jobId}`);
 }
@@ -226,6 +247,47 @@ export const useDeleteProject = () => {
   return useMutation({
     mutationFn: (id: string) => apiDelete(`/projects/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
+  });
+};
+
+export const useBulkDeleteProjects = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (projectIds: string[]) =>
+      apiPost<BulkDeleteProjectsResponse>("/projects/bulk-delete", { project_ids: projectIds }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["pool"] });
+    },
+  });
+};
+
+export const useClearSuggestedProjects = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body?: { cluster_methods?: Array<"hybrid" | "llm" | string> }) =>
+      apiPost<ClearSuggestedProjectsResponse>("/projects/clear-suggested", body ?? {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["pool"] });
+    },
+  });
+};
+
+export const useReclusterProjects = () =>
+  useMutation({
+    mutationFn: (body?: { mode?: "rule" | "ai"; tier?: "free" | "paid" | "premium" }) =>
+      apiPost<ReclusterProjectsResponse>("/projects/recluster", body ?? {}),
+  });
+
+export const useClearUnassignedPool = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiPost<ClearUnassignedPoolResponse>("/pool/clear-unassigned", {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pool"] });
+      qc.invalidateQueries({ queryKey: ["projects"] });
+    },
   });
 };
 

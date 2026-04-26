@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
@@ -66,11 +66,15 @@ const STATUS_STYLE: Record<string, { icon: React.ComponentType<{ className?: str
   stale: { icon: Clock, className: "bg-[#EAE3CF] text-[#6B6B66]", label: "Stale" },
 };
 
+const RUNNING_STATUSES = ["pending", "processing", "in_progress", "retrying"];
+const statusKey = (status: string | null | undefined) => (status ?? "").toLowerCase();
+
 export default function Assessments() {
   const { data, isLoading, refetch } = useAssessments();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<FilterKey>("all");
   const [deleting, setDeleting] = useState<Assessment | null>(null);
+  const [lastChecked, setLastChecked] = useState<Date | null>(null);
 
   const rerun = useMutation({
     mutationFn: (id: string) => apiPost(`/assessments/${id}/rerun`, {}),
@@ -95,7 +99,7 @@ export default function Assessments() {
   const filtered = useMemo(() => {
     const filterConfig = FILTER_CONFIG.find((entry) => entry.key === filter);
     if (!filterConfig?.statuses) return assessments;
-    return assessments.filter((assessment) => filterConfig.statuses!.includes(assessment.status));
+    return assessments.filter((assessment) => filterConfig.statuses!.includes(statusKey(assessment.status)));
   }, [assessments, filter]);
 
   const sorted = useMemo(() => {
@@ -110,13 +114,24 @@ export default function Assessments() {
     const map: Record<FilterKey, number> = { all: 0, complete: 0, partial: 0, failed: 0, running: 0 };
     map.all = assessments.length;
     for (const assessment of assessments) {
-      if (assessment.status === "complete") map.complete++;
-      else if (assessment.status === "partial") map.partial++;
-      else if (assessment.status === "failed") map.failed++;
-      else if (["pending", "processing", "in_progress", "retrying"].includes(assessment.status)) map.running++;
+      const normalized = statusKey(assessment.status);
+      if (normalized === "complete") map.complete++;
+      else if (normalized === "partial") map.partial++;
+      else if (normalized === "failed") map.failed++;
+      else if (RUNNING_STATUSES.includes(normalized)) map.running++;
     }
     return map;
   }, [assessments]);
+
+  useEffect(() => {
+    if (counts.running <= 0) return;
+
+    setLastChecked(new Date());
+    const interval = setInterval(() => {
+      refetch().finally(() => setLastChecked(new Date()));
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [counts.running, refetch]);
 
   if (isLoading) {
     return (
@@ -159,6 +174,12 @@ export default function Assessments() {
                 </button>
               );
             })}
+            {counts.running > 0 ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-[#D8D2C4] bg-white px-3 py-1 text-[12px] text-[#5C5C5C]">
+                <Loader2 className="h-3 w-3 animate-spin text-[#315D8A]" />
+                Auto-refreshing{lastChecked ? ` · ${lastChecked.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" })}` : ""}
+              </span>
+            ) : null}
           </div>
         </div>
       </header>
@@ -229,11 +250,12 @@ function AssessmentRow({
   onDelete: () => void;
   rerunPending: boolean;
 }) {
-  const status = STATUS_STYLE[assessment.status] || STATUS_STYLE.pending;
+  const normalizedStatus = statusKey(assessment.status);
+  const status = STATUS_STYLE[normalizedStatus] || STATUS_STYLE.pending;
   const Icon = status.icon;
-  const isFinal = assessment.status === "complete" || assessment.status === "partial";
-  const isRunning = ["pending", "processing", "in_progress", "retrying"].includes(assessment.status);
-  const isFailed = assessment.status === "failed";
+  const isFinal = normalizedStatus === "complete" || normalizedStatus === "partial";
+  const isRunning = RUNNING_STATUSES.includes(normalizedStatus);
+  const isFailed = normalizedStatus === "failed";
   const primaryHref = isFinal
     ? `/app/assessment/${assessment.id}/results`
     : isRunning
@@ -283,6 +305,14 @@ function AssessmentRow({
             <div className="mt-3 rounded-md border border-[#E8B8B8] bg-[#FBEAEA] px-3 py-2 text-[12px] text-[#8B2F2F]">
               {assessment.failure_stage ? <span className="mr-2 text-[10px] uppercase tracking-[0.12em]">{assessment.failure_stage} stage</span> : null}
               {assessment.failure_reason}
+            </div>
+          ) : null}
+          {isRunning ? (
+            <div className="mt-3 rounded-md border border-[#D8D2C4] bg-[#FBF8F1] px-3 py-2 text-[12px] text-[#5C5C5C]">
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-[#315D8A]" />
+                <span>Still running. This row updates automatically while the backend advances the assessment.</span>
+              </div>
             </div>
           ) : null}
         </div>

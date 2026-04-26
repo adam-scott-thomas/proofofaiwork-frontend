@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { CreditCard, Crown, Zap, CheckCircle2, Loader2, Shield, Bitcoin, ExternalLink, Sparkles, Lock, RefreshCw, Download, Briefcase, Package } from "lucide-react";
+import { CreditCard, Crown, Zap, CheckCircle2, Loader2, Shield, Bitcoin, ExternalLink, Sparkles, RefreshCw, Download, Briefcase, Package } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
@@ -33,7 +33,6 @@ type CardDialogMode = "save" | "subscribe" | null;
 type PaymentMethod = "card" | "crypto";
 
 export default function Billing() {
-  const paidFeaturesLive = false;
   const { data: billing, isLoading } = useBilling();
   const { data: paymentConfig } = usePaymentConfig();
   const saveCardMutation = useSaveCard();
@@ -174,16 +173,6 @@ export default function Billing() {
       </header>
 
       <div className="mx-auto max-w-4xl p-8 space-y-6">
-        {!paidFeaturesLive && (
-          <div className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
-            <Lock className="mt-0.5 h-4 w-4 shrink-0" />
-            <div>
-              <div className="font-medium text-amber-900">Paid upgrades are under construction.</div>
-              <div className="mt-1">Free grouping and the core proof flow are live. Billing, premium tiers, and crypto unlocks are temporarily disabled.</div>
-            </div>
-          </div>
-        )}
-
         {/* Success message */}
         {successMsg && (
           <div className="flex items-center gap-2 rounded-md bg-emerald-50 px-4 py-3 text-[13px] text-emerald-700 border border-emerald-200">
@@ -212,9 +201,9 @@ export default function Billing() {
               )}
             </div>
             {!subActive && !isFreeMode && (
-              <Button onClick={() => setCardDialogMode("subscribe")} disabled={!paidFeaturesLive}>
+              <Button onClick={() => setCardDialogMode("subscribe")}>
                 <Crown className="mr-2 h-4 w-4" />
-                {paidFeaturesLive ? `Upgrade to Pro — $${((prices.subscription ?? 0) / 100).toFixed(2)}/mo` : "Under construction"}
+                Upgrade to Pro — ${((prices.subscription ?? 0) / 100).toFixed(2)}/mo
               </Button>
             )}
           </div>
@@ -232,8 +221,8 @@ export default function Billing() {
                 </p>
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setCardDialogMode("save")} disabled={!paidFeaturesLive}>
-              {paidFeaturesLive ? (hasCard ? "Update card" : "Add card") : "Under construction"}
+            <Button variant="outline" size="sm" onClick={() => setCardDialogMode("save")}>
+              {hasCard ? "Update card" : "Add card"}
             </Button>
           </div>
         </Card>
@@ -250,12 +239,10 @@ export default function Billing() {
             {MODEL_TIERS.map((tier) => {
               const isActive = modelTier === tier.id;
               const needsSub = tier.id !== "free" && !subActive && !isFreeMode && flags.paywall_premium_model;
-              const tierDisabled = !paidFeaturesLive && tier.id !== "free";
               return (
                 <button
                   key={tier.id}
                   onClick={() => {
-                    if (tierDisabled) return;
                     if (needsSub) {
                       setCardDialogMode("subscribe");
                       return;
@@ -263,12 +250,12 @@ export default function Billing() {
                     setSelectedTier(tier.id);
                     setTierMutation.mutate(tier.id);
                   }}
-                  disabled={setTierMutation.isPending || tierDisabled}
+                  disabled={setTierMutation.isPending}
                   className={`rounded-lg border p-4 text-left transition-all ${
                     isActive
                       ? "border-blue-500 bg-blue-50 ring-1 ring-blue-200"
                       : "border-[rgba(0,0,0,0.08)] hover:border-[rgba(0,0,0,0.2)]"
-                  } ${needsSub || tierDisabled ? "opacity-60" : ""}`}
+                  } ${needsSub ? "opacity-60" : ""}`}
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <tier.icon className={`h-4 w-4 ${isActive ? "text-blue-600" : "text-[#717182]"}`} />
@@ -279,9 +266,6 @@ export default function Billing() {
                   <p className="text-[11px] text-[#717182]">{tier.desc}</p>
                   {needsSub && (
                     <p className="mt-2 text-[11px] text-amber-600">Requires Pro subscription</p>
-                  )}
-                  {tierDisabled && (
-                    <p className="mt-2 text-[11px] text-amber-600">Under construction</p>
                   )}
                 </button>
               );
@@ -329,9 +313,7 @@ export default function Billing() {
                   variant="outline"
                   size="sm"
                   className="mt-auto w-full text-[12px]"
-                  disabled={!paidFeaturesLive}
                   onClick={() => {
-                    if (!paidFeaturesLive) return;
                     if (feature === "ai_sort") {
                       handleCryptoFeaturePurchase(
                         "ai_sort",
@@ -342,7 +324,7 @@ export default function Billing() {
                     toast.info("Coming soon");
                   }}
                 >
-                  {paidFeaturesLive ? (feature === "ai_sort" ? "Unlock" : "Buy") : "Under construction"}
+                  {feature === "ai_sort" ? "Unlock" : "Buy"}
                 </Button>
               </div>
             ))}
@@ -368,10 +350,10 @@ export default function Billing() {
               <Button
                 variant="outline"
                 className="w-full text-[13px]"
-                disabled={!paidFeaturesLive}
+                disabled
                 onClick={() => toast.info("Coming soon")}
               >
-                {paidFeaturesLive ? "Get 90-Day Bundle" : "Under construction"}
+                Coming soon
               </Button>
             </div>
             <div className="rounded-lg border border-[rgba(0,0,0,0.08)] bg-[#FAFAFA] p-5">
@@ -388,10 +370,10 @@ export default function Billing() {
               <Button
                 variant="outline"
                 className="w-full text-[13px]"
-                disabled={!paidFeaturesLive}
+                disabled
                 onClick={() => toast.info("Coming soon")}
               >
-                {paidFeaturesLive ? "Get 1-Year Bundle" : "Under construction"}
+                Coming soon
               </Button>
             </div>
           </div>

@@ -37,6 +37,9 @@ type SidebarContext = {
   unassignedUploads: number;
 };
 
+const RUNNING_ASSESSMENT_STATUSES = ["pending", "processing", "in_progress", "retrying"];
+const statusKey = (status: string | null | undefined) => (status ?? "").toLowerCase();
+
 const items: NavItem[] = [
   {
     name: "Dashboard",
@@ -90,6 +93,10 @@ function useSidebarContext(): SidebarContext {
     queryFn: () => apiFetch<any>(`/assessments`),
     enabled: authed,
     staleTime: SIDEBAR_STALE_MS,
+    refetchInterval: (query) => {
+      const list = asArray<any>(query.state.data);
+      return list.some((assessment) => RUNNING_ASSESSMENT_STATUSES.includes(statusKey(assessment.status))) ? 5000 : false;
+    },
   });
   const proofPages = useQuery<any>({
     queryKey: ["proof-pages"],
@@ -114,14 +121,15 @@ function useSidebarContext(): SidebarContext {
 
   const assessmentList = asArray<any>(assessments.data);
   const proofList = asArray<any>(proofPages.data);
+  const runningAssessmentCount = assessmentList.filter((assessment) =>
+    RUNNING_ASSESSMENT_STATUSES.includes(statusKey(assessment.status)),
+  ).length;
 
   return {
-    pendingRequests: (requests.data ?? []).filter((request) => request.status === "pending").length,
-    activeDisputes: (disputes.data ?? []).filter((dispute) => dispute.status === "open" || dispute.status === "reviewed").length,
-    runningAssessments: assessmentList.filter((assessment) =>
-      ["pending", "processing", "in_progress", "retrying"].includes(assessment.status),
-    ).length,
-    draftProofs: proofList.filter((page) => page.status === "draft").length,
+    pendingRequests: (requests.data ?? []).filter((request) => statusKey(request.status) === "pending").length,
+    activeDisputes: (disputes.data ?? []).filter((dispute) => statusKey(dispute.status) === "open" || statusKey(dispute.status) === "reviewed").length,
+    runningAssessments: runningAssessmentCount,
+    draftProofs: proofList.filter((page) => statusKey(page.status) === "draft").length,
     unassignedUploads: pool.data?.unassigned ?? 0,
   };
 }

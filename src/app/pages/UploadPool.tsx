@@ -23,7 +23,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog";
-import { useAiCluster, useAiClusterEstimate, useClusterStatus, usePool } from "../../hooks/useApi";
+import {
+  useAiCluster,
+  useAiClusterEstimate,
+  useClearUnassignedPool,
+  useClusterStatus,
+  usePool,
+  useReclusterProjects,
+} from "../../hooks/useApi";
 import { apiDelete, apiPost } from "../../lib/api";
 import { dateTime } from "../lib/poaw";
 
@@ -43,6 +50,7 @@ type PoolConversation = {
 };
 
 type FilterKey = "all" | "unassigned" | "assigned";
+type ClusterMode = "rule" | "ai";
 
 const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: "all", label: "All" },
@@ -61,11 +69,15 @@ export default function UploadPool() {
   const queryClient = useQueryClient();
   const { data, isLoading } = usePool();
   const aiCluster = useAiCluster();
+  const reclusterProjects = useReclusterProjects();
+  const clearUnassignedPool = useClearUnassignedPool();
   const estimate = useAiClusterEstimate();
   const [filter, setFilter] = useState<FilterKey>("all");
   const [query, setQuery] = useState("");
   const [clusterOpen, setClusterOpen] = useState(false);
+  const [clusterMode, setClusterMode] = useState<ClusterMode>("rule");
   const [cleanupOpen, setCleanupOpen] = useState(false);
+  const [clearUnassignedOpen, setClearUnassignedOpen] = useState(false);
   const [clusterJobId, setClusterJobId] = useState<string | null>(null);
   const [clusterFinalized, setClusterFinalized] = useState(false);
   const clusterStatus = useClusterStatus(clusterJobId, !clusterFinalized);
@@ -179,9 +191,31 @@ export default function UploadPool() {
                   Upload more
                 </Button>
               </Link>
-              <Button variant="outline" onClick={() => setClusterOpen(true)} disabled={counts.unassigned === 0}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setClusterMode("rule");
+                  setClusterOpen(true);
+                }}
+                disabled={counts.unassigned === 0}
+              >
                 <Sparkles className="mr-2 h-4 w-4" />
                 Cluster unassigned
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setClusterMode("ai");
+                  setClusterOpen(true);
+                }}
+                disabled={counts.unassigned === 0}
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                Try AI clustering
+              </Button>
+              <Button variant="ghost" onClick={() => setClearUnassignedOpen(true)} disabled={counts.unassigned === 0}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete unassigned
               </Button>
               <Button variant="ghost" onClick={() => setCleanupOpen(true)}>
                 <Eraser className="mr-2 h-4 w-4" />
@@ -295,10 +329,11 @@ export default function UploadPool() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Cluster unassigned conversations</DialogTitle>
+            <DialogTitle>{clusterMode === "ai" ? "Try AI clustering" : "Cluster unassigned conversations"}</DialogTitle>
             <DialogDescription>
-              The engine groups similar conversations into suggested projects. You confirm or rename each
-              project before running an assessment.
+              {clusterMode === "ai"
+                ? "Dissolves current suggested projects and asks the AI clusterer to regroup unassigned conversations. Confirmed work is untouched."
+                : "The engine groups similar conversations into suggested projects. You confirm or rename each project before running an assessment."}
             </DialogDescription>
           </DialogHeader>
           {estimate.data ? (
@@ -342,14 +377,26 @@ export default function UploadPool() {
               ) : null}
             </div>
           ) : null}
+          {(aiCluster.isPending || reclusterProjects.isPending) && !clusterJobId ? (
+            <div className="rounded-md border border-[#D8D2C4] bg-[#FBF8F1] p-3 text-[13px] text-[#5C5C5C]">
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-[#315D8A]" />
+                <span className="font-medium">Calling {clusterMode === "ai" ? "AI " : ""}clustering API...</span>
+              </div>
+              <div className="mt-1 text-[12px]">Waiting for the backend to accept the job.</div>
+            </div>
+          ) : null}
           <DialogFooter>
             <Button variant="ghost" onClick={() => setClusterOpen(false)} disabled={clusterJobActive}>
               {clusterStatus.data?.status === "complete" || clusterStatus.data?.status === "failed" ? "Close" : "Cancel"}
             </Button>
             <Button
-              disabled={aiCluster.isPending || clusterJobActive}
-              onClick={() =>
-                aiCluster.mutate({ tier: "free" }, {
+              disabled={aiCluster.isPending || reclusterProjects.isPending || clusterJobActive}
+              onClick={() => {
+                toast.info(`Calling ${clusterMode === "ai" ? "AI " : ""}clustering API...`);
+                const mutation = clusterMode === "ai" ? reclusterProjects : aiCluster;
+                const body = clusterMode === "ai" ? { mode: "ai" as const, tier: "free" as const } : { tier: "free" as const };
+                mutation.mutate(body as any, {
                   onSuccess: (result: any) => {
                     if (!result?.job_id) {
                       toast.error("Grouping did not return a job id");
@@ -357,15 +404,54 @@ export default function UploadPool() {
                     }
                     setClusterFinalized(false);
                     setClusterJobId(result.job_id);
+                    toast.success(`${clusterMode === "ai" ? "AI " : ""}grouping job queued`);
+                    if (result.dissolved_suggestions > 0) {
+                      toast.success(`Dissolved ${result.dissolved_suggestions} suggested project${result.dissolved_suggestions === 1 ? "" : "s"}`);
+                    }
                   },
                   onError: (error: any) => {
                     toast.error(error?.message ?? "Grouping failed");
                   },
+                });
+              }}
+            >
+              {aiCluster.isPending || reclusterProjects.isPending || clusterJobActive ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+              {aiCluster.isPending || reclusterProjects.isPending
+                ? "Calling API..."
+                : clusterJobActive
+                  ? clusterMode === "ai" ? "AI thinking..." : "Grouping..."
+                  : clusterMode === "ai" ? "Try AI clustering" : "Run grouping"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={clearUnassignedOpen} onOpenChange={setClearUnassignedOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete all unassigned conversations?</DialogTitle>
+            <DialogDescription>
+              This permanently deletes every upload that is not currently assigned to a project. Assigned
+              conversations are skipped.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setClearUnassignedOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-[#8B2F2F] hover:bg-[#7A2525]"
+              disabled={clearUnassignedPool.isPending || counts.unassigned === 0}
+              onClick={() =>
+                clearUnassignedPool.mutate(undefined, {
+                  onSuccess: (result) => {
+                    toast.success(`Deleted ${result.deleted} unassigned upload${result.deleted === 1 ? "" : "s"}`);
+                    setClearUnassignedOpen(false);
+                  },
+                  onError: (error: any) => toast.error(error?.message ?? "Delete unassigned failed"),
                 })
               }
             >
-              {aiCluster.isPending || clusterJobActive ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-              {clusterJobActive ? "Grouping..." : "Run AI grouping"}
+              {clearUnassignedPool.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              Delete unassigned
             </Button>
           </DialogFooter>
         </DialogContent>
