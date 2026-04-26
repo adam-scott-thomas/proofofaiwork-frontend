@@ -13,8 +13,14 @@ interface ThemeState {
 const DOWN_MS = 800;
 const UP_MS = 400;
 
+const applyInitialTheme = () => {
+  if (typeof document === "undefined") return true;
+  document.documentElement.classList.add("dark");
+  return true;
+};
+
 export const useThemeStore = create<ThemeState>((set, get) => ({
-  aiMode: false,
+  aiMode: applyInitialTheme(),
   cascade: null,
 
   enterAiMode: () => {

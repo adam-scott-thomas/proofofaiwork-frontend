@@ -14,12 +14,15 @@ import {
   Upload,
   X,
   FileBarChart,
+  MoonStar,
+  SunMedium,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "./ui/button";
 import { useAuthStore } from "../../stores/authStore";
 import { apiFetch } from "../../lib/api";
 import { asArray } from "../lib/poaw";
+import { useThemeStore } from "../../stores/themeStore";
 
 type NavItem = {
   name: string;
@@ -151,6 +154,7 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { clearToken } = useAuthStore();
+  const { aiMode, enterAiMode, exitAiMode } = useThemeStore();
   const context = useSidebarContext();
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -186,8 +190,20 @@ export default function Layout() {
   const sidebarNav = (
     <>
       <div className="border-b border-[#D8D2C4] px-4 py-5 sm:px-6 sm:py-6">
-        <div className="text-[11px] uppercase tracking-[0.16em] text-[#6B6B66] sm:text-[12px]">Workspace</div>
-        <div className="mt-2 text-[17px] tracking-tight sm:text-[18px]">Proof of AI Work</div>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.16em] text-[#6B6B66] sm:text-[12px]">Workspace</div>
+            <div className="mt-2 text-[17px] tracking-tight sm:text-[18px]">Proof of AI Work</div>
+          </div>
+          <button
+            type="button"
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-[#D8D2C4] bg-white px-2.5 text-[11px] text-[#5C5C5C] transition-colors hover:border-[#315D8A] hover:text-[#161616]"
+            onClick={() => (aiMode ? exitAiMode() : enterAiMode())}
+          >
+            {aiMode ? <SunMedium className="h-3.5 w-3.5" /> : <MoonStar className="h-3.5 w-3.5" />}
+            {aiMode ? "Light" : "Dark"}
+          </button>
+        </div>
         <form onSubmit={submitSearch} className="relative mt-4">
           <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#6B6B66]" />
           <input

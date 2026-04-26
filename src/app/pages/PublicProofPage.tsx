@@ -251,7 +251,7 @@ function ShareOverlay({
 
 export default function PublicProofPage() {
   const { slug } = useParams<{ slug?: string }>();
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [sharePayload, setSharePayload] = useState<ShareCardPayload | null>(null);
   const { data, isLoading, error } = usePublicProof(slug);
 

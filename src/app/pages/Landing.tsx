@@ -160,7 +160,7 @@ export default function Landing() {
   const navigate = useNavigate();
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     const stored = localStorage.getItem("poaiw-home-theme");
-    return stored === "dark" ? "dark" : "light";
+    return stored === "light" ? "light" : "dark";
   });
   const [heroEmail, setHeroEmail] = useState("");
   const [heroSent, setHeroSent] = useState(false);

@@ -46,9 +46,9 @@ export default function SignIn() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#F7F4ED] px-4 py-10 text-[#161616]">
-      <div className="w-full max-w-md rounded-lg border border-[#D8D2C4] bg-white p-6 shadow-sm">
-        <Link to="/" className="text-[13px] text-[#5C5C5C] hover:text-[#161616]">
+    <div className="flex min-h-screen items-center justify-center bg-[#101113] px-4 py-10 text-[#F5F1E8]">
+      <div className="w-full max-w-md rounded-lg border border-white/10 bg-[#181A1F] p-6 shadow-2xl shadow-black/30">
+        <Link to="/" className="text-[13px] text-[#A8A29A] hover:text-white">
           &lt;-- back to home
         </Link>
 
@@ -61,20 +61,25 @@ export default function SignIn() {
               if (sent) setSent(false);
             }}
             placeholder="you@example.com"
-            className="min-w-0 flex-1 rounded-md border border-[#D8D2C4] bg-white px-3 py-3 text-sm outline-none focus:border-[#315D8A]"
+            className="min-w-0 flex-1 rounded-md border border-white/10 bg-[#0F1115] px-3 py-3 text-sm text-white outline-none placeholder:text-[#736F68] focus:border-[#7AA2C7]"
             disabled={requestMagicLink.isPending}
             required
           />
           <button
             type="submit"
-            className="shrink-0 rounded-md bg-[#161616] px-4 py-3 text-[12px] font-medium uppercase tracking-[0.12em] text-white disabled:opacity-50"
+            className="shrink-0 rounded-md bg-[#F5F1E8] px-4 py-3 text-[12px] font-medium uppercase tracking-[0.12em] text-[#101113] disabled:opacity-50"
             disabled={!email || requestMagicLink.isPending}
           >
             {requestMagicLink.isPending ? "SENDING" : sent ? "SENT" : "SEND LINK"}
           </button>
         </form>
+        {sent ? (
+          <div className="mt-4 rounded-md border border-[#2E6F4E]/40 bg-[#123021] px-3 py-2 text-[13px] text-[#BDF0D2]">
+            check your email.
+          </div>
+        ) : null}
         {requestMagicLink.isError ? (
-          <div className="mt-3 text-[12px] text-[#8E3B34]">Failed to send.</div>
+          <div className="mt-3 text-[12px] text-[#FCA5A5]">Failed to send.</div>
         ) : null}
       </div>
     </div>
