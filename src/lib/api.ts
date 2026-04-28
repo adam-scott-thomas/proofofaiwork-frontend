@@ -8,13 +8,20 @@ let redirecting = false;
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = useAuthStore.getState().token;
+  const url = `${API_BASE}${path}`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers as Record<string, string> || {}),
   };
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  let res: Response;
+  try {
+    res = await fetch(url, { ...options, headers });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "request failed";
+    throw new Error(`Network error calling ${path}: ${detail}`);
+  }
 
   if (res.status === 401) {
     // Single-flight: first 401 clears token and navigates; concurrent calls

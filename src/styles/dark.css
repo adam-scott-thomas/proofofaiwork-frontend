@@ -3,8 +3,8 @@
    Applied under <html class="dark">. Public pages opt-out via class="not-dark"
    on an ancestor.
 
-   Default (no .dark) = light gray resting state.
-   .dark is a TRIGGERED state for AI mode, not the default.
+   Default (no .dark) = light mode.
+   .dark = dark mode.
    ============================================================================ */
 
 /* --- Light resting state: soft gray, not pure white --- */
@@ -32,6 +32,8 @@ html.dark body {
 /* --- Surfaces --- */
 html.dark .bg-white,
 html.dark .bg-\[\#FAFAFA\],
+html.dark .bg-\[\#F7F4ED\],
+html.dark .bg-\[\#FBF8F1\],
 html.dark .bg-\[\#F5F5F7\],
 html.dark .bg-\[\#F3F3F5\] {
   background-color: #0f0f12 !important;
@@ -40,6 +42,8 @@ html.dark .bg-\[\#F3F3F5\] {
 /* Slightly raised surfaces (nested cards, inputs) */
 html.dark .bg-\[\#ececf0\],
 html.dark .bg-\[\#e9ebef\],
+html.dark .bg-\[\#F3EEE2\],
+html.dark .bg-\[\#EAE3CF\],
 html.dark .bg-gray-50,
 html.dark .bg-gray-100 {
   background-color: #161619 !important;
@@ -51,12 +55,16 @@ html.dark .bg-\[#FAFAFA\] {
 }
 
 /* --- Text --- */
+html.dark .text-\[\#161616\],
 html.dark .text-\[\#030213\] {
   color: #fafafa !important;
 }
 html.dark .text-\[\#3A3A3A\] {
   color: #d4d4d8 !important;
 }
+html.dark .text-\[\#4F4F49\],
+html.dark .text-\[\#5C5C5C\],
+html.dark .text-\[\#6B6B66\],
 html.dark .text-\[\#717182\] {
   color: #a1a1aa !important;
 }
@@ -74,6 +82,13 @@ html.dark .text-gray-900 {
 }
 
 /* --- Borders --- */
+html.dark .border-\[\#D8D2C4\],
+html.dark .border-\[\#EAE3CF\] {
+  border-color: rgba(255, 255, 255, 0.10) !important;
+}
+html.dark .border-\[\#A88F5F\] {
+  border-color: rgba(168, 143, 95, 0.45) !important;
+}
 html.dark .border-\[rgba\(0\,0\,0\,0\.04\)\] {
   border-color: rgba(255, 255, 255, 0.04) !important;
 }
@@ -98,6 +113,9 @@ html.dark .border-gray-300 {
 }
 
 /* --- Divide lines --- */
+html.dark .divide-\[\#EAE3CF\] > :not(:last-child) {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
 html.dark .divide-\[rgba\(0\,0\,0\,0\.04\)\] > :not(:last-child) {
   border-color: rgba(255, 255, 255, 0.04) !important;
 }
@@ -173,14 +191,97 @@ html.dark .shadow-2xl {
 
 /* --- Hover backgrounds --- */
 html.dark .hover\:bg-\[\#FAFAFA\]:hover,
+html.dark .hover\:bg-\[\#FBF8F1\]:hover,
+html.dark .hover\:bg-\[\#F3EEE2\]:hover,
 html.dark .hover\:bg-white:hover,
 html.dark .hover\:bg-gray-50:hover {
   background-color: #161619 !important;
+}
+html.dark .hover\:text-\[\#161616\]:hover {
+  color: #fafafa !important;
+}
+html.dark .hover\:text-\[\#8B2F2F\]:hover {
+  color: #fca5a5 !important;
+}
+html.dark .hover\:border-\[\#D8D2C4\]:hover {
+  border-color: rgba(255, 255, 255, 0.16) !important;
 }
 html.dark .hover\:border-\[rgba\(0\,0\,0\,0\.12\)\]:hover,
 html.dark .hover\:border-\[rgba\(0\,0\,0\,0\.2\)\]:hover,
 html.dark .hover\:border-\[rgba\(0\,0\,0\,0\.24\)\]:hover {
   border-color: rgba(255, 255, 255, 0.20) !important;
+}
+
+/* --- Workspace shell colors used by Layout/Dashboard --- */
+html.dark .bg-\[\#111114\] {
+  background-color: #111114 !important;
+}
+html.dark .bg-\[\#161616\] {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+}
+html.dark .text-\[\#315D8A\] {
+  color: #7aa2c7 !important;
+}
+html.dark .text-\[\#1F6A3F\] {
+  color: #34d399 !important;
+}
+html.dark .text-\[\#8B2F2F\],
+html.dark .text-\[\#8E3B34\] {
+  color: #fca5a5 !important;
+}
+html.dark .bg-\[\#FBEDEC\],
+html.dark .bg-\[\#FBEAEA\] {
+  background-color: rgba(239, 68, 68, 0.10) !important;
+}
+
+/* Attribute selectors catch arbitrary Tailwind classes with opacity modifiers,
+   e.g. bg-[#FBF8F1]/95, which exact class selectors miss. */
+html.dark [class*="bg-[#F7F4ED]"],
+html.dark [class*="bg-[#FBF8F1]"],
+html.dark [class*="bg-[#FAFAFA]"],
+html.dark [class*="bg-[#F5F5F7]"],
+html.dark [class*="bg-[#F3F3F5]"] {
+  background-color: #0f0f12 !important;
+}
+
+html.dark [class*="bg-[#F3EEE2]"],
+html.dark [class*="bg-[#EAE3CF]"],
+html.dark [class*="bg-[#EEF2F9]"],
+html.dark [class*="bg-[#EFF8F1]"],
+html.dark [class*="bg-[#FDF4DC]"] {
+  background-color: #161619 !important;
+}
+
+html.dark [class*="text-[#161616]"],
+html.dark [class*="text-[#030213]"] {
+  color: #fafafa !important;
+}
+
+html.dark [class*="text-[#4F4F49]"],
+html.dark [class*="text-[#5C5C5C]"],
+html.dark [class*="text-[#6B6B66]"],
+html.dark [class*="text-[#717182]"] {
+  color: #a1a1aa !important;
+}
+
+html.dark [class*="border-[#D8D2C4]"],
+html.dark [class*="border-[#EAE3CF]"] {
+  border-color: rgba(255, 255, 255, 0.10) !important;
+}
+
+html.dark [class*="divide-[#EAE3CF]"] > :not(:last-child) {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark [class*="hover:bg-[#FBF8F1]"]:hover,
+html.dark [class*="hover:bg-[#F3EEE2]"]:hover,
+html.dark [class*="hover:bg-white"]:hover {
+  background-color: #1c1c20 !important;
+}
+
+html.dark [class*="hover:text-[#161616]"]:hover {
+  color: #ffffff !important;
 }
 
 /* --- Dialog / modal backdrop stays pure black --- */
