@@ -54,8 +54,8 @@ export default function MarketingPage({
                 Start your proof
                 <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link to="/proof-of-ai-work" className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[rgba(255,255,255,0.14)] bg-[rgba(255,255,255,0.04)] px-5 py-3 text-[14px] text-white sm:w-auto">
-                View proof pages
+              <Link to="/explore" className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[rgba(255,255,255,0.14)] bg-[rgba(255,255,255,0.04)] px-5 py-3 text-[14px] text-white sm:w-auto">
+                Explore public proof
               </Link>
             </div>
           </div>
@@ -113,8 +113,8 @@ export default function MarketingPage({
               Start your proof
               <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link to="/proof-of-ai-work" className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[rgba(7,17,31,0.12)] px-5 py-3 text-[14px] text-[#07111f] sm:w-auto">
-              View proof pages
+            <Link to="/explore" className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[rgba(7,17,31,0.12)] px-5 py-3 text-[14px] text-[#07111f] sm:w-auto">
+              Explore public proof pages
             </Link>
           </div>
         </section>

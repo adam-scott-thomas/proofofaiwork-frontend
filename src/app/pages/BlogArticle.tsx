@@ -90,8 +90,8 @@ export default function BlogArticle() {
             <Link to="/upload" className="rounded-lg bg-white px-4 py-2 text-[14px] font-medium text-[#111114]">
               Start your proof
             </Link>
-            <Link to="/proof-of-ai-work" className="rounded-lg border border-[rgba(255,255,255,0.16)] px-4 py-2 text-[14px] text-white">
-              View proof pages
+            <Link to="/explore" className="rounded-lg border border-[rgba(255,255,255,0.16)] px-4 py-2 text-[14px] text-white">
+              Explore public proof
             </Link>
           </div>
         </section>

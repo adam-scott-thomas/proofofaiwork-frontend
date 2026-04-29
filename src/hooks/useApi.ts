@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, apiPost, apiPatch } from "../lib/api";
+import { apiFetch, apiPost, apiPatch, apiDelete } from "../lib/api";
 import { useAuthStore } from "../stores/authStore";
 
 export type ClusterJobResponse = {
@@ -18,20 +18,25 @@ export type ClusterStatusResponse = {
   error_message?: string;
 };
 
-export type FrontendState = {
-  dashboard?: {
-    next_recommended_action?: string | {
-      label?: string;
-      href?: string;
-      action?: string;
-      disabled?: boolean;
-      reason?: string;
-    };
-    [key: string]: any;
-  };
-  actions?: Record<string, boolean | { enabled?: boolean; disabled?: boolean; reason?: string; label?: string; href?: string }>;
-  counts?: Record<string, number>;
-  [key: string]: any;
+export type BulkDeleteProjectsResponse = {
+  dissolved: number;
+  skipped: number;
+};
+
+export type ClearSuggestedProjectsResponse = {
+  dissolved: number;
+};
+
+export type ReclusterProjectsResponse = {
+  dissolved_suggestions: number;
+  job_id: string;
+  status: "queued";
+  mode: "rule" | "ai" | string;
+};
+
+export type ClearUnassignedPoolResponse = {
+  deleted: number;
+  skipped_assigned: number;
 };
 
 export function getClusterStatus(jobId: string) {
@@ -56,15 +61,12 @@ function useAuthQuery<T>(key: string[], fn: () => Promise<T>, opts?: { enabled?:
 }
 
 // Auth
-export const useFrontendState = () =>
-  useAuthQuery<FrontendState>(["state"], () => apiFetch<FrontendState>("/state"));
-
 export const useCurrentUser = () =>
   useAuthQuery(["me"], () => apiFetch<any>("/auth/me"));
 
-// Pool view uses the approved conversations endpoint as its source.
+// Pool
 export const usePool = () =>
-  useAuthQuery(["conversations"], () => apiFetch<any>("/conversations"));
+  useAuthQuery(["pool"], () => apiFetch<any>("/pool"));
 
 // Conversations
 export const useConversations = (params?: { project_id?: string; cursor?: string }) => {
@@ -89,6 +91,14 @@ export const useProjects = () =>
 export const useProject = (id: string) =>
   useAuthQuery(["project", id], () => apiFetch<any>(`/projects/${id}`), { enabled: !!id });
 
+// Work Profile
+export const useWorkProfile = (projectId?: string) =>
+  useAuthQuery(
+    ["work-profile", projectId],
+    () => apiFetch<any>(`/work-profile${projectId ? `?project_id=${projectId}` : ""}`),
+    { retry: false },
+  );
+
 // Assessments
 export const useAssessments = () =>
   useAuthQuery(["assessments"], () => apiFetch<any>("/assessments"));
@@ -97,12 +107,75 @@ export const useAssessments = () =>
 export const useProofPages = () =>
   useAuthQuery(["proof-pages"], () => apiFetch<any>("/proof-pages"));
 
+// Search (POST /memory/query)
+export const useMemorySearch = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (query: {
+      q?: string;
+      filter?: any;
+      group_by?: string;
+      aggregate?: string[];
+      limit?: number;
+    }) => apiPost<any>("/memory/query", query),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["search"] }),
+  });
+};
+
+// Tags
+export const useAddTag = () =>
+  useMutation({
+    mutationFn: ({
+      uploadId,
+      tag,
+      turnIndex,
+    }: {
+      uploadId: string;
+      tag: string;
+      turnIndex?: number;
+    }) => apiPost<any>(`/conversations/${uploadId}/tags`, { tag, turn_index: turnIndex }),
+  });
+
+export const useDeleteTag = () =>
+  useMutation({
+    mutationFn: ({ uploadId, tagId }: { uploadId: string; tagId: string }) =>
+      apiDelete(`/conversations/${uploadId}/tags/${tagId}`),
+  });
+
+// Activity
+export const useActivity = () =>
+  useAuthQuery(["activity"], () => apiFetch<any>("/activity"));
+
 // Upload
 export const usePresignUpload = () =>
   useMutation({ mutationFn: (body: any) => apiPost<any>("/uploads/presign", body) });
 
 export const useCompleteUpload = () =>
   useMutation({ mutationFn: (body: any) => apiPost<any>("/uploads/complete", body) });
+
+// Upload Pool (list of uploads) — uses /pool since /uploads has no GET
+export const useUploads = () =>
+  useAuthQuery(["uploads"], () => apiFetch<any>("/pool"));
+
+// Clustering
+export const useTriggerClustering = () => {
+  return useMutation({
+    mutationFn: () => apiPost<ClusterJobResponse>("/projects/cluster", {}),
+  });
+};
+
+// Intake
+export const useIntake = (projectId: string) =>
+  useAuthQuery(["intake", projectId], () => apiFetch<any>(`/intake/${projectId}`), { enabled: !!projectId, retry: false });
+
+export const useCreateIntake = () =>
+  useMutation({ mutationFn: (body: any) => apiPost<any>("/intake", body) });
+
+export const useUpdateIntake = () =>
+  useMutation({
+    mutationFn: ({ briefId, body }: { briefId: string; body: any }) =>
+      apiPatch<any>(`/intake/${briefId}`, body),
+  });
 
 // Evaluate
 export const useTriggerEvaluation = () =>
@@ -111,15 +184,49 @@ export const useTriggerEvaluation = () =>
       apiPost<any>(`/projects/${projectId}/evaluate`, {}),
   });
 
+export const useEvaluateWorkProfile = () =>
+  useMutation({
+    mutationFn: (projectId: string) =>
+      apiPost<any>(`/work-profile/evaluate?project_id=${projectId}`, {}),
+  });
+
 // Billing
+export const usePaymentConfig = () =>
+  useAuthQuery<{ app_id: string; location_id: string }>(
+    ["payment-config"],
+    () => apiFetch<{ app_id: string; location_id: string }>("/payments/config"),
+  );
+
 export const useBilling = () =>
-  useAuthQuery(["billing-entitlements"], () => apiFetch<any>("/billing/entitlements"));
+  useAuthQuery(["billing"], () => apiFetch<any>("/payments/billing"));
 
-export const useBillingSkus = () =>
-  useAuthQuery(["billing-skus"], () => apiFetch<any>("/billing/skus"));
+export const useSaveCard = () =>
+  useMutation({ mutationFn: (body: any) => apiPost<any>("/payments/save-card", body) });
 
-export const useBillingCheckout = () =>
-  useMutation({ mutationFn: (body: any) => apiPost<any>("/billing/checkout", body) });
+export const useCharge = () =>
+  useMutation({ mutationFn: (body: any) => apiPost<any>("/payments/charge", body) });
+
+export const useSubscribe = () =>
+  useMutation({ mutationFn: (body: any) => apiPost<any>("/payments/subscribe", body) });
+
+export const useSetModelTier = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (tier: string) => apiPost<any>(`/payments/set-model-tier?tier=${tier}`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["billing"] }),
+  });
+};
+
+// Crypto (NowPayments)
+export const useCreateCryptoInvoice = () =>
+  useMutation({ mutationFn: (body: { feature: string }) => apiPost<any>("/payments/crypto-invoice", body) });
+
+export const useCryptoStatus = (invoiceId: string | null) =>
+  useAuthQuery(
+    ["crypto-status", invoiceId],
+    () => apiFetch<any>(`/payments/crypto-status/${invoiceId}`),
+    { enabled: !!invoiceId },
+  );
 
 // Projects — mutations
 export const useCreateProject = () => {
@@ -135,10 +242,68 @@ export const useCreateProject = () => {
   });
 };
 
+export const useDeleteProject = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete(`/projects/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
+  });
+};
+
+export const useBulkDeleteProjects = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (projectIds: string[]) =>
+      apiPost<BulkDeleteProjectsResponse>("/projects/bulk-delete", { project_ids: projectIds }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["pool"] });
+    },
+  });
+};
+
+export const useClearSuggestedProjects = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body?: { cluster_methods?: Array<"hybrid" | "llm" | string> }) =>
+      apiPost<ClearSuggestedProjectsResponse>("/projects/clear-suggested", body ?? {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["pool"] });
+    },
+  });
+};
+
+export const useReclusterProjects = () =>
+  useMutation({
+    mutationFn: (body?: { mode?: "rule" | "ai"; tier?: "free" | "paid" | "premium" }) =>
+      apiPost<ReclusterProjectsResponse>("/projects/recluster", body ?? {}),
+  });
+
+export const useClearUnassignedPool = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiPost<ClearUnassignedPoolResponse>("/pool/clear-unassigned", {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pool"] });
+      qc.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+};
+
+// AI Cluster
+export const useAiClusterEstimate = () =>
+  useAuthQuery(["ai-cluster-estimate"], () => apiFetch<any>("/projects/ai-cluster/estimate"));
+
 export const useAiCluster = () => {
   return useMutation({
-    mutationFn: (body?: { tier?: "free" | "paid" | "premium" }) =>
-      apiPost<ClusterJobResponse>("/projects/ai-cluster", body ?? { tier: "free" }),
+    mutationFn: (body?: { source_id?: string; tier?: "free" | "paid" | "premium" }) => {
+      const tier = body?.tier ?? "free";
+      if (tier === "free") {
+        return apiPost<ClusterJobResponse>("/projects/cluster", {});
+      }
+      return apiPost<ClusterJobResponse>("/projects/ai-cluster", body ?? {});
+    },
   });
 };
 
@@ -246,6 +411,14 @@ export const useDirectUpload = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["uploads"] }),
   });
 };
+
+// Global Search
+export const useGlobalSearch = (q: string) =>
+  useAuthQuery(
+    ["search", q],
+    () => apiFetch<any>(`/search?q=${encodeURIComponent(q)}`),
+    { enabled: q.length >= 2 },
+  );
 
 // Update Profile
 export const useUpdateProfile = () => {

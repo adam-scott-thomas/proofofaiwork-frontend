@@ -83,7 +83,7 @@ type PageConfig = {
 const VISIBILITY_META: Record<ProofPage["visibility"], { icon: React.ComponentType<any>; label: string; description: string }> = {
   private: { icon: Lock, label: "Private", description: "Owner only, not accessible via public URL." },
   link: { icon: LinkIcon, label: "Link", description: "Anyone with the URL can view. Not indexed, not listed." },
-  public: { icon: Globe, label: "Public", description: "Public proof page." },
+  public: { icon: Globe, label: "Public", description: "Discoverable in the directory (post-MVP)." },
 };
 
 const STATUS_STYLE: Record<string, string> = {
@@ -148,6 +148,16 @@ export default function ProofPages() {
     onError: (error: any) => toast.error(error?.message ?? "Delete failed"),
   });
 
+  const directoryToggle = useMutation({
+    mutationFn: ({ pageId, optIn }: { pageId: string; optIn: boolean }) =>
+      apiPost(`/directory/${pageId}/${optIn ? "opt-in" : "opt-out"}`, {}),
+    onSuccess: (_data, vars) => {
+      toast.success(vars.optIn ? "Listed in directory" : "Removed from directory");
+      queryClient.invalidateQueries({ queryKey: ["proof-pages"] });
+    },
+    onError: (error: any) => toast.error(error?.message ?? "Directory update failed"),
+  });
+
   const publishPage = async (page: ProofPage) => {
     if (page.visibility !== "public") {
       await apiPatch(`/proof-pages/${page.id}`, {
@@ -155,6 +165,7 @@ export default function ProofPages() {
       });
     }
     await apiPost(`/proof-pages/${page.id}/publish`, {});
+    await apiPost(`/directory/${page.id}/opt-in`, {});
   };
 
   const publishProofPage = useMutation({
@@ -221,13 +232,15 @@ export default function ProofPages() {
                   onPublish={() => {
                     publishProofPage.mutate(page, {
                       onSuccess: () => {
-                        toast.success("Proof page published");
+                        toast.success("Proof page published and listed in discovery");
                         queryClient.invalidateQueries({ queryKey: ["proof-pages"] });
+                        queryClient.invalidateQueries({ queryKey: ["directory-status"] });
                       },
                       onError: (error: any) => toast.error(error?.message ?? "Publish failed"),
                     });
                   }}
                   onUnpublish={() => unpublish.mutate(page.id)}
+                  onDirectory={(optIn) => directoryToggle.mutate({ pageId: page.id, optIn })}
                   publishPending={publishProofPage.isPending}
                   unpublishPending={unpublish.isPending}
                 />
@@ -338,6 +351,7 @@ function PageRow({
   onDelete,
   onPublish,
   onUnpublish,
+  onDirectory,
   publishPending,
   unpublishPending,
 }: {
@@ -347,6 +361,7 @@ function PageRow({
   onDelete: () => void;
   onPublish: () => void;
   onUnpublish: () => void;
+  onDirectory: (optIn: boolean) => void;
   publishPending: boolean;
   unpublishPending: boolean;
 }) {
@@ -486,6 +501,14 @@ function PageRow({
               <Button variant="outline" size="sm" onClick={onUnpublish} disabled={unpublishPending}>
                 {unpublishPending ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <EyeOff className="mr-2 h-3.5 w-3.5" />}
                 Unpublish
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => onDirectory(true)}>
+                <Users className="mr-2 h-3.5 w-3.5" />
+                List publicly
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => onDirectory(false)}>
+                <EyeOff className="mr-2 h-3.5 w-3.5" />
+                Unlist
               </Button>
             </>
           )}

@@ -265,6 +265,7 @@ export default function Landing() {
               <Link to="/how-it-works" onClick={() => setMobileNavOpen(false)}>How it works</Link>
               <Link to="/quiz" onClick={() => setMobileNavOpen(false)}>Quiz</Link>
               <Link to="/blog" onClick={() => setMobileNavOpen(false)}>Blog</Link>
+              <Link to="/explore" onClick={() => setMobileNavOpen(false)}>Explore</Link>
               <Link to="/sign-in" onClick={() => setMobileNavOpen(false)}>Sign in</Link>
             </div>
             <button
@@ -585,7 +586,7 @@ turn_01HX4E · user · 2026-04-12T09:20:11Z
                 <span className="po-inline-code">proofofaiwork.com/p/adamthomas</span>
               </h2>
             </div>
-            <Link className="po-btn po-btn-outline" to="/proof-of-ai-work">
+            <Link className="po-btn po-btn-outline" to="/explore">
               Browse explore
               <ArrowRight size={16} />
             </Link>
@@ -740,14 +741,14 @@ turn_01HX4E · user · 2026-04-12T09:20:11Z
           <div>
             <div className="po-footer-head">Trust</div>
             <a href="#pillars">Evidence standard</a>
-            <Link to="/proof-of-ai-work">Proof pages</Link>
+            <Link to="/explore">Public explore</Link>
             <Link to="/blog">Blog</Link>
             <span>Security</span>
           </div>
           <div>
             <div className="po-footer-head">Flow</div>
             <Link to="/upload">Start your proof</Link>
-            <Link to="/proof-of-ai-work">Browse proof</Link>
+            <Link to="/explore">Browse proof</Link>
             <Link to="/quiz">Take the quiz</Link>
             <span>Contact</span>
           </div>

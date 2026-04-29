@@ -21,6 +21,7 @@ const shortcuts = [
       { keys: ["G", "U"], description: "Go to Upload Pool" },
       { keys: ["G", "P"], description: "Go to Projects" },
       { keys: ["G", "C"], description: "Go to Conversations" },
+      { keys: ["G", "W"], description: "Go to Work Profile" },
       { keys: ["G", "A"], description: "Go to Assessments" },
     ],
   },

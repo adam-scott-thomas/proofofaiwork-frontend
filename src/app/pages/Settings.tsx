@@ -5,13 +5,13 @@ import {
   LogOut,
   Settings as SettingsIcon,
   User as UserIcon,
+  Zap,
 } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { useCurrentUser } from "../../hooks/useApi";
 import { useAuthStore } from "../../stores/authStore";
 import { useNavigate } from "react-router";
-import { apiPost } from "../../lib/api";
 
 type Entry = {
   href: string;
@@ -29,9 +29,15 @@ const ENTRIES: Entry[] = [
   },
   {
     href: "/app/settings/billing",
-    title: "Billing",
-    description: "Approved checkout and current entitlements.",
+    title: "Billing & model tier",
+    description: "Saved card, subscription tier, AI Sort credits, micro purchases.",
     icon: CreditCard,
+  },
+  {
+    href: "/app/settings/webhooks",
+    title: "Webhooks",
+    description: "Subscribe other services to assessment / dispute / request events.",
+    icon: Zap,
   },
 ];
 
@@ -88,8 +94,7 @@ export default function Settings() {
               <Button
                 variant="ghost"
                 className="text-[#8E3B34] hover:bg-[#FBEDEC] hover:text-[#8E3B34]"
-                onClick={async () => {
-                  await apiPost("/auth/logout", {}).catch(() => undefined);
+                onClick={() => {
                   clearToken();
                   navigate("/sign-in");
                 }}
