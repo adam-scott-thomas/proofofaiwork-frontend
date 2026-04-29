@@ -139,7 +139,7 @@ export default function UploadFlow() {
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </Link>
-          <Link to="/explore">
+          <Link to="/proof-of-ai-work">
             <Button size="lg" variant="outline">
               Browse published proof
             </Button>

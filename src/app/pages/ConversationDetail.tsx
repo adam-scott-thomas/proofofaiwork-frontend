@@ -9,10 +9,7 @@ import {
   Hash,
   Loader2,
   Search,
-  Tag as TagIcon,
-  Trash2,
   User as UserIcon,
-  X,
 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
@@ -36,7 +33,7 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { useConversation, useProjects } from "../../hooks/useApi";
-import { apiDelete, apiPost } from "../../lib/api";
+import { apiPost } from "../../lib/api";
 import { asArray, dateTime } from "../lib/poaw";
 
 type Turn = {
@@ -95,11 +92,8 @@ export default function ConversationDetail() {
   const { data: conversation, isLoading } = useConversation(id ?? "") as { data?: Conversation; isLoading: boolean };
   const { data: projectsData } = useProjects();
   const [targetProjectId, setTargetProjectId] = useState<string>("");
-  const [newTag, setNewTag] = useState("");
-  const [tagTurnIndex, setTagTurnIndex] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [turnJump, setTurnJump] = useState("");
-  const [deleting, setDeleting] = useState(false);
   const turnRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const move = useMutation({
@@ -111,40 +105,6 @@ export default function ConversationDetail() {
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
     },
     onError: (error: any) => toast.error(error?.message ?? "Move failed"),
-  });
-
-  const addTag = useMutation({
-    mutationFn: (body: { tag: string; turn_index?: number | null }) =>
-      apiPost(`/conversations/${id}/tags`, {
-        tag: body.tag,
-        turn_index: body.turn_index ?? undefined,
-      }),
-    onSuccess: () => {
-      setNewTag("");
-      setTagTurnIndex(null);
-      queryClient.invalidateQueries({ queryKey: ["conversation", id] });
-      toast.success("Tag added");
-    },
-    onError: (error: any) => toast.error(error?.message ?? "Tag failed"),
-  });
-
-  const removeTag = useMutation({
-    mutationFn: (tagId: string) => apiDelete(`/conversations/${id}/tags/${tagId}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["conversation", id] });
-    },
-    onError: (error: any) => toast.error(error?.message ?? "Remove failed"),
-  });
-
-  const remove = useMutation({
-    mutationFn: () => apiDelete(`/pool/${id}`),
-    onSuccess: () => {
-      toast.success("Removed from pool");
-      navigate("/app/conversations");
-      queryClient.invalidateQueries({ queryKey: ["pool"] });
-      queryClient.invalidateQueries({ queryKey: ["conversations"] });
-    },
-    onError: (error: any) => toast.error(error?.message ?? "Delete failed"),
   });
 
   const turns = conversation?.turns ?? [];
@@ -290,15 +250,6 @@ export default function ConversationDetail() {
                 <Download className="mr-2 h-3.5 w-3.5" />
                 JSON
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-[#8B2F2F] hover:bg-[#F3D1D1]/40 hover:text-[#8B2F2F]"
-                onClick={() => setDeleting(true)}
-              >
-                <Trash2 className="mr-2 h-3.5 w-3.5" />
-                Remove
-              </Button>
             </div>
           </div>
         </div>
@@ -372,16 +323,6 @@ export default function ConversationDetail() {
                       </div>
                       <div className="flex items-center gap-2 text-[10px] text-[#6B6B66]">
                         <span>turn {turn.turn_index ?? index + 1}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 px-2 py-0 text-[10px]"
-                          onClick={() => setTagTurnIndex(turn.turn_index ?? index)}
-                          title="Tag this turn"
-                        >
-                          <TagIcon className="mr-1 h-3 w-3" />
-                          Tag
-                        </Button>
                       </div>
                     </div>
                     <div className="whitespace-pre-wrap text-[13px] leading-6 text-[#2A2A28]">
@@ -408,15 +349,12 @@ export default function ConversationDetail() {
                     {turnTags.length > 0 ? (
                       <div className="mt-2 flex flex-wrap gap-1">
                         {turnTags.map((tag) => (
-                          <button
+                          <span
                             key={tag.id}
-                            type="button"
-                            className="group inline-flex items-center gap-1 rounded-full bg-[#DCE4F0] px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-[#315D8A] hover:bg-[#EEF2F9]"
-                            onClick={() => removeTag.mutate(tag.id)}
+                            className="inline-flex items-center gap-1 rounded-full bg-[#DCE4F0] px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-[#315D8A]"
                           >
                             {tag.tag}
-                            <X className="h-2.5 w-2.5 opacity-50 group-hover:opacity-100" />
-                          </button>
+                          </span>
                         ))}
                       </div>
                     ) : null}
@@ -559,90 +497,10 @@ export default function ConversationDetail() {
               </Button>
             </Card>
 
-            <Card className="border border-[#D8D2C4] bg-white p-4">
-              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] text-[#6B6B66]">
-                <TagIcon className="h-3 w-3" />
-                Tags ({tags.length})
-              </div>
-              <div className="mt-2 flex gap-2">
-                <Input
-                  value={newTag}
-                  onChange={(event) => setNewTag(event.target.value)}
-                  placeholder="Add a tag"
-                  className="flex-1"
-                />
-                <Button
-                  size="sm"
-                  onClick={() => addTag.mutate({ tag: newTag.trim(), turn_index: tagTurnIndex })}
-                  disabled={!newTag.trim() || addTag.isPending}
-                >
-                  {addTag.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add"}
-                </Button>
-              </div>
-              {tagTurnIndex != null ? (
-                <div className="mt-2 text-[11px] text-[#6B6B66]">
-                  Will pin to turn {tagTurnIndex + 1}.{" "}
-                  <button type="button" className="underline" onClick={() => setTagTurnIndex(null)}>
-                    Clear
-                  </button>
-                </div>
-              ) : null}
-
-              {tags.length === 0 ? (
-                <div className="mt-3 text-[11px] text-[#6B6B66]">No tags yet.</div>
-              ) : (
-                <div className="mt-3 space-y-1">
-                  {tags.map((tag) => (
-                    <div key={tag.id} className="flex items-center justify-between gap-2 rounded-md border border-[#EAE3CF] bg-[#FBF8F1] px-2 py-1.5">
-                      <div className="min-w-0 text-[11px]">
-                        <span className="text-[#161616]">{tag.tag}</span>
-                        {tag.turn_index != null ? (
-                          <button
-                            type="button"
-                            onClick={() => scrollToTurn(tag.turn_index!)}
-                            className="ml-1 text-[#6B6B66] hover:underline"
-                          >
-                            · turn {tag.turn_index + 1}
-                          </button>
-                        ) : null}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeTag.mutate(tag.id)}
-                        className="text-[#6B6B66] hover:text-[#8B2F2F]"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Card>
           </div>
         </div>
       </div>
 
-      <Dialog open={deleting} onOpenChange={setDeleting}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Remove this conversation?</DialogTitle>
-            <DialogDescription>
-              The upload is removed from your pool. Assessments that already evaluated it keep their observations.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setDeleting(false)}>Cancel</Button>
-            <Button
-              className="bg-[#8B2F2F] hover:bg-[#7A2525]"
-              disabled={remove.isPending}
-              onClick={() => remove.mutate()}
-            >
-              {remove.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Remove
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -1,10 +1,8 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { useEffect, useState } from "react";
 import {
-  Activity,
   FolderKanban,
   Globe,
-  Layers,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -17,12 +15,11 @@ import {
   MoonStar,
   SunMedium,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
 import { Button } from "./ui/button";
 import { useAuthStore } from "../../stores/authStore";
-import { apiFetch } from "../../lib/api";
-import { asArray } from "../lib/poaw";
 import { useThemeStore } from "../../stores/themeStore";
+import { useFrontendState } from "../../hooks/useApi";
+import { apiPost } from "../../lib/api";
 
 type NavItem = {
   name: string;
@@ -33,23 +30,16 @@ type NavItem = {
 };
 
 type SidebarContext = {
-  pendingRequests: number;
-  activeDisputes: number;
   runningAssessments: number;
   draftProofs: number;
   unassignedUploads: number;
 };
-
-const RUNNING_ASSESSMENT_STATUSES = ["pending", "processing", "in_progress", "retrying"];
-const statusKey = (status: string | null | undefined) => (status ?? "").toLowerCase();
 
 const items: NavItem[] = [
   {
     name: "Dashboard",
     href: "/app",
     icon: LayoutDashboard,
-    badgeKind: "alert",
-    getBadge: (ctx) => ctx.pendingRequests + ctx.activeDisputes,
   },
   {
     name: "Upload",
@@ -67,7 +57,6 @@ const items: NavItem[] = [
     badgeKind: "info",
     getBadge: (ctx) => ctx.runningAssessments,
   },
-  { name: "Work Profile", href: "/app/work-profile", icon: Activity },
   {
     name: "Proof Pages",
     href: "/app/proof-pages",
@@ -75,65 +64,16 @@ const items: NavItem[] = [
     badgeKind: "warn",
     getBadge: (ctx) => ctx.draftProofs,
   },
-  { name: "Portfolios", href: "/app/portfolios", icon: Layers },
 ];
 
 function useSidebarContext(): SidebarContext {
-  const { isAuthenticated } = useAuthStore();
-  const authed = isAuthenticated();
-
-  // staleTime keeps sidebar badges from hammering the API on every route
-  // transition; individual pages invalidate these keys when they mutate data.
-  const SIDEBAR_STALE_MS = 30_000;
-  const pool = useQuery<{ unassigned?: number }>({
-    queryKey: ["pool"],
-    queryFn: () => apiFetch<{ unassigned?: number }>(`/pool`),
-    enabled: authed,
-    staleTime: SIDEBAR_STALE_MS,
-  });
-  const assessments = useQuery<any>({
-    queryKey: ["assessments"],
-    queryFn: () => apiFetch<any>(`/assessments`),
-    enabled: authed,
-    staleTime: SIDEBAR_STALE_MS,
-    refetchInterval: (query) => {
-      const list = asArray<any>(query.state.data);
-      return list.some((assessment) => RUNNING_ASSESSMENT_STATUSES.includes(statusKey(assessment.status))) ? 5000 : false;
-    },
-  });
-  const proofPages = useQuery<any>({
-    queryKey: ["proof-pages"],
-    queryFn: () => apiFetch<any>(`/proof-pages`),
-    enabled: authed,
-    staleTime: SIDEBAR_STALE_MS,
-  });
-  const disputes = useQuery<Array<{ status: string }>>({
-    queryKey: ["disputes"],
-    queryFn: () => apiFetch<Array<{ status: string }>>(`/disputes`),
-    enabled: authed,
-    retry: false,
-    staleTime: SIDEBAR_STALE_MS,
-  });
-  const requests = useQuery<Array<{ status: string }>>({
-    queryKey: ["viewer-requests"],
-    queryFn: () => apiFetch<Array<{ status: string }>>(`/requests`),
-    enabled: authed,
-    retry: false,
-    staleTime: SIDEBAR_STALE_MS,
-  });
-
-  const assessmentList = asArray<any>(assessments.data);
-  const proofList = asArray<any>(proofPages.data);
-  const runningAssessmentCount = assessmentList.filter((assessment) =>
-    RUNNING_ASSESSMENT_STATUSES.includes(statusKey(assessment.status)),
-  ).length;
+  const { data: state } = useFrontendState();
+  const counts = state?.counts ?? state?.dashboard?.counts ?? {};
 
   return {
-    pendingRequests: (requests.data ?? []).filter((request) => statusKey(request.status) === "pending").length,
-    activeDisputes: (disputes.data ?? []).filter((dispute) => statusKey(dispute.status) === "open" || statusKey(dispute.status) === "reviewed").length,
-    runningAssessments: runningAssessmentCount,
-    draftProofs: proofList.filter((page) => statusKey(page.status) === "draft").length,
-    unassignedUploads: pool.data?.unassigned ?? 0,
+    runningAssessments: Number(counts.running_assessments ?? counts.assessments_running ?? 0),
+    draftProofs: Number(counts.draft_proof_pages ?? counts.draft_proofs ?? 0),
+    unassignedUploads: Number(counts.unassigned_uploads ?? counts.unassigned ?? 0),
   };
 }
 
@@ -179,9 +119,7 @@ export default function Layout() {
   const submitSearch = (event: React.FormEvent) => {
     event.preventDefault();
     const query = searchQuery.trim();
-    if (query.length >= 2) {
-      navigate(`/app/search?q=${encodeURIComponent(query)}`);
-    }
+    if (query.length >= 2) navigate(`/app/conversations?q=${encodeURIComponent(query)}`);
   };
 
   const active = (href: string) =>
@@ -258,7 +196,8 @@ export default function Layout() {
         <Button
           variant="ghost"
           className="w-full justify-start text-[14px] text-[#8E3B34] hover:bg-[#FBEDEC] hover:text-[#8E3B34] sm:text-[13px]"
-          onClick={() => {
+          onClick={async () => {
+            await apiPost("/auth/logout", {}).catch(() => undefined);
             clearToken();
             navigate("/sign-in");
           }}
@@ -286,11 +225,7 @@ export default function Layout() {
             <div className="truncate text-[15px] tracking-tight">Proof of AI Work</div>
             <div className="text-[11px] uppercase tracking-[0.14em] text-[#6B6B66]">Workspace</div>
           </div>
-          <Link
-            to="/app/search"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-[#D8D2C4] bg-white text-[#161616]"
-            aria-label="Open search"
-          >
+          <Link to="/app/conversations" className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-[#D8D2C4] bg-white text-[#161616]" aria-label="Open conversations">
             <SearchIcon className="h-4 w-4" />
           </Link>
         </div>

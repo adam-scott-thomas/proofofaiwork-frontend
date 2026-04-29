@@ -18,12 +18,7 @@ import Assessments from "./pages/Assessments";
 import Processing from "./pages/Processing";
 import Results from "./pages/Results";
 import ProofPages from "./pages/ProofPages";
-import Portfolios from "./pages/Portfolios";
-import PortfolioDetail from "./pages/PortfolioDetail";
-import WorkProfile from "./pages/WorkProfile";
 import PublicProofPage from "./pages/PublicProofPage";
-import PublicPortfolio from "./pages/PublicPortfolio";
-import Explore, { DirectoryRedirect } from "./pages/Explore";
 import Students from "./pages/Students";
 import Employers from "./pages/Employers";
 import HowItWorks from "./pages/HowItWorks";
@@ -32,8 +27,6 @@ import AIPortfolioPage from "./pages/AIPortfolioPage";
 import BlogIndex from "./pages/BlogIndex";
 import BlogArticle from "./pages/BlogArticle";
 import Quiz from "./pages/Quiz";
-import Search from "./pages/Search";
-import Webhooks from "./pages/Webhooks";
 import Settings from "./pages/Settings";
 import Account from "./pages/Account";
 import Billing from "./pages/Billing";
@@ -75,19 +68,11 @@ export const router = createBrowserRouter([
       { path: "assessment/:id/processing", Component: Processing },
       { path: "assessment/:id/results", Component: Results },
       { path: "proof-pages", Component: ProofPages },
-      { path: "portfolios", Component: Portfolios },
-      { path: "portfolios/:id", Component: PortfolioDetail },
-      { path: "work-profile", Component: WorkProfile },
-      { path: "search", Component: Search },
       { path: "settings", Component: Settings },
       { path: "settings/account", Component: Account },
       { path: "settings/billing", Component: Billing },
-      { path: "settings/webhooks", Component: Webhooks },
     ],
   },
   { path: "/p/:slug", Component: PublicProofPage, ErrorBoundary },
-  { path: "/u/:slug", Component: PublicPortfolio, ErrorBoundary },
-  { path: "/explore", Component: Explore, ErrorBoundary },
-  { path: "/directory", Component: DirectoryRedirect, ErrorBoundary },
   { path: "*", Component: NotFound },
 ]);
