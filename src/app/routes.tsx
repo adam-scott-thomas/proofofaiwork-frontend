@@ -4,6 +4,7 @@ import AboutPage from "../marketing/pages/AboutPage";
 import BlogIndexPage from "../marketing/pages/BlogIndexPage";
 import BlogPostPage from "../marketing/pages/BlogPostPage";
 import CommunityPage from "../marketing/pages/CommunityPage";
+import DossierPage from "../marketing/pages/DossierPage";
 import EmployersPage from "../marketing/pages/EmployersPage";
 import ExamplesPage from "../marketing/pages/ExamplesPage";
 import HomePage from "../marketing/pages/HomePage";
@@ -27,6 +28,7 @@ export const router = createBrowserRouter([
       { path: "blog", element: <BlogIndexPage /> },
       { path: "blog/:slug", element: <BlogPostPage /> },
       { path: "community", element: <CommunityPage /> },
+      { path: "dossier/:handle", element: <DossierPage /> },
       { path: "proof/:slug", element: <ProofPage /> },
       { path: "scores", element: <ScoresPage /> },
       { path: "examples", element: <ExamplesPage /> },

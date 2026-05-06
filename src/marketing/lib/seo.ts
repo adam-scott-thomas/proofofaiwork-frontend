@@ -7,6 +7,7 @@ type SeoInput = {
   canonical?: string;
   image?: string;
   type?: "website" | "article";
+  jsonLd?: unknown;
 };
 
 function upsertMeta(name: string, content: string, property = false) {
@@ -30,7 +31,30 @@ function upsertCanonical(href: string) {
   element.href = href;
 }
 
-export function setSeo({ title, description, path = "", canonical: canonicalOverride, image, type = "website" }: SeoInput) {
+function upsertJsonLd(value: unknown) {
+  let element = document.head.querySelector<HTMLScriptElement>('script[data-poaw-jsonld="page"]');
+  if (!value) {
+    element?.remove();
+    return;
+  }
+  if (!element) {
+    element = document.createElement("script");
+    element.type = "application/ld+json";
+    element.dataset.poawJsonld = "page";
+    document.head.appendChild(element);
+  }
+  element.textContent = JSON.stringify(value);
+}
+
+export function setSeo({
+  title,
+  description,
+  path = "",
+  canonical: canonicalOverride,
+  image,
+  type = "website",
+  jsonLd,
+}: SeoInput) {
   const pageTitle = title ? `${title} | ProofOfAIWork` : siteMetadata.title;
   const pageDescription = description ?? siteMetadata.description;
   const canonical = canonicalOverride ?? `${siteMetadata.canonical}${path}`;
@@ -49,4 +73,5 @@ export function setSeo({ title, description, path = "", canonical: canonicalOver
   upsertMeta("twitter:title", pageTitle);
   upsertMeta("twitter:description", pageDescription);
   upsertCanonical(canonical);
+  upsertJsonLd(jsonLd);
 }

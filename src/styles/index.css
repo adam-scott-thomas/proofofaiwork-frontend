@@ -1016,3 +1016,810 @@ p {
     justify-content: center;
   }
 }
+
+/* Editorial public artifact system */
+:root {
+  --poaw-paper: #f1eadb;
+  --poaw-paper-deep: #e6decb;
+  --poaw-ink: #171c13;
+  --poaw-green: #264622;
+  --poaw-muted: #676152;
+  --poaw-rule: rgba(23, 28, 19, 0.18);
+  --poaw-rule-strong: rgba(23, 28, 19, 0.48);
+  --poaw-serif: Georgia, "Times New Roman", serif;
+  --poaw-mono: "SFMono-Regular", Consolas, "Liberation Mono", ui-monospace, monospace;
+}
+
+.proof-dossier,
+.dossier-shell,
+.community-archive {
+  width: min(1240px, calc(100% - 2rem));
+  margin-inline: auto;
+  color: var(--poaw-ink);
+  font-family: var(--poaw-serif);
+}
+
+.proof-dossier p,
+.dossier-shell p,
+.community-archive p {
+  color: var(--poaw-muted);
+}
+
+.proof-utility {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--poaw-ink);
+  color: var(--poaw-paper);
+  font-family: var(--poaw-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.proof-utility button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.proof-masthead {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 2px solid var(--poaw-ink);
+  padding: 1rem 0;
+  font-family: var(--poaw-mono);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.proof-dossier-hero,
+.dossier-identity {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  border-bottom: 1px solid var(--poaw-rule);
+  padding: clamp(2.5rem, 6vw, 4rem) 0;
+}
+
+.proof-score-event strong {
+  display: block;
+  color: var(--poaw-ink);
+  font-family: var(--poaw-serif);
+  font-size: clamp(7rem, 22vw, 18rem);
+  font-weight: 500;
+  letter-spacing: -0.06em;
+  line-height: 0.78;
+}
+
+.proof-score-context,
+.proof-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1.4rem;
+}
+
+.proof-score-context span {
+  border: 1px solid var(--poaw-rule);
+  padding: 0.35rem 0.5rem;
+  color: var(--poaw-green);
+  font-family: var(--poaw-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.proof-identity-block h1,
+.dossier-identity h1,
+.archive-masthead h1 {
+  max-width: 56rem;
+  color: var(--poaw-ink);
+  font-family: var(--poaw-serif);
+  font-size: clamp(3.2rem, 8vw, 6rem);
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 0.98;
+}
+
+.proof-title-line,
+.dossier-archetype {
+  color: var(--poaw-green) !important;
+  font-family: var(--poaw-serif);
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-style: italic;
+}
+
+.proof-narrative,
+.dossier-copy {
+  max-width: 42rem;
+  color: var(--poaw-ink) !important;
+  font-size: 1.08rem;
+  line-height: 1.75;
+}
+
+.proof-dossier-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(18rem, 0.75fr);
+  gap: 0;
+}
+
+.proof-main-column {
+  border-right: 1px solid var(--poaw-rule);
+  padding: clamp(2rem, 4vw, 3rem) clamp(1rem, 3vw, 2rem) clamp(3rem, 5vw, 4rem) 0;
+}
+
+.proof-side-column {
+  padding: clamp(2rem, 4vw, 3rem) 0 clamp(3rem, 5vw, 4rem) clamp(1rem, 3vw, 2rem);
+}
+
+.editorial-section,
+.side-section {
+  border-bottom: 1px solid var(--poaw-rule);
+  padding: 0 0 clamp(2rem, 4vw, 3rem);
+  margin-bottom: clamp(2rem, 4vw, 3rem);
+}
+
+.editorial-section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--poaw-rule);
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.9rem;
+}
+
+.editorial-section h2,
+.side-section h2,
+.verification-block h2 {
+  color: var(--poaw-ink);
+  font-family: var(--poaw-serif);
+  font-size: clamp(1.65rem, 3vw, 2.3rem);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.proof-bars {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.proof-bar-row {
+  display: grid;
+  grid-template-columns: 8rem 1fr 4rem;
+  gap: 1rem;
+  align-items: center;
+  border-bottom: 1px dotted var(--poaw-rule);
+  padding: 0.8rem 0;
+}
+
+.proof-bar-row > span {
+  font-size: 1.15rem;
+  font-style: italic;
+}
+
+.proof-bar-row div i {
+  display: block;
+  height: 0.36rem;
+  background: var(--poaw-green);
+}
+
+.proof-bar-row div {
+  background: rgba(23, 28, 19, 0.08);
+}
+
+.proof-bar-row p {
+  margin: 0.35rem 0 0;
+  background: var(--poaw-paper);
+  color: var(--poaw-muted);
+  font-size: 0.86rem;
+  font-style: italic;
+}
+
+.proof-bar-row strong,
+.ledger-panel strong {
+  font-family: var(--poaw-serif);
+  font-size: 1.75rem;
+  font-weight: 500;
+  text-align: right;
+}
+
+.ledger-panel {
+  font-family: var(--poaw-mono);
+}
+
+.ledger-panel div {
+  display: grid;
+  grid-template-columns: 1fr 0.5fr 1.4fr;
+  gap: 1rem;
+  align-items: baseline;
+  border-bottom: 1px dotted var(--poaw-rule);
+  padding: 0.75rem 0;
+}
+
+.ledger-panel span,
+.verification-block span,
+.proof-card-mast,
+.proof-card-footer,
+.proof-card-ledger,
+.proof-card-hash,
+.proof-card-canonical,
+.cluster-list strong,
+.cluster-rail strong {
+  font-family: var(--poaw-mono);
+}
+
+.ledger-panel span,
+.ledger-panel em {
+  color: var(--poaw-muted);
+  font-size: 0.8rem;
+}
+
+.evidence-ledger-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.evidence-ledger-list article,
+.artifact-grid article,
+.verification-block,
+.dossier-summary-panel,
+.archive-empty {
+  border: 1px solid var(--poaw-rule);
+  background: rgba(244, 240, 230, 0.72);
+  padding: clamp(1rem, 2vw, 1.4rem);
+}
+
+.evidence-ledger-list span,
+.artifact-grid span {
+  color: var(--poaw-green);
+  font-family: var(--poaw-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.verification-block {
+  margin-bottom: 2rem;
+}
+
+.verification-block div {
+  border-top: 1px dotted var(--poaw-rule);
+  padding: 0.8rem 0;
+}
+
+.verification-block code,
+.proof-card code,
+.proof-dossier-footer code,
+.turn-list code,
+.archive-empty code {
+  overflow-wrap: anywhere;
+  font-family: var(--poaw-mono);
+}
+
+.artifact-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.artifact-empty {
+  border: 1px dashed var(--poaw-rule);
+  padding: 1rem;
+  color: var(--poaw-muted);
+  font-style: italic;
+}
+
+.proof-timeline {
+  position: relative;
+  display: grid;
+  gap: 1rem;
+  padding-left: 1rem;
+}
+
+.proof-timeline::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0.25rem;
+  width: 1px;
+  background: var(--poaw-rule);
+  content: "";
+}
+
+.proof-timeline div {
+  position: relative;
+}
+
+.proof-timeline div::before {
+  position: absolute;
+  top: 0.35rem;
+  left: -0.95rem;
+  width: 0.45rem;
+  height: 0.45rem;
+  background: var(--poaw-green);
+  content: "";
+}
+
+.proof-dossier-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  border-top: 2px solid var(--poaw-ink);
+  padding: 1.25rem 0 2rem;
+  color: var(--poaw-muted);
+  font-family: var(--poaw-mono);
+  font-size: 0.72rem;
+}
+
+.proof-card {
+  container-type: inline-size;
+  position: relative;
+  max-width: 46rem;
+  perspective: 1400px;
+}
+
+.proof-card.compact {
+  max-width: none;
+}
+
+.proof-card-toggle {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 4;
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  border: 1px solid var(--poaw-rule);
+  background: var(--poaw-paper);
+  color: var(--poaw-green);
+  padding: 0.35rem 0.5rem;
+  font-family: var(--poaw-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.proof-card-stage {
+  position: relative;
+  min-height: 38rem;
+  transform-style: preserve-3d;
+  transition: transform 420ms ease;
+}
+
+.proof-card[data-flipped="true"] .proof-card-stage {
+  transform: rotateY(180deg);
+}
+
+.proof-card-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  backface-visibility: hidden;
+  border: 1px solid var(--poaw-rule);
+  background: var(--poaw-paper);
+  box-shadow: 0 18px 44px rgba(40, 30, 10, 0.12);
+  padding: clamp(1.25rem, 5cqw, 2.3rem);
+}
+
+.proof-card-back {
+  transform: rotateY(180deg);
+}
+
+.proof-card-mast {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--poaw-rule);
+  padding-bottom: 0.8rem;
+  color: var(--poaw-muted);
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.proof-card-identity {
+  margin-top: clamp(1.4rem, 5cqw, 2rem);
+}
+
+.proof-card-identity p {
+  color: var(--poaw-green);
+  font-family: var(--poaw-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.proof-card-identity h3 {
+  color: var(--poaw-ink);
+  font-family: var(--poaw-serif);
+  font-size: clamp(1.8rem, 8cqw, 3rem);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.proof-card-identity span {
+  color: var(--poaw-muted);
+  font-family: var(--poaw-mono);
+  font-size: 0.78rem;
+}
+
+.proof-card-score {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: clamp(1rem, 5cqw, 1.75rem);
+  align-items: end;
+  border-bottom: 1px solid var(--poaw-rule);
+  margin-top: clamp(1.5rem, 5cqw, 2.5rem);
+  padding-bottom: 1.5rem;
+}
+
+.proof-card-score > strong {
+  color: var(--poaw-ink);
+  font-family: var(--poaw-serif);
+  font-size: clamp(6rem, 26cqw, 12rem);
+  font-weight: 500;
+  letter-spacing: -0.06em;
+  line-height: 0.78;
+}
+
+.proof-card-score span,
+.proof-card-ledger span,
+.proof-card-hash span,
+.proof-card-canonical span {
+  color: var(--poaw-green);
+  font-family: var(--poaw-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.proof-card-score p {
+  color: var(--poaw-ink);
+  font-size: 1.05rem;
+  font-style: italic;
+}
+
+.proof-card-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  margin-top: 1.4rem;
+}
+
+.proof-card-metrics div {
+  border-left: 1px solid var(--poaw-rule);
+  padding-left: 1rem;
+}
+
+.proof-card-metrics div:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+
+.proof-card-metrics span {
+  color: var(--poaw-muted);
+  font-family: var(--poaw-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.proof-card-metrics strong {
+  display: block;
+  color: var(--poaw-ink);
+  font-family: var(--poaw-serif);
+  font-size: clamp(2rem, 9cqw, 3rem);
+  font-weight: 500;
+}
+
+.proof-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-top: 1px solid var(--poaw-rule);
+  margin-top: auto;
+  padding-top: 1rem;
+  color: var(--poaw-muted);
+  font-size: 0.68rem;
+}
+
+.proof-card-footer span {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.proof-card-ledger {
+  display: grid;
+  margin-top: 2rem;
+}
+
+.proof-card-ledger div {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px dotted var(--poaw-rule);
+  padding: 0.6rem 0;
+}
+
+.proof-card-ledger strong {
+  color: var(--poaw-ink);
+  font-family: var(--poaw-serif);
+  font-size: 1.35rem;
+  font-weight: 500;
+}
+
+.proof-card-hash,
+.proof-card-canonical {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 1rem;
+}
+
+.proof-card-open {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--poaw-ink);
+  margin-top: auto;
+  padding: 0.8rem;
+  color: var(--poaw-ink);
+  font-family: var(--poaw-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.community-archive {
+  padding: clamp(3rem, 7vw, 5rem) 0;
+}
+
+.archive-masthead h1 {
+  margin-bottom: 1rem;
+}
+
+.archive-masthead p {
+  max-width: 48rem;
+  font-style: italic;
+}
+
+.archive-rulebar,
+.cluster-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  border-block: 1px solid var(--poaw-rule);
+  margin-top: 2rem;
+  padding: 1rem 0;
+  color: var(--poaw-muted);
+  font-family: var(--poaw-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.cluster-rail {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.cluster-rail div,
+.cluster-list div {
+  border-left: 1px solid var(--poaw-rule);
+  padding-left: 0.8rem;
+}
+
+.cluster-rail strong,
+.cluster-list strong {
+  display: block;
+  color: var(--poaw-green);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.cluster-rail span,
+.cluster-list p {
+  color: var(--poaw-muted);
+  font-family: var(--poaw-serif);
+  font-size: 0.88rem;
+  font-style: italic;
+  line-height: 1.45;
+}
+
+.printer-tray {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin-top: 2rem;
+  background: var(--poaw-rule);
+  border: 1px solid var(--poaw-rule);
+}
+
+.printer-tray .proof-card {
+  background: var(--poaw-paper);
+}
+
+.printer-tray .proof-card-stage {
+  min-height: 31rem;
+}
+
+.printer-tray .proof-card-face {
+  border: 0;
+  box-shadow: none;
+}
+
+.archive-empty,
+.dossier-empty {
+  margin-top: 2rem;
+  max-width: 54rem;
+}
+
+.archive-actions {
+  margin-top: 2rem;
+}
+
+.dossier-identity {
+  grid-template-columns: 1fr minmax(16rem, 0.38fr);
+}
+
+.dossier-summary-panel strong {
+  display: block;
+  color: var(--poaw-ink);
+  font-family: var(--poaw-serif);
+  font-size: clamp(3rem, 7vw, 5rem);
+  font-weight: 500;
+  line-height: 0.9;
+}
+
+.cluster-list {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  .proof-card-stage,
+  .proof-card[data-flipped="true"] .proof-card-stage {
+    transform: none;
+  }
+
+  .proof-card-face {
+    position: static;
+  }
+
+  .proof-card-back {
+    display: none;
+  }
+}
+
+@media (max-width: 980px) {
+  .proof-dossier-hero,
+  .proof-dossier-body,
+  .dossier-identity {
+    grid-template-columns: 1fr;
+  }
+
+  .proof-main-column,
+  .proof-side-column {
+    border-right: 0;
+    padding-inline: 0;
+  }
+
+  .cluster-rail,
+  .printer-tray {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .proof-masthead,
+  .proof-utility,
+  .proof-bar-row,
+  .ledger-panel div,
+  .proof-card-score {
+    grid-template-columns: 1fr;
+  }
+
+  .artifact-grid,
+  .cluster-rail,
+  .printer-tray {
+    grid-template-columns: 1fr;
+  }
+
+  .proof-card-stage {
+    min-height: 42rem;
+  }
+
+  .proof-card-metrics {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .proof-card-metrics div {
+    border-left: 0;
+    border-top: 1px solid var(--poaw-rule);
+    padding: 0.75rem 0 0;
+  }
+}
+
+@media print {
+  .site-header,
+  .site-footer,
+  .proof-utility,
+  .proof-card-toggle,
+  .proof-actions,
+  .cta-row {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  .proof-dossier,
+  .dossier-shell {
+    width: 100%;
+    color: #000;
+  }
+
+  .proof-dossier-body,
+  .dossier-identity,
+  .proof-dossier-hero {
+    display: block;
+  }
+
+  .proof-main-column,
+  .proof-side-column {
+    border: 0;
+    padding: 0;
+  }
+
+  .proof-card-stage,
+  .proof-card-face {
+    position: static;
+    min-height: auto;
+    transform: none !important;
+    box-shadow: none;
+  }
+
+  .proof-card-back {
+    display: none;
+  }
+
+  .editorial-section,
+  .verification-block,
+  .artifact-grid article {
+    break-inside: avoid;
+  }
+}
