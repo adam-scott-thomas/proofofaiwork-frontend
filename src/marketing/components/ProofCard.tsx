@@ -1,7 +1,6 @@
 import { ArrowRight, Check, RotateCw } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
-import { siteMetadata } from "../lib/constants";
 import type { PublicReceipt, PublicReceiptListItem } from "../lib/publicReceipts";
 
 type ProofCardReceipt = PublicReceipt | PublicReceiptListItem;
@@ -26,20 +25,12 @@ function hashShort(value?: string) {
   return `${clean.slice(0, 6)}...${clean.slice(-6)}`;
 }
 
-function canonicalPath(slug: string) {
-  return `/proof/${slug}`;
-}
-
-function canonicalUrl(slug: string) {
-  return `${siteMetadata.canonical}${canonicalPath(slug)}`;
-}
-
 export default function ProofCard({ receipt, compact = false }: ProofCardProps) {
   const [flipped, setFlipped] = useState(false);
-  const archetype = receipt.archetypeLabel ?? "Verified Capability Artifact";
-  const identity = receipt.operatorName ?? receipt.handle ?? "ProofOfAIWork receipt";
-  const confidence = numberOrDash(receipt.evidenceConfidence);
-  const hash = hashShort(receipt.proofHash);
+  const archetype = receipt.archetype_label ?? "Verified Capability Artifact";
+  const identity = receipt.operator_name ?? receipt.handle ?? "ProofOfAIWork receipt";
+  const confidence = numberOrDash(receipt.evidence_confidence);
+  const hash = hashShort(receipt.proof_hash);
 
   return (
     <article className={compact ? "proof-card compact" : "proof-card"} data-flipped={flipped}>
@@ -58,7 +49,7 @@ export default function ProofCard({ receipt, compact = false }: ProofCardProps) 
         <div className="proof-card-face proof-card-front">
           <div className="proof-card-mast">
             <span>Verified AI Work Receipt</span>
-            <span>{receipt.verificationState ?? hash}</span>
+            <span>{receipt.verification_state ?? hash}</span>
           </div>
 
           <div className="proof-card-identity">
@@ -68,7 +59,7 @@ export default function ProofCard({ receipt, compact = false }: ProofCardProps) 
           </div>
 
           <div className="proof-card-score">
-            <strong>{numberOrDash(receipt.aiLeverageScore)}</strong>
+            <strong>{numberOrDash(receipt.ai_leverage_score)}</strong>
             <div>
               <span>AI Leverage</span>
               <p>{receipt.title}</p>
@@ -79,7 +70,7 @@ export default function ProofCard({ receipt, compact = false }: ProofCardProps) 
             {[
               ["Ownership", receipt.ownership],
               ["Execution", receipt.execution],
-              ["Leverage", receipt.leverageScore],
+              ["Leverage", receipt.leverage_score],
             ].map(([label, value]) => (
               <div key={label as string}>
                 <span>{label as string}</span>
@@ -107,11 +98,11 @@ export default function ProofCard({ receipt, compact = false }: ProofCardProps) 
           <div className="proof-card-ledger">
             {[
               ["Evidence confidence", confidence],
-              ["Output multiplier", multiplier(receipt.outputMultiplier)],
-              ["Completed actions", numberOrDash(receipt.completedActions)],
+              ["Output multiplier", multiplier(receipt.output_multiplier)],
+              ["Completed actions", numberOrDash(receipt.completed_actions)],
               ["Decisions", numberOrDash(receipt.decisions)],
               ["Alternatives", numberOrDash(receipt.alternatives)],
-              ["Turns analyzed", numberOrDash(receipt.turnsAnalyzed)],
+              ["Turns analyzed", numberOrDash(receipt.turns_analyzed)],
               ["Artifacts", numberOrDash(receipt.artifacts)],
             ].map(([label, value]) => (
               <div key={label}>
@@ -123,15 +114,15 @@ export default function ProofCard({ receipt, compact = false }: ProofCardProps) 
 
           <div className="proof-card-hash">
             <span>Proof hash</span>
-            <code>{receipt.proofHash ?? "pending"}</code>
+            <code>{receipt.proof_hash ?? "pending"}</code>
           </div>
 
           <div className="proof-card-canonical">
             <span>Canonical</span>
-            <code>{"canonicalUrl" in receipt ? receipt.canonicalUrl : canonicalUrl(receipt.slug)}</code>
+            <code>{receipt.canonical_url}</code>
           </div>
 
-          <Link className="proof-card-open" to={canonicalPath(receipt.slug)}>
+          <Link className="proof-card-open" to={`/proof/${receipt.slug}`}>
             Open Full Proof
             <ArrowRight size={15} />
           </Link>

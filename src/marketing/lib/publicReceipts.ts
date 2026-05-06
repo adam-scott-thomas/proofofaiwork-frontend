@@ -10,44 +10,44 @@ export type PublicReceiptEvidenceCard = {
 
 export type PublicReceipt = {
   slug: string;
-  canonicalUrl: string;
+  canonical_url: string;
   title: string;
-  operatorName?: string;
+  operator_name?: string;
   handle?: string;
-  archetypeLabel?: string;
+  archetype_label?: string;
   summary?: string;
-  aiLeverageScore?: number;
+  ai_leverage_score?: number;
   ownership?: number;
   execution?: number;
-  leverageScore?: number;
-  evidenceConfidence?: number;
-  outputMultiplier?: number;
-  completedActions?: number;
+  leverage_score?: number;
+  evidence_confidence?: number;
+  output_multiplier?: number;
+  completed_actions?: number;
   decisions?: number;
   alternatives?: number;
-  turnsAnalyzed?: number;
+  turns_analyzed?: number;
   artifacts?: number;
-  proofHash?: string;
-  publishedAt?: string;
-  evidenceCards: PublicReceiptEvidenceCard[];
+  proof_hash?: string;
+  published_at?: string;
+  evidence_cards: PublicReceiptEvidenceCard[];
   timeline: PublicReceiptEvidenceCard[];
-  artifactCards: PublicReceiptEvidenceCard[];
-  ogImageUrl?: string;
-  oembedUrl?: string;
-  verificationState?: string;
+  artifact_cards: PublicReceiptEvidenceCard[];
+  og_image_url?: string;
+  oembed_url?: string;
+  verification_state?: string;
 };
 
 export type PublicReceiptListItem = PublicReceipt;
 
 export type PublicDossier = {
   handle: string;
-  operatorName: string;
-  canonicalUrl: string;
+  operator_name: string;
+  canonical_url: string;
   description: string;
-  publicProofs: PublicReceipt[];
-  archetypeDistribution: Record<string, number>;
-  evidenceTotals: Record<string, number>;
-  featuredProof?: PublicReceipt;
+  public_proofs: PublicReceipt[];
+  archetype_distribution: Record<string, number>;
+  evidence_totals: Record<string, number>;
+  featured_proof?: PublicReceipt;
 };
 
 type PublicReceiptContract = {
@@ -191,38 +191,38 @@ function normalizeReceipt(payload: unknown): PublicReceipt | null {
   if (!isRecord(payload)) return null;
   const receipt = payload as PublicReceiptContract;
   const slug = requiredString(receipt.slug);
-  const canonicalUrl = requiredString(receipt.canonical_url);
+  const canonical_url = requiredString(receipt.canonical_url);
   const title = requiredString(receipt.title);
 
-  if (!slug || !canonicalUrl || !title) return null;
+  if (!slug || !canonical_url || !title) return null;
 
   return {
     slug,
-    canonicalUrl,
+    canonical_url,
     title,
-    operatorName: stringField(receipt.operator_name),
+    operator_name: stringField(receipt.operator_name),
     handle: stringField(receipt.handle),
-    archetypeLabel: stringField(receipt.archetype_label),
+    archetype_label: stringField(receipt.archetype_label),
     summary: stringField(receipt.summary),
-    aiLeverageScore: scoreField(receipt.ai_leverage_score),
+    ai_leverage_score: scoreField(receipt.ai_leverage_score),
     ownership: scoreField(receipt.ownership),
     execution: scoreField(receipt.execution),
-    leverageScore: scoreField(receipt.leverage_score),
-    evidenceConfidence: scoreField(receipt.evidence_confidence),
-    outputMultiplier: multiplierField(receipt.output_multiplier),
-    completedActions: countField(receipt.completed_actions),
+    leverage_score: scoreField(receipt.leverage_score),
+    evidence_confidence: scoreField(receipt.evidence_confidence),
+    output_multiplier: multiplierField(receipt.output_multiplier),
+    completed_actions: countField(receipt.completed_actions),
     decisions: countField(receipt.decisions),
     alternatives: countField(receipt.alternatives),
-    turnsAnalyzed: countField(receipt.turns_analyzed),
+    turns_analyzed: countField(receipt.turns_analyzed),
     artifacts: countField(receipt.artifacts),
-    proofHash: stringField(receipt.proof_hash),
-    publishedAt: stringField(receipt.published_at),
-    evidenceCards: evidenceCardArray(receipt.evidence_cards),
+    proof_hash: stringField(receipt.proof_hash),
+    published_at: stringField(receipt.published_at),
+    evidence_cards: evidenceCardArray(receipt.evidence_cards),
     timeline: timelineCardArray(receipt.timeline),
-    artifactCards: artifactCardArray(receipt.artifact_cards),
-    ogImageUrl: stringField(receipt.og_image_url),
-    oembedUrl: stringField(receipt.oembed_url),
-    verificationState: stringField(receipt.verification_state),
+    artifact_cards: artifactCardArray(receipt.artifact_cards),
+    og_image_url: stringField(receipt.og_image_url),
+    oembed_url: stringField(receipt.oembed_url),
+    verification_state: stringField(receipt.verification_state),
   };
 }
 
@@ -255,18 +255,18 @@ export async function fetchPublicDossier(handle: string, signal?: AbortSignal): 
   const payload = await response.json();
   if (!isRecord(payload)) return null;
   const dossier = payload as PublicDossierContract;
-  const publicProofs = Array.isArray(dossier.public_proofs)
+  const public_proofs = Array.isArray(dossier.public_proofs)
     ? dossier.public_proofs.map(normalizeReceipt).filter((item): item is PublicReceipt => item !== null)
     : [];
-  const featuredProof = normalizeReceipt(dossier.featured_proof);
+  const featured_proof = normalizeReceipt(dossier.featured_proof);
   return {
     handle: requiredString(dossier.handle),
-    operatorName: requiredString(dossier.operator_name) || "Anonymous",
-    canonicalUrl: requiredString(dossier.canonical_url),
+    operator_name: requiredString(dossier.operator_name) || "Anonymous",
+    canonical_url: requiredString(dossier.canonical_url),
     description: requiredString(dossier.description),
-    publicProofs,
-    archetypeDistribution: numberRecord(dossier.archetype_distribution),
-    evidenceTotals: numberRecord(dossier.evidence_totals),
-    featuredProof: featuredProof ?? undefined,
+    public_proofs,
+    archetype_distribution: numberRecord(dossier.archetype_distribution),
+    evidence_totals: numberRecord(dossier.evidence_totals),
+    featured_proof: featured_proof ?? undefined,
   };
 }

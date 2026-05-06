@@ -45,7 +45,7 @@ export default function ProofPage() {
   const [error, setError] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const canonical = receipt?.canonicalUrl ?? `${siteMetadata.canonical}/proof/${slug}`;
+  const canonical = receipt?.canonical_url ?? `${siteMetadata.canonical}/proof/${slug}`;
   const metaTitle = receipt?.title ?? (error ? "Proof private or withdrawn" : "Public proof");
   const metaDescription = proofDescription(receipt);
   const jsonLd = receipt
@@ -58,8 +58,8 @@ export default function ProofPage() {
             name: receipt.title,
             description: metaDescription,
             url: canonical,
-            datePublished: receipt.publishedAt,
-            about: receipt.archetypeLabel,
+            datePublished: receipt.published_at,
+            about: receipt.archetype_label,
           },
           {
             "@type": "Article",
@@ -78,7 +78,7 @@ export default function ProofPage() {
       }
     : undefined;
 
-  useSeo(metaTitle, metaDescription, `/proof/${slug}`, receipt?.ogImageUrl, "article", jsonLd);
+  useSeo(metaTitle, metaDescription, `/proof/${slug}`, receipt?.og_image_url, "article", jsonLd);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -104,7 +104,7 @@ export default function ProofPage() {
     return () => controller.abort();
   }, [slug]);
 
-  const published = useMemo(() => formatDate(receipt?.publishedAt), [receipt?.publishedAt]);
+  const published = useMemo(() => formatDate(receipt?.published_at), [receipt?.published_at]);
 
   const handleCopy = async () => {
     if (!receipt) return;
@@ -151,7 +151,7 @@ export default function ProofPage() {
     <article className="proof-dossier">
       <div className="proof-utility">
         <span>Verified capability artifact</span>
-        <span>{receipt.verificationState ?? receipt.slug}</span>
+        <span>{receipt.verification_state ?? receipt.slug}</span>
         <button type="button" onClick={handleCopy}>
           {copied ? <Check size={14} /> : <Copy size={14} />}
           {copied ? "Copied" : "Copy"}
@@ -170,17 +170,17 @@ export default function ProofPage() {
       <section className="proof-dossier-hero">
         <div className="proof-score-event">
           <p className="eyebrow">AI Leverage Score</p>
-          <strong>{score(receipt.aiLeverageScore)}</strong>
+          <strong>{score(receipt.ai_leverage_score)}</strong>
           <div className="proof-score-context">
-            <span>Evidence confidence {score(receipt.evidenceConfidence)}</span>
-            <span>Output multiplier {multiplier(receipt.outputMultiplier)}</span>
+            <span>Evidence confidence {score(receipt.evidence_confidence)}</span>
+            <span>Output multiplier {multiplier(receipt.output_multiplier)}</span>
             {published ? <span>Filed {published}</span> : null}
           </div>
         </div>
 
         <div className="proof-identity-block">
           <p className="eyebrow">Archetype</p>
-          <h1>{receipt.archetypeLabel ?? "Verified Capability Artifact"}</h1>
+          <h1>{receipt.archetype_label ?? "Verified Capability Artifact"}</h1>
           <p className="proof-title-line">{receipt.title}</p>
           <p className="proof-narrative">{metaDescription}</p>
           <div className="proof-actions">
@@ -207,7 +207,7 @@ export default function ProofPage() {
               {[
                 ["Ownership", receipt.ownership, "Decisions named, not delegated."],
                 ["Execution", receipt.execution, "Actions completed against stated intent."],
-                ["Leverage", receipt.leverageScore, "Output amplification backed by evidence."],
+                ["Leverage", receipt.leverage_score, "Output amplification backed by evidence."],
               ].map(([label, value, detail]) => (
                 <div className="proof-bar-row" key={label as string}>
                   <span>{label as string}</span>
@@ -224,19 +224,19 @@ export default function ProofPage() {
           <EditorialSection kicker="03 · Evidence ledger" title="What was counted">
             <LedgerPanel
               items={[
-                { label: "Completed actions", value: ledger(receipt.completedActions), note: "agent steps closed against an intent" },
+                { label: "Completed actions", value: ledger(receipt.completed_actions), note: "agent steps closed against an intent" },
                 { label: "Decisions", value: ledger(receipt.decisions), note: "operator-marked choice points" },
                 { label: "Alternatives", value: ledger(receipt.alternatives), note: "rejected or compared branches" },
-                { label: "Turns analyzed", value: ledger(receipt.turnsAnalyzed), note: "conversation turns in the public receipt" },
+                { label: "Turns analyzed", value: ledger(receipt.turns_analyzed), note: "conversation turns in the public receipt" },
                 { label: "Artifacts", value: ledger(receipt.artifacts), note: "public-safe shipped outputs" },
               ]}
             />
           </EditorialSection>
 
           <EditorialSection kicker="04 · Evidence excerpts" title="Public-safe cards">
-            {receipt.evidenceCards.length > 0 ? (
+            {receipt.evidence_cards.length > 0 ? (
               <div className="evidence-ledger-list">
-                {receipt.evidenceCards.map((card) => (
+                {receipt.evidence_cards.map((card) => (
                   <article key={card.id}>
                     <span>{card.kind ?? "Evidence"}</span>
                     <h3>{card.title}</h3>
@@ -262,7 +262,7 @@ export default function ProofPage() {
         </main>
 
         <aside className="proof-side-column">
-          <VerificationBlock canonical={canonical} hash={receipt.proofHash} />
+          <VerificationBlock canonical={canonical} hash={receipt.proof_hash} />
 
           {receipt.timeline.length > 0 ? (
             <section className="side-section">
@@ -280,11 +280,11 @@ export default function ProofPage() {
             </section>
           ) : null}
 
-          {receipt.artifactCards.length > 0 ? (
+          {receipt.artifact_cards.length > 0 ? (
             <section className="side-section">
               <p className="eyebrow">Artifacts</p>
               <h2>Attached work</h2>
-              <ArtifactGrid artifacts={receipt.artifactCards} />
+              <ArtifactGrid artifacts={receipt.artifact_cards} />
             </section>
           ) : null}
         </aside>
@@ -293,7 +293,7 @@ export default function ProofPage() {
       <footer className="proof-dossier-footer">
         <Hash size={16} />
         <span>End of dossier</span>
-        <code>{receipt.proofHash ?? canonical}</code>
+        <code>{receipt.proof_hash ?? canonical}</code>
       </footer>
     </article>
   );

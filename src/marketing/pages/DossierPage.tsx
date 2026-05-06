@@ -31,23 +31,23 @@ export default function DossierPage() {
   const cleanHandle = handle.replace(/^@/, "") || "operator";
   const [dossier, setDossier] = useState<PublicDossier | null>(null);
   const [loading, setLoading] = useState(true);
-  const displayName = dossier?.operatorName || titleCaseHandle(cleanHandle);
-  const canonical = dossier?.canonicalUrl || `${siteMetadata.canonical}/dossier/${cleanHandle}`;
-  const totals = dossier?.evidenceTotals ?? {};
+  const pageName = dossier?.operator_name || titleCaseHandle(cleanHandle);
+  const canonical = dossier?.canonical_url || `${siteMetadata.canonical}/dossier/${cleanHandle}`;
+  const totals = dossier?.evidence_totals ?? {};
 
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
       {
         "@type": "Person",
-        name: displayName,
+        name: pageName,
         alternateName: `@${cleanHandle}`,
         url: canonical,
         description: dossier?.description || "Public ProofOfAIWork operator dossier.",
       },
       {
         "@type": "CreativeWork",
-        name: `${displayName} ProofOfAIWork dossier`,
+        name: `${pageName} ProofOfAIWork dossier`,
         description: dossier?.description || "A curated archive of public capability artifacts.",
         url: canonical,
       },
@@ -62,11 +62,11 @@ export default function DossierPage() {
   };
 
   useSeo(
-    `${displayName} dossier`,
+    `${pageName} dossier`,
     dossier?.description ||
       "Public ProofOfAIWork dossiers collect published capability artifacts for one operator or professional context.",
     `/dossier/${cleanHandle}`,
-    dossier?.featuredProof?.ogImageUrl,
+    dossier?.featured_proof?.og_image_url,
     "article",
     jsonLd,
   );
@@ -106,10 +106,10 @@ export default function DossierPage() {
     );
   }
 
-  const artifacts = dossier.publicProofs.map((proof) => ({
+  const artifacts = dossier.public_proofs.map((proof) => ({
     id: proof.slug,
     title: proof.title,
-    kind: proof.archetypeLabel,
+    kind: proof.archetype_label,
     summary: proof.summary,
   }));
 
@@ -132,7 +132,7 @@ export default function DossierPage() {
       <section className="dossier-identity">
         <div>
           <p className="eyebrow">Operator archive</p>
-          <h1>{displayName}</h1>
+          <h1>{pageName}</h1>
           <p className="dossier-archetype">
             {Object.keys(dossier.archetypeDistribution)[0] || "Published proof dossier"}
           </p>
@@ -147,9 +147,9 @@ export default function DossierPage() {
 
       <div className="proof-dossier-body">
         <main className="proof-main-column">
-          {dossier.featuredProof ? (
+          {dossier.featured_proof ? (
             <EditorialSection kicker="01 · Featured proof" title="Pinned capability artifact">
-              <ProofCard receipt={dossier.featuredProof} />
+              <ProofCard receipt={dossier.featured_proof} />
             </EditorialSection>
           ) : null}
 
@@ -173,7 +173,7 @@ export default function DossierPage() {
         <aside className="proof-side-column">
           <VerificationBlock
             canonical={canonical}
-            hash={dossier.featuredProof?.proofHash}
+            hash={dossier.featured_proof?.proof_hash}
             status="Public-safe verified dossier"
           />
 
