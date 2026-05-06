@@ -1,4 +1,5 @@
-import { ArrowRight, Archive, Copy } from "lucide-react";
+import { ArrowRight, Archive, Copy, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import {
   ArtifactGrid,
@@ -6,9 +7,11 @@ import {
   LedgerPanel,
   VerificationBlock,
 } from "../components/EditorialPrimitives";
+import ProofCard from "../components/ProofCard";
 import { identityClusters } from "../data/clusters";
 import { useSeo } from "../hooks/useSeo";
 import { APP_URL, siteMetadata } from "../lib/constants";
+import { fetchPublicDossier, type PublicDossier } from "../lib/publicReceipts";
 
 function titleCaseHandle(handle: string) {
   return handle
@@ -19,11 +22,18 @@ function titleCaseHandle(handle: string) {
     .join(" ");
 }
 
+function numberOrDash(value?: number) {
+  return value == null ? "--" : value.toLocaleString("en-US");
+}
+
 export default function DossierPage() {
   const { handle = "" } = useParams();
   const cleanHandle = handle.replace(/^@/, "") || "operator";
-  const displayName = titleCaseHandle(cleanHandle);
-  const canonical = `${siteMetadata.canonical}/dossier/${cleanHandle}`;
+  const [dossier, setDossier] = useState<PublicDossier | null>(null);
+  const [loading, setLoading] = useState(true);
+  const displayName = dossier?.operatorName || titleCaseHandle(cleanHandle);
+  const canonical = dossier?.canonicalUrl || `${siteMetadata.canonical}/dossier/${cleanHandle}`;
+  const totals = dossier?.evidenceTotals ?? {};
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -33,12 +43,12 @@ export default function DossierPage() {
         name: displayName,
         alternateName: `@${cleanHandle}`,
         url: canonical,
-        description: "Public ProofOfAIWork operator dossier.",
+        description: dossier?.description || "Public ProofOfAIWork operator dossier.",
       },
       {
         "@type": "CreativeWork",
         name: `${displayName} ProofOfAIWork dossier`,
-        description: "A curated archive of public capability artifacts.",
+        description: dossier?.description || "A curated archive of public capability artifacts.",
         url: canonical,
       },
       {
@@ -53,39 +63,61 @@ export default function DossierPage() {
 
   useSeo(
     `${displayName} dossier`,
-    "Public ProofOfAIWork dossiers collect published capability artifacts for one operator or professional context.",
+    dossier?.description ||
+      "Public ProofOfAIWork dossiers collect published capability artifacts for one operator or professional context.",
     `/dossier/${cleanHandle}`,
-    undefined,
+    dossier?.featuredProof?.ogImageUrl,
     "article",
     jsonLd,
   );
 
-  const artifacts = [
-    {
-      id: "dossier-shell",
-      title: "Public proof collection",
-      kind: "archive slot",
-      summary: "Published proof artifacts will appear here once the dossier endpoint is available.",
-    },
-    {
-      id: "operator-context",
-      title: "Operator context",
-      kind: "identity",
-      summary: "Dossiers are professional archives, not creator profiles or social pages.",
-    },
-    {
-      id: "visibility-policy",
-      title: "Visibility policy",
-      kind: "privacy",
-      summary: "Raw transcripts and private account data are never exposed in the public dossier shell.",
-    },
-  ];
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    fetchPublicDossier(cleanHandle, controller.signal)
+      .then((value) => setDossier(value))
+      .catch(() => setDossier(null))
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [cleanHandle]);
+
+  if (loading) {
+    return (
+      <section className="proof-loading dossier-surface">
+        <Loader2 className="spin" size={22} />
+        <p>Opening public dossier...</p>
+      </section>
+    );
+  }
+
+  if (!dossier) {
+    return (
+      <section className="proof-private dossier-surface">
+        <p className="eyebrow">Dossier unavailable</p>
+        <h1>This dossier has no public proofs.</h1>
+        <p>Private receipts and account data are not exposed through public dossier routes.</p>
+        <Link className="button primary" to="/community">
+          Open public archive
+          <ArrowRight size={18} />
+        </Link>
+      </section>
+    );
+  }
+
+  const artifacts = dossier.publicProofs.map((proof) => ({
+    id: proof.slug,
+    title: proof.title,
+    kind: proof.archetypeLabel,
+    summary: proof.summary,
+  }));
 
   return (
     <article className="dossier-shell">
       <div className="proof-utility">
         <span>Personal dossier</span>
-        <span>/{cleanHandle}</span>
+        <span>/{dossier.handle}</span>
         <button type="button" onClick={() => navigator.clipboard.writeText(canonical)}>
           <Copy size={14} />
           Copy
@@ -101,52 +133,49 @@ export default function DossierPage() {
         <div>
           <p className="eyebrow">Operator archive</p>
           <h1>{displayName}</h1>
-          <p className="dossier-archetype">Capability dossier awaiting published proofs.</p>
-          <p>
-            This page is the public identity layer for verified work artifacts. It is designed to collect proofs by
-            context such as founder, security, architecture, research, or operator work without becoming a social
-            profile.
+          <p className="dossier-archetype">
+            {Object.keys(dossier.archetypeDistribution)[0] || "Published proof dossier"}
           </p>
+          <p>{dossier.description}</p>
         </div>
         <aside className="dossier-summary-panel">
           <p className="eyebrow">Evidence totals</p>
-          <strong>Filed</strong>
-          <span>Public artifact collection pending backend dossier data.</span>
+          <strong>{numberOrDash(totals.public_proofs)}</strong>
+          <span>Public proof artifacts filed under this handle.</span>
         </aside>
       </section>
 
       <div className="proof-dossier-body">
         <main className="proof-main-column">
-          <EditorialSection kicker="01 · Narrative positioning" title="What this archive is for">
-            <p className="dossier-copy">
-              A dossier is a curated capability archive. It should help evaluators inspect public proof artifacts,
-              understand the operator's recurring work patterns, and follow evidence back to canonical proof pages.
-            </p>
-          </EditorialSection>
+          {dossier.featuredProof ? (
+            <EditorialSection kicker="01 · Featured proof" title="Pinned capability artifact">
+              <ProofCard receipt={dossier.featuredProof} />
+            </EditorialSection>
+          ) : null}
 
-          <EditorialSection kicker="02 · Featured proofs" title="Pinned capability artifacts">
-            <ArtifactGrid artifacts={artifacts} />
-          </EditorialSection>
-
-          <EditorialSection kicker="03 · Evidence totals" title="Archive ledger">
+          <EditorialSection kicker="02 · Evidence totals" title="Archive ledger">
             <LedgerPanel
               items={[
-                { label: "Public proofs", value: "--", note: "requires dossier backend endpoint" },
-                { label: "Completed actions", value: "--", note: "summed from published receipts" },
-                { label: "Decisions", value: "--", note: "operator-marked choice points" },
-                { label: "Turns analyzed", value: "--", note: "public-safe receipt totals" },
-                { label: "Artifacts", value: "--", note: "public deliverables only" },
+                { label: "Public proofs", value: numberOrDash(totals.public_proofs), note: "published receipts" },
+                { label: "Completed actions", value: numberOrDash(totals.completed_actions), note: "summed from public evidence" },
+                { label: "Decisions", value: numberOrDash(totals.decisions), note: "operator-marked choice points" },
+                { label: "Turns analyzed", value: numberOrDash(totals.turns_analyzed), note: "public-safe receipt totals" },
+                { label: "Artifacts", value: numberOrDash(totals.artifacts), note: "public deliverables only" },
               ]}
             />
           </EditorialSection>
 
-          <EditorialSection kicker="04 · Public artifact grid" title="Filed work">
+          <EditorialSection kicker="03 · Public artifact grid" title="Filed work">
             <ArtifactGrid artifacts={artifacts} />
           </EditorialSection>
         </main>
 
         <aside className="proof-side-column">
-          <VerificationBlock canonical={canonical} status="Dossier shell · public-safe" />
+          <VerificationBlock
+            canonical={canonical}
+            hash={dossier.featuredProof?.proofHash}
+            status="Public-safe verified dossier"
+          />
 
           <section className="side-section">
             <p className="eyebrow">People like you</p>
@@ -165,7 +194,7 @@ export default function DossierPage() {
 
       <footer className="proof-dossier-footer">
         <Archive size={16} />
-        <span>End of dossier shell</span>
+        <span>End of public dossier</span>
         <Link to="/community">
           Open public archive <ArrowRight size={14} />
         </Link>

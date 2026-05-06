@@ -45,7 +45,7 @@ export default function ProofPage() {
   const [error, setError] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const canonical = `${siteMetadata.canonical}/proof/${slug}`;
+  const canonical = receipt?.canonicalUrl ?? `${siteMetadata.canonical}/proof/${slug}`;
   const metaTitle = receipt?.title ?? (error ? "Proof private or withdrawn" : "Public proof");
   const metaDescription = proofDescription(receipt);
   const jsonLd = receipt
@@ -151,7 +151,7 @@ export default function ProofPage() {
     <article className="proof-dossier">
       <div className="proof-utility">
         <span>Verified capability artifact</span>
-        <span>{receipt.receiptId ?? receipt.slug}</span>
+        <span>{receipt.verificationState ?? receipt.slug}</span>
         <button type="button" onClick={handleCopy}>
           {copied ? <Check size={14} /> : <Copy size={14} />}
           {copied ? "Copied" : "Copy"}
@@ -205,9 +205,9 @@ export default function ProofPage() {
           <EditorialSection kicker="02 · Behavioral composition" title="Ownership, execution, leverage">
             <div className="proof-bars">
               {[
-                ["Ownership", receipt.ownership, receipt.ownershipDetail ?? "Decisions named, not delegated."],
-                ["Execution", receipt.execution, receipt.executionDetail ?? "Actions completed against stated intent."],
-                ["Leverage", receipt.leverage, receipt.leverageDetail ?? "Output amplification backed by evidence."],
+                ["Ownership", receipt.ownership, "Decisions named, not delegated."],
+                ["Execution", receipt.execution, "Actions completed against stated intent."],
+                ["Leverage", receipt.leverageScore, "Output amplification backed by evidence."],
               ].map(([label, value, detail]) => (
                 <div className="proof-bar-row" key={label as string}>
                   <span>{label as string}</span>

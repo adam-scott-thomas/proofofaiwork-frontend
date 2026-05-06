@@ -10,216 +10,191 @@ export type PublicReceiptEvidenceCard = {
 
 export type PublicReceipt = {
   slug: string;
+  canonicalUrl: string;
   title: string;
   operatorName?: string;
   handle?: string;
-  topic?: string;
-  summary?: string;
   archetypeLabel?: string;
+  summary?: string;
   aiLeverageScore?: number;
+  ownership?: number;
+  execution?: number;
+  leverageScore?: number;
   evidenceConfidence?: number;
   outputMultiplier?: number;
-  ownership?: number;
-  ownershipDetail?: string;
-  execution?: number;
-  executionDetail?: string;
-  leverage?: number;
-  leverageDetail?: string;
   completedActions?: number;
   decisions?: number;
   alternatives?: number;
   turnsAnalyzed?: number;
   artifacts?: number;
+  proofHash?: string;
+  publishedAt?: string;
   evidenceCards: PublicReceiptEvidenceCard[];
   timeline: PublicReceiptEvidenceCard[];
   artifactCards: PublicReceiptEvidenceCard[];
-  proofHash?: string;
-  receiptId?: string;
-  publishedAt?: string;
   ogImageUrl?: string;
+  oembedUrl?: string;
+  verificationState?: string;
 };
 
-export type PublicReceiptListItem = {
-  slug: string;
-  title: string;
-  operatorName?: string;
-  handle?: string;
-  summary?: string;
-  archetypeLabel?: string;
-  aiLeverageScore?: number;
-  ownership?: number;
-  execution?: number;
-  leverage?: number;
-  evidenceConfidence?: number;
-  outputMultiplier?: number;
-  completedActions?: number;
-  decisions?: number;
-  alternatives?: number;
-  turnsAnalyzed?: number;
-  artifacts?: number;
-  proofHash?: string;
-  receiptId?: string;
-  publishedAt?: string;
+export type PublicReceiptListItem = PublicReceipt;
+
+export type PublicDossier = {
+  handle: string;
+  operatorName: string;
+  canonicalUrl: string;
+  description: string;
+  publicProofs: PublicReceipt[];
+  archetypeDistribution: Record<string, number>;
+  evidenceTotals: Record<string, number>;
+  featuredProof?: PublicReceipt;
+};
+
+type PublicReceiptContract = {
+  slug: unknown;
+  canonical_url: unknown;
+  title: unknown;
+  operator_name?: unknown;
+  handle?: unknown;
+  archetype_label?: unknown;
+  summary?: unknown;
+  ai_leverage_score?: unknown;
+  ownership?: unknown;
+  execution?: unknown;
+  leverage_score?: unknown;
+  evidence_confidence?: unknown;
+  output_multiplier?: unknown;
+  completed_actions?: unknown;
+  decisions?: unknown;
+  alternatives?: unknown;
+  turns_analyzed?: unknown;
+  artifacts?: unknown;
+  proof_hash?: unknown;
+  published_at?: unknown;
+  evidence_cards?: unknown;
+  timeline?: unknown;
+  artifact_cards?: unknown;
+  og_image_url?: unknown;
+  oembed_url?: unknown;
+  verification_state?: unknown;
 };
 
 type AnyRecord = Record<string, unknown>;
+
+type PublicDossierContract = {
+  handle?: unknown;
+  operator_name?: unknown;
+  canonical_url?: unknown;
+  description?: unknown;
+  public_proofs?: unknown;
+  archetype_distribution?: unknown;
+  evidence_totals?: unknown;
+  featured_proof?: unknown;
+};
 
 function isRecord(value: unknown): value is AnyRecord {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
 
-function pickRecord(source: AnyRecord, keys: string[]) {
-  for (const key of keys) {
-    const value = source[key];
-    if (isRecord(value)) return value;
-  }
-  return {};
+function stringField(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
-function pickArray(source: AnyRecord, keys: string[]) {
-  for (const key of keys) {
-    const value = source[key];
-    if (Array.isArray(value)) return value;
-  }
-  return [];
+function requiredString(value: unknown) {
+  return stringField(value) ?? "";
 }
 
-function pickString(source: AnyRecord, keys: string[]) {
-  for (const key of keys) {
-    const value = source[key];
-    if (typeof value === "string" && value.trim()) return value.trim();
-  }
+function numberField(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
   return undefined;
 }
 
-function pickNumber(source: AnyRecord, keys: string[]) {
-  for (const key of keys) {
-    const value = source[key];
-    if (typeof value === "number" && Number.isFinite(value)) return value;
-    if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) return Number(value);
-  }
-  return undefined;
+function scoreField(value: unknown) {
+  const number = numberField(value);
+  if (number == null) return undefined;
+  return Math.max(0, Math.min(100, Math.round(number)));
 }
 
-function normalizeScore(value: number | undefined) {
-  if (value == null) return undefined;
-  if (value > 0 && value <= 1) return Math.round(value * 100);
-  return Math.round(value);
+function countField(value: unknown) {
+  const number = numberField(value);
+  if (number == null) return undefined;
+  return Math.max(0, Math.round(number));
 }
 
-function normalizeMultiplier(value: number | undefined) {
-  if (value == null) return undefined;
-  return Math.round(value * 10) / 10;
+function multiplierField(value: unknown) {
+  const number = numberField(value);
+  if (number == null) return undefined;
+  return Math.round(number * 10) / 10;
 }
 
-function normalizeTurns(value: unknown) {
+function turnsField(value: unknown) {
   if (!Array.isArray(value)) return [];
   return value
-    .filter((item): item is string | number => typeof item === "string" || typeof item === "number")
-    .map((item) => String(item))
-    .filter(Boolean)
+    .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    .map((item) => item.trim())
     .slice(0, 5);
 }
 
-function normalizeEvidenceCards(receipt: AnyRecord): PublicReceiptEvidenceCard[] {
-  const evidence = pickArray(receipt, ["evidence_cards", "evidenceCards", "receipt_evidence", "evidence"]);
-  return evidence
+function cardArray(value: unknown): PublicReceiptEvidenceCard[] {
+  if (!Array.isArray(value)) return [];
+  return value
     .filter(isRecord)
     .map((item, index) => ({
-      id: pickString(item, ["id", "turn_id", "evidence_id"]) ?? `evidence-${index + 1}`,
-      title: pickString(item, ["title", "label", "claim", "decision"]) ?? `Evidence ${index + 1}`,
-      summary:
-        pickString(item, ["summary", "description", "redacted_text", "excerpt", "annotation"]) ??
-        "Public-safe evidence summary.",
-      kind: pickString(item, ["kind", "type", "dimension"]),
-      turns: normalizeTurns(item.turns ?? item.turn_ids ?? item.turn_references),
+      id: stringField(item.id) ?? `entry-${index + 1}`,
+      title: stringField(item.title) ?? stringField(item.claim) ?? `Entry ${index + 1}`,
+      summary: stringField(item.summary) ?? stringField(item.state) ?? stringField(item.completion_status) ?? "",
+      kind: stringField(item.kind) ?? stringField(item.event_type) ?? stringField(item.artifact_type),
+      turns: turnsField(item.turns ?? item.evidence_turn_ids),
     }))
-    .slice(0, 8);
+    .slice(0, 12);
 }
 
-function normalizePublicCards(receipt: AnyRecord, keys: string[]) {
-  return pickArray(receipt, keys)
-    .filter(isRecord)
-    .map((item, index) => ({
-      id: pickString(item, ["id", "turn_id", "artifact_id", "event_id"]) ?? `${keys[0]}-${index + 1}`,
-      title: pickString(item, ["title", "label", "name", "event"]) ?? `Entry ${index + 1}`,
-      summary: pickString(item, ["summary", "description", "redacted_text", "annotation"]) ?? "Public-safe summary.",
-      kind: pickString(item, ["kind", "type", "dimension", "visibility"]),
-      turns: normalizeTurns(item.turns ?? item.turn_ids ?? item.turn_references),
-    }))
-    .slice(0, 10);
+function numberRecord(value: unknown): Record<string, number> {
+  if (!isRecord(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).flatMap(([key, item]) => {
+      const number = numberField(item);
+      return number == null ? [] : [[key, number]];
+    }),
+  );
 }
 
-function evidenceStats(source: AnyRecord, metrics: AnyRecord) {
-  return {
-    completedActions:
-      pickNumber(source, ["completed_actions", "completedActions", "actions_completed"]) ??
-      pickNumber(metrics, ["completed_actions", "completedActions", "actions_completed"]),
-    decisions:
-      pickNumber(source, ["decisions", "decisions_named", "decision_count"]) ??
-      pickNumber(metrics, ["decisions", "decisions_named", "decision_count"]),
-    alternatives:
-      pickNumber(source, ["alternatives", "alternatives_explored", "alternativesExplored"]) ??
-      pickNumber(metrics, ["alternatives", "alternatives_explored", "alternativesExplored"]),
-    turnsAnalyzed:
-      pickNumber(source, ["turns_analyzed", "turnsAnalyzed", "turn_count"]) ??
-      pickNumber(metrics, ["turns_analyzed", "turnsAnalyzed", "turn_count"]),
-    artifacts:
-      pickNumber(source, ["artifacts", "artifacts_shipped", "artifact_count"]) ??
-      pickNumber(metrics, ["artifacts", "artifacts_shipped", "artifact_count"]),
-  };
-}
-
-export function normalizeReceipt(payload: unknown, fallbackSlug: string): PublicReceipt | null {
+function normalizeReceipt(payload: unknown): PublicReceipt | null {
   if (!isRecord(payload)) return null;
-  const receipt = isRecord(payload.receipt) ? payload.receipt : payload;
-  const scores = pickRecord(receipt, ["scores", "public_scores", "score_summary", "scoreData"]);
-  const metrics = pickRecord(receipt, ["metrics", "public_metrics"]);
-  const archetype = pickRecord(receipt, ["archetype", "profile", "profile_archetype"]);
-  const stats = evidenceStats(receipt, metrics);
+  const receipt = payload as PublicReceiptContract;
+  const slug = requiredString(receipt.slug);
+  const canonicalUrl = requiredString(receipt.canonical_url);
+  const title = requiredString(receipt.title);
 
-  const title =
-    pickString(receipt, ["title", "topic", "project_title", "headline", "name"]) ??
-    pickString(payload, ["title", "topic"]) ??
-    "ProofOfAIWork receipt";
-  const slug = pickString(receipt, ["slug", "public_slug"]) ?? fallbackSlug;
+  if (!slug || !canonicalUrl || !title) return null;
 
   return {
     slug,
+    canonicalUrl,
     title,
-    operatorName: pickString(receipt, ["operator_name", "operatorName", "display_name", "displayName", "author_name"]),
-    handle: pickString(receipt, ["handle", "operator_handle", "operatorHandle", "author_handle"]),
-    topic: pickString(receipt, ["topic", "project_title", "headline"]),
-    summary: pickString(receipt, ["evidence_summary", "summary", "description", "narrative"]),
-    archetypeLabel:
-      pickString(receipt, ["archetype_label", "archetypeLabel"]) ??
-      pickString(archetype, ["label", "primary", "name"]),
-    aiLeverageScore: normalizeScore(pickNumber(scores, ["ai_leverage_score", "aiLeverageScore", "ai_leverage"])),
-    evidenceConfidence: normalizeScore(
-      pickNumber(scores, ["evidence_confidence", "evidenceConfidence", "confidence_score", "confidence"]),
-    ),
-    outputMultiplier: normalizeMultiplier(
-      pickNumber(scores, ["output_multiplier", "outputMultiplier", "multiplier"]) ??
-        pickNumber(metrics, ["output_multiplier", "outputMultiplier"]),
-    ),
-    ownership: normalizeScore(pickNumber(scores, ["ownership", "ownership_score"])),
-    ownershipDetail: pickString(metrics, ["ownership_detail", "ownershipDetail", "decisions_detail"]),
-    execution: normalizeScore(pickNumber(scores, ["execution", "execution_score"])),
-    executionDetail: pickString(metrics, ["execution_detail", "executionDetail", "tasks_detail"]),
-    leverage: normalizeScore(pickNumber(scores, ["leverage", "leverage_score"])),
-    leverageDetail: pickString(metrics, ["leverage_detail", "leverageDetail", "outcomes_detail"]),
-    completedActions: stats.completedActions,
-    decisions: stats.decisions,
-    alternatives: stats.alternatives,
-    turnsAnalyzed: stats.turnsAnalyzed,
-    artifacts: stats.artifacts,
-    evidenceCards: normalizeEvidenceCards(receipt),
-    timeline: normalizePublicCards(receipt, ["timeline", "events", "proof_timeline"]),
-    artifactCards: normalizePublicCards(receipt, ["artifacts_public", "artifact_cards", "artifacts"]),
-    proofHash: pickString(receipt, ["proof_hash", "proofHash", "hash", "receipt_hash"]),
-    receiptId: pickString(receipt, ["receipt_id", "receiptId", "id", "public_token"]),
-    publishedAt: pickString(receipt, ["published_at", "publishedAt", "created_at", "createdAt"]),
-    ogImageUrl: pickString(receipt, ["og_image_url", "ogImageUrl", "share_image_url", "shareImageUrl"]),
+    operatorName: stringField(receipt.operator_name),
+    handle: stringField(receipt.handle),
+    archetypeLabel: stringField(receipt.archetype_label),
+    summary: stringField(receipt.summary),
+    aiLeverageScore: scoreField(receipt.ai_leverage_score),
+    ownership: scoreField(receipt.ownership),
+    execution: scoreField(receipt.execution),
+    leverageScore: scoreField(receipt.leverage_score),
+    evidenceConfidence: scoreField(receipt.evidence_confidence),
+    outputMultiplier: multiplierField(receipt.output_multiplier),
+    completedActions: countField(receipt.completed_actions),
+    decisions: countField(receipt.decisions),
+    alternatives: countField(receipt.alternatives),
+    turnsAnalyzed: countField(receipt.turns_analyzed),
+    artifacts: countField(receipt.artifacts),
+    proofHash: stringField(receipt.proof_hash),
+    publishedAt: stringField(receipt.published_at),
+    evidenceCards: cardArray(receipt.evidence_cards),
+    timeline: cardArray(receipt.timeline),
+    artifactCards: cardArray(receipt.artifact_cards),
+    ogImageUrl: stringField(receipt.og_image_url),
+    oembedUrl: stringField(receipt.oembed_url),
+    verificationState: stringField(receipt.verification_state),
   };
 }
 
@@ -229,7 +204,7 @@ export async function fetchPublicReceipt(slug: string, signal?: AbortSignal) {
     signal,
   });
   if (!response.ok) return null;
-  return normalizeReceipt(await response.json(), slug);
+  return normalizeReceipt(await response.json());
 }
 
 export async function fetchPublicReceipts(signal?: AbortSignal): Promise<PublicReceiptListItem[] | null> {
@@ -239,40 +214,31 @@ export async function fetchPublicReceipts(signal?: AbortSignal): Promise<PublicR
   });
   if (!response.ok) return null;
   const payload = await response.json();
-  const items = Array.isArray(payload) ? payload : isRecord(payload) && Array.isArray(payload.items) ? payload.items : [];
-  return items
-    .filter(isRecord)
-    .map((item) => {
-      const scores = pickRecord(item, ["scores", "public_scores", "score_summary", "scoreData"]);
-      const metrics = pickRecord(item, ["metrics", "public_metrics"]);
-      const stats = evidenceStats(item, metrics);
-      return {
-        slug: pickString(item, ["slug", "public_slug"]) ?? "",
-        title: pickString(item, ["title", "topic", "project_title", "headline"]) ?? "Public proof",
-        operatorName: pickString(item, ["operator_name", "operatorName", "display_name", "displayName", "author_name"]),
-        handle: pickString(item, ["handle", "operator_handle", "operatorHandle", "author_handle"]),
-        summary: pickString(item, ["summary", "evidence_summary", "description"]),
-        archetypeLabel: pickString(item, ["archetype_label", "archetypeLabel"]),
-        aiLeverageScore: normalizeScore(pickNumber(scores, ["ai_leverage_score", "aiLeverageScore", "ai_leverage"])),
-        ownership: normalizeScore(pickNumber(scores, ["ownership", "ownership_score"])),
-        execution: normalizeScore(pickNumber(scores, ["execution", "execution_score"])),
-        leverage: normalizeScore(pickNumber(scores, ["leverage", "leverage_score"])),
-        evidenceConfidence: normalizeScore(
-          pickNumber(scores, ["evidence_confidence", "evidenceConfidence", "confidence_score", "confidence"]),
-        ),
-        outputMultiplier: normalizeMultiplier(
-          pickNumber(scores, ["output_multiplier", "outputMultiplier", "multiplier"]) ??
-            pickNumber(metrics, ["output_multiplier", "outputMultiplier"]),
-        ),
-        completedActions: stats.completedActions,
-        decisions: stats.decisions,
-        alternatives: stats.alternatives,
-        turnsAnalyzed: stats.turnsAnalyzed,
-        artifacts: stats.artifacts,
-        proofHash: pickString(item, ["proof_hash", "proofHash", "hash", "receipt_hash"]),
-        receiptId: pickString(item, ["receipt_id", "receiptId", "id", "public_token"]),
-        publishedAt: pickString(item, ["published_at", "publishedAt", "created_at", "createdAt"]),
-      };
-    })
-    .filter((item) => item.slug);
+  const items = isRecord(payload) && Array.isArray(payload.items) ? payload.items : [];
+  return items.map(normalizeReceipt).filter((item): item is PublicReceipt => item !== null);
+}
+
+export async function fetchPublicDossier(handle: string, signal?: AbortSignal): Promise<PublicDossier | null> {
+  const response = await fetch(`${PUBLIC_API_BASE}/dossiers/${encodeURIComponent(handle)}`, {
+    headers: { Accept: "application/json" },
+    signal,
+  });
+  if (!response.ok) return null;
+  const payload = await response.json();
+  if (!isRecord(payload)) return null;
+  const dossier = payload as PublicDossierContract;
+  const publicProofs = Array.isArray(dossier.public_proofs)
+    ? dossier.public_proofs.map(normalizeReceipt).filter((item): item is PublicReceipt => item !== null)
+    : [];
+  const featuredProof = normalizeReceipt(dossier.featured_proof);
+  return {
+    handle: requiredString(dossier.handle),
+    operatorName: requiredString(dossier.operator_name) || "Anonymous",
+    canonicalUrl: requiredString(dossier.canonical_url),
+    description: requiredString(dossier.description),
+    publicProofs,
+    archetypeDistribution: numberRecord(dossier.archetype_distribution),
+    evidenceTotals: numberRecord(dossier.evidence_totals),
+    featuredProof: featuredProof ?? undefined,
+  };
 }

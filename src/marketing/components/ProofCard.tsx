@@ -58,7 +58,7 @@ export default function ProofCard({ receipt, compact = false }: ProofCardProps) 
         <div className="proof-card-face proof-card-front">
           <div className="proof-card-mast">
             <span>Verified AI Work Receipt</span>
-            <span>{receipt.receiptId ?? hash}</span>
+            <span>{receipt.verificationState ?? hash}</span>
           </div>
 
           <div className="proof-card-identity">
@@ -79,7 +79,7 @@ export default function ProofCard({ receipt, compact = false }: ProofCardProps) 
             {[
               ["Ownership", receipt.ownership],
               ["Execution", receipt.execution],
-              ["Leverage", receipt.leverage],
+              ["Leverage", receipt.leverageScore],
             ].map(([label, value]) => (
               <div key={label as string}>
                 <span>{label as string}</span>
@@ -128,7 +128,7 @@ export default function ProofCard({ receipt, compact = false }: ProofCardProps) 
 
           <div className="proof-card-canonical">
             <span>Canonical</span>
-            <code>{canonicalUrl(receipt.slug)}</code>
+            <code>{"canonicalUrl" in receipt ? receipt.canonicalUrl : canonicalUrl(receipt.slug)}</code>
           </div>
 
           <Link className="proof-card-open" to={canonicalPath(receipt.slug)}>
