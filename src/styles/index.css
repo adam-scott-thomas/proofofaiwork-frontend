@@ -2090,6 +2090,304 @@ p {
   background: color-mix(in srgb, var(--poaw-paper) 88%, white);
 }
 
+.resume-proof-page,
+.seo-live-page {
+  --resume-black: #141414;
+  --resume-red: #b3261e;
+  --resume-paper: #fffdf7;
+}
+
+.resume-proof-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(22rem, 0.58fr);
+  gap: clamp(2rem, 6vw, 5rem);
+  align-items: center;
+  min-height: calc(100svh - 4.5rem);
+  padding: clamp(2.5rem, 6vw, 5rem) clamp(1rem, 6vw, 6rem);
+  background:
+    linear-gradient(90deg, rgba(255, 253, 247, 0.98), rgba(255, 253, 247, 0.78)),
+    repeating-linear-gradient(0deg, rgba(20, 20, 20, 0.05) 0 1px, transparent 1px 2.2rem);
+}
+
+.resume-proof-hero h1 {
+  max-width: 11ch;
+  color: var(--resume-black);
+  font-family: var(--poaw-serif, Georgia, serif);
+  font-size: clamp(3.4rem, 8.6vw, 8.2rem);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 0.86;
+}
+
+.resume-proof-lead {
+  max-width: 42rem;
+  color: #35322d;
+  font-size: clamp(1.08rem, 1.8vw, 1.35rem);
+}
+
+.resume-proof-billboard {
+  display: grid;
+  border: 1px solid var(--poaw-rule);
+  background: var(--resume-paper);
+  box-shadow: 0 22px 70px rgba(40, 30, 10, 0.12);
+}
+
+.resume-proof-billboard div {
+  border-bottom: 1px solid var(--poaw-rule);
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.resume-proof-billboard div:last-child {
+  border-bottom: 0;
+  background: #141414;
+}
+
+.resume-proof-billboard span,
+.resume-proof-sections span,
+.resume-proof-suite span {
+  color: var(--resume-red);
+  font-family: var(--poaw-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.resume-proof-billboard strong {
+  display: block;
+  margin: 0.55rem 0;
+  color: var(--resume-black);
+  font-family: var(--poaw-serif, Georgia, serif);
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  font-weight: 500;
+  line-height: 0.96;
+}
+
+.resume-proof-billboard div:last-child strong,
+.resume-proof-billboard div:last-child p {
+  color: #fffdf7;
+}
+
+.resume-proof-strip,
+.resume-proof-grid,
+.resume-proof-assets,
+.resume-proof-suite,
+.resume-proof-links,
+.seo-live-hero,
+.seo-live-body,
+.seo-live-links {
+  width: min(1180px, calc(100% - 2rem));
+  margin-inline: auto;
+}
+
+.resume-proof-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  border: 1px solid var(--poaw-rule);
+  margin-block: clamp(2rem, 5vw, 4rem);
+  background: var(--poaw-rule);
+}
+
+.resume-proof-strip p {
+  margin: 0;
+  background: var(--resume-paper);
+  color: #2a2823;
+  padding: clamp(1rem, 2vw, 1.4rem);
+}
+
+.resume-proof-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.34fr);
+  gap: clamp(2rem, 5vw, 4rem);
+  padding: clamp(2rem, 6vw, 5rem) 0;
+  border-top: 1px solid var(--poaw-rule);
+}
+
+.resume-proof-main h2,
+.resume-proof-assets h2,
+.resume-proof-suite h2,
+.resume-proof-links h2,
+.seo-live-hero h1,
+.seo-live-body h2,
+.seo-live-links h2 {
+  color: var(--poaw-ink, #171717);
+  font-family: var(--poaw-serif, Georgia, serif);
+  font-weight: 500;
+}
+
+.resume-proof-sections {
+  display: grid;
+  margin-top: 2rem;
+  border-top: 1px solid var(--poaw-rule);
+}
+
+.resume-proof-sections div {
+  display: grid;
+  grid-template-columns: 4rem 1fr;
+  gap: 1rem;
+  border-bottom: 1px solid var(--poaw-rule);
+  padding: 1rem 0;
+}
+
+.resume-proof-sections strong {
+  font-size: clamp(1.25rem, 2.5vw, 2rem);
+  font-weight: 500;
+}
+
+.resume-proof-rail {
+  display: grid;
+  align-content: start;
+  gap: 1px;
+  background: var(--poaw-rule);
+  border: 1px solid var(--poaw-rule);
+}
+
+.resume-proof-rail > div {
+  display: grid;
+  gap: 0.45rem;
+  background: var(--resume-paper);
+  padding: 1.2rem;
+}
+
+.resume-proof-rail a {
+  color: var(--poaw-green, #0f766e);
+  font-family: var(--poaw-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.78rem;
+}
+
+.resume-proof-assets {
+  padding: clamp(2rem, 6vw, 5rem) 0;
+}
+
+.resume-proof-assets > div:last-child,
+.resume-proof-suite > div:last-child,
+.seo-live-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--poaw-rule);
+  border: 1px solid var(--poaw-rule);
+}
+
+.resume-proof-assets article,
+.seo-live-list article {
+  background: var(--resume-paper);
+  padding: clamp(1.1rem, 2vw, 1.5rem);
+}
+
+.resume-proof-suite {
+  padding: clamp(2rem, 6vw, 5rem) 0;
+}
+
+.resume-proof-suite a {
+  display: grid;
+  grid-template-columns: 3rem 0.42fr 1fr;
+  gap: 1rem;
+  align-items: baseline;
+  background: var(--resume-paper);
+  border-bottom: 1px solid var(--poaw-rule);
+  padding: 1rem;
+  transition:
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.resume-proof-suite a.active,
+.resume-proof-suite a:hover {
+  background: #141414;
+  color: #fffdf7;
+  transform: translateY(-1px);
+}
+
+.resume-proof-suite small {
+  color: inherit;
+  opacity: 0.72;
+  line-height: 1.45;
+}
+
+.resume-proof-links {
+  margin-block: clamp(3rem, 7vw, 6rem);
+  border-top: 2px solid var(--resume-black);
+  padding-top: 2rem;
+}
+
+.resume-proof-links div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.resume-proof-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--poaw-rule);
+  padding: 0.75rem 0.9rem;
+  background: var(--resume-paper);
+  color: var(--poaw-green, #0f766e);
+  font-weight: 800;
+}
+
+.seo-live-hero {
+  padding: clamp(4rem, 8vw, 7rem) 0 clamp(2rem, 5vw, 4rem);
+  border-bottom: 1px solid var(--poaw-rule);
+}
+
+.seo-live-hero h1 {
+  max-width: 12ch;
+  font-size: clamp(3.5rem, 9vw, 8rem);
+  letter-spacing: -0.04em;
+  line-height: 0.88;
+}
+
+.seo-live-hero > p {
+  max-width: 54rem;
+  font-size: 1.15rem;
+}
+
+.seo-live-body {
+  display: grid;
+  grid-template-columns: minmax(0, 0.42fr) minmax(0, 0.58fr);
+  gap: clamp(2rem, 5vw, 4rem);
+  padding: clamp(2rem, 6vw, 5rem) 0;
+}
+
+.seo-live-list {
+  grid-template-columns: 1fr;
+}
+
+.seo-live-links {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  border: 1px solid var(--poaw-rule);
+  margin-bottom: clamp(3rem, 7vw, 6rem);
+  background: var(--poaw-rule);
+}
+
+.seo-live-links > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-content: start;
+  background: var(--resume-paper);
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.seo-live-links h2,
+.seo-live-links .eyebrow {
+  flex-basis: 100%;
+}
+
+.seo-live-links span,
+.seo-live-links a {
+  border: 1px solid var(--poaw-rule);
+  padding: 0.48rem 0.62rem;
+  color: var(--poaw-green, #0f766e);
+  font-family: var(--poaw-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.72rem;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -2119,7 +2417,11 @@ p {
   .proof-dossier-body,
   .dossier-identity,
   .home-demo-hero,
-  .home-dossier-preview {
+  .home-dossier-preview,
+  .resume-proof-hero,
+  .resume-proof-grid,
+  .seo-live-body,
+  .seo-live-links {
     grid-template-columns: 1fr;
   }
 
@@ -2135,7 +2437,10 @@ p {
   .demo-hero-cards,
   .demo-card-lab,
   .demo-index-grid,
-  .home-cta-band {
+  .home-cta-band,
+  .resume-proof-strip,
+  .resume-proof-assets > div:last-child,
+  .resume-proof-suite > div:last-child {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -2180,7 +2485,16 @@ p {
   .demo-hero-cards,
   .demo-card-lab,
   .demo-index-grid,
-  .home-cta-band {
+  .home-cta-band,
+  .resume-proof-strip,
+  .resume-proof-assets > div:last-child,
+  .resume-proof-suite > div:last-child,
+  .seo-live-list {
+    grid-template-columns: 1fr;
+  }
+
+  .resume-proof-suite a,
+  .resume-proof-sections div {
     grid-template-columns: 1fr;
   }
 

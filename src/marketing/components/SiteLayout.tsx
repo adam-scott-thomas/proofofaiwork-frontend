@@ -20,6 +20,7 @@ const navGroups = [
       { href: "/scores", label: "Scores", note: "Signal definitions" },
       { href: "/glossary", label: "Glossary", note: "Shared vocabulary" },
       { href: "/glossary/ai-work-sample", label: "AI Work Samples", note: "Inspectable work" },
+      { href: "/your-ai-resume", label: "Your AI-Resume", note: "Submit proof" },
       { href: "/glossary/ai-leverage", label: "AI Leverage", note: "Capability lift" },
       { href: "/ai-leverage/product-managers", label: "AI for Product Managers", note: "Role leverage" },
       { href: "/ai-leverage/recruiters", label: "AI for Recruiters", note: "Talent workflows" },
@@ -33,6 +34,7 @@ const navGroups = [
       { href: "/enterprise/workforce-amplification", label: "Workforce Amplification", note: "Team capability" },
       { href: "/enterprise/hiring-ai-capable-talent", label: "Hiring AI-Capable Talent", note: "Evidence-based hiring" },
       { href: "/compare/resume-screening-vs-proof-of-work", label: "Resumes vs Proof", note: "Category comparison" },
+      { href: "/resume-is-dead", label: "Resume Is Dead", note: "Proof campaign" },
       { href: "/job-seekers", label: "Job Seekers", note: "Publish proof" },
     ],
   },
@@ -131,6 +133,7 @@ export default function SiteLayout() {
           <Link to="/ai-leverage/marketers">AI leverage for marketers</Link>
           <Link to="/compare/ai-skills-assessments-vs-work-samples">Assessments vs work samples</Link>
           <Link to="/compare/resume-screening-vs-proof-of-work">Resumes vs proof</Link>
+          <Link to="/your-ai-resume">Your AI-Resume</Link>
           <Link to="/community">Community</Link>
           <Link to="/privacy">Privacy</Link>
           <Link to="/terms">Terms</Link>

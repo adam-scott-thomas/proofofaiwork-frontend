@@ -1,0 +1,42 @@
+import type { PublishingPlanItem } from "./types";
+
+const plan = [
+  ["Foundation", "ai-capability-proof", "Publish the core category hub.", "The page defines proof artifacts and links to every seed cluster."],
+  ["Foundation", "ai-work-samples", "Publish the primary examples guide.", "The page includes at least three sample artifact patterns."],
+  ["Foundation", "ai-skills-assessment", "Publish the assessment framework.", "The page compares tests, interviews, portfolios, and work samples."],
+  ["Foundation", "hire-ai-capable-talent", "Publish the hiring solution page.", "The page gives a recruiter workflow and links to proof examples."],
+  ["Foundation", "ai-work-portfolio", "Publish the candidate portfolio page.", "The page explains what candidates should publish and why."],
+  ["Internal linking", "examples", "Wire the examples index to the five foundation pages.", "Every foundation page has at least three contextual internal links."],
+  ["Refresh", "foundation-review", "Review search snippets and page intros.", "No title tag is duplicated and every CTA is product-specific."],
+  ["Comparison", "resumes-vs-proof-of-work", "Publish the resume comparison page.", "The page includes a side-by-side claim versus proof example."],
+  ["Comparison", "ai-skills-tests-vs-work-samples", "Publish the skills-test comparison page.", "The page gives a fair use case for tests and a stronger case for samples."],
+  ["Comparison", "linkedin-profiles-vs-proof-artifacts", "Publish the LinkedIn comparison page.", "The page serves both recruiters and candidates."],
+  ["Comparison", "portfolios-vs-verified-work-samples", "Publish the portfolio comparison page.", "The page differentiates finished artifacts from process evidence."],
+  ["Comparison", "certifications-vs-demonstrated-ai-capability", "Publish the certification comparison page.", "The page is fair to credentials while favoring current proof."],
+  ["Internal linking", "comparison-review", "Add contextual links from each comparison page.", "Each comparison page links to examples, scorecard, and one CTA page."],
+  ["Refresh", "comparison-review", "Review all comparison pages for unsupported competitor claims.", "No page relies on fake rankings or invented market data."],
+  ["Workflow", "ai-leverage", "Publish the AI leverage page.", "The page defines leverage without reducing it to speed."],
+  ["Workflow", "ai-assisted-workflow", "Publish the AI-assisted workflow template.", "The page contains a repeatable documentation pattern."],
+  ["Workflow", "prompt-engineering-proof", "Publish the prompt proof artifact page.", "The page explains prompt work as framing, iteration, validation, and integration."],
+  ["Workflow", "ai-work-receipt", "Publish the work receipt explainer.", "The page explains inputs, process, decisions, verification, and outcome."],
+  ["Workflow", "ai-capability-scorecard", "Publish the scorecard page.", "The page has a practical scoring rubric for work samples."],
+  ["Internal linking", "workflow-review", "Connect workflow pages into the core hub.", "The AI capability hub links to leverage, workflow, receipt, and scorecard pages."],
+  ["Refresh", "workflow-review", "Review the first 15 pages for duplicate intros.", "Every page has a distinct first screen and unique conversion path."],
+  ["Role examples", "marketing-ai-work-samples", "Publish marketing AI work samples.", "The page includes briefs, research, campaign, and analytics examples."],
+  ["Role examples", "engineering-ai-work-samples", "Publish engineering AI work samples.", "The page includes code review, debugging, test, and architecture examples."],
+  ["Role examples", "operations-ai-work-samples", "Publish operations AI work samples.", "The page includes SOP, reporting, QA, and process redesign examples."],
+  ["Role examples", "sales-ai-work-samples", "Publish sales AI work samples.", "The page includes account research, outbound, CRM, and call summary examples."],
+  ["Workforce", "workforce-ai-readiness", "Publish workforce AI readiness.", "The page maps readiness to demonstrated work instead of surveys alone."],
+  ["Example assets", "ai-work-sample-example-research-brief", "Publish a research brief example.", "The example includes objective, AI workflow, result, and evidence."],
+  ["Example assets", "ai-work-sample-example-code-review", "Publish a code review example.", "The example includes review scope, AI assistance, human judgment, and final recommendation."],
+  ["Example assets", "ai-work-sample-example-sales-account-plan", "Publish a sales account plan example.", "The example includes source research, synthesis, plan, and validation notes."],
+  ["Example assets", "ai-work-sample-example-operations-sop", "Publish an operations SOP example.", "The example includes before state, workflow, SOP artifact, and expected impact."],
+] as const;
+
+export const thirtyDaySeoPublishingPlan: PublishingPlanItem[] = plan.map((item, index) => ({
+  day: index + 1,
+  phase: item[0],
+  slug: item[1],
+  task: item[2],
+  successCheck: item[3],
+}));

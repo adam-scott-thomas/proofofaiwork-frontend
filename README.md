@@ -21,6 +21,10 @@ npm run build
 - `/blog/:slug`
 - `/scores`
 - `/examples`
+- `/your-ai-resume`
+- `/resume-is-dead`
+- `/your-ai-resume/:slug`
+- `/:seo-opportunity-slug`
 - `/employers`
 - `/job-seekers`
 - `/about`
