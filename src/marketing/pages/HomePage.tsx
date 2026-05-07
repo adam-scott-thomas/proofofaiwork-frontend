@@ -23,8 +23,8 @@ export default function HomePage() {
   const dossierTotals = totalsFor(featuredDossier.proofs);
 
   useSeo(
-    "Proof of work, not proof of person",
-    "ProofOfAIWork turns AI-assisted work into inspectable capability artifacts.",
+    "Don't just say you're AI-capable. Proof it.",
+    "Turn real AI-assisted work into verified proof artifacts employers, clients, and teams can actually inspect.",
     "",
   );
 
@@ -33,15 +33,17 @@ export default function HomePage() {
       <section className="home-demo-hero">
         <div className="hero-copy">
           <p className="eyebrow">ProofOfAIWork</p>
-          <h1>Proof of work, not proof of person.</h1>
-          <p className="hero-subhead">ProofOfAIWork turns AI-assisted work into inspectable capability artifacts.</p>
+          <h1>Don&apos;t just say you&apos;re AI-capable. Proof it.</h1>
+          <p className="hero-subhead">
+            Turn real AI-assisted work into verified proof artifacts employers, clients, and teams can actually inspect.
+          </p>
           <div className="cta-row">
             <a className="button primary" href={APP_URL}>
-              Get your verified AI Work Score
+              Create your proof
               <ArrowRight size={18} />
             </a>
-            <Link className="button secondary" to="/demo">
-              View specimen artifacts
+            <Link className="button secondary" to="/examples">
+              See examples
               <FileSearch size={18} />
             </Link>
           </div>
