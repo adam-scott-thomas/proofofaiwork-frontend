@@ -56,7 +56,7 @@ export default function SiteLayout() {
     <div className="site-shell">
       <header className="site-header">
         <Link to="/" className="brand" aria-label="ProofOfAIWork home" onClick={() => setOpen(false)}>
-          <img src="/proof-of-ai-work-wordmark.svg" alt="" aria-hidden="true" />
+          <img src="/proof-of-ai-work-wordmark.png" alt="" aria-hidden="true" />
           <span className="sr-only">ProofOfAIWork</span>
         </Link>
         <nav className="desktop-nav" aria-label="Primary navigation">
