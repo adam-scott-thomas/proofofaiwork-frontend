@@ -170,16 +170,6 @@ export default function ProofPage() {
       </header>
 
       <section className="proof-dossier-hero">
-        <div className="proof-score-event">
-          <p className="eyebrow">AI Leverage Score</p>
-          <strong>{score(receipt.ai_leverage_score)}</strong>
-          <div className="proof-score-context">
-            <span>Evidence confidence {score(receipt.evidence_confidence)}</span>
-            <span>Output multiplier {multiplier(receipt.output_multiplier)}</span>
-            {published ? <span>Filed {published}</span> : null}
-          </div>
-        </div>
-
         <div className="proof-identity-block">
           <p className="eyebrow">Archetype</p>
           <h1>{receipt.archetype_label ?? "Verified Capability Artifact"}</h1>
@@ -194,6 +184,16 @@ export default function ProofPage() {
               Verify AI work
               <ExternalLink size={18} />
             </a>
+          </div>
+        </div>
+
+        <div className="proof-score-event">
+          <p className="eyebrow">AI Leverage Score</p>
+          <strong>{score(receipt.ai_leverage_score)}</strong>
+          <div className="proof-score-context">
+            <span>Evidence confidence {score(receipt.evidence_confidence)}</span>
+            <span>Output multiplier {multiplier(receipt.output_multiplier)}</span>
+            {published ? <span>Filed {published}</span> : null}
           </div>
         </div>
       </section>
@@ -261,6 +261,16 @@ export default function ProofPage() {
               </div>
             )}
           </EditorialSection>
+
+          {receipt.artifact_cards.length > 0 ? (
+            <EditorialSection
+              kicker="05 · Attached work"
+              title="Strongest evidence artifacts"
+              aside={<span className="section-note">Featured and supporting work filed from this proof.</span>}
+            >
+              <ArtifactGrid artifacts={receipt.artifact_cards} />
+            </EditorialSection>
+          ) : null}
         </main>
 
         <aside className="proof-side-column">
@@ -279,14 +289,6 @@ export default function ProofPage() {
                   </div>
                 ))}
               </div>
-            </section>
-          ) : null}
-
-          {receipt.artifact_cards.length > 0 ? (
-            <section className="side-section">
-              <p className="eyebrow">Artifacts</p>
-              <h2>Attached work</h2>
-              <ArtifactGrid artifacts={receipt.artifact_cards} />
             </section>
           ) : null}
 

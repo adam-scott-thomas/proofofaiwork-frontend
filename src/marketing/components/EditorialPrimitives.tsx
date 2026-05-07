@@ -24,6 +24,10 @@ type Artifact = {
   title: string;
   summary?: string;
   kind?: string;
+  turns?: string[];
+  status?: string;
+  confidence?: number;
+  tags?: string[];
 };
 
 export function EditorialSection({ kicker, title, aside, children }: EditorialSectionProps) {
@@ -83,11 +87,29 @@ export function ArtifactGrid({ artifacts, emptyCopy }: { artifacts: Artifact[]; 
 
   return (
     <div className="artifact-grid">
-      {artifacts.map((artifact) => (
-        <article key={artifact.id}>
-          {artifact.kind ? <span>{artifact.kind}</span> : null}
+      {artifacts.map((artifact, index) => (
+        <article className={index === 0 ? "artifact-featured" : index % 5 === 3 ? "artifact-wide" : undefined} key={artifact.id}>
+          <div className="artifact-card-meta">
+            {artifact.kind ? <span>{artifact.kind}</span> : null}
+            {artifact.status ? <small>{artifact.status}</small> : null}
+            {artifact.confidence != null ? <small>{artifact.confidence}% confidence</small> : null}
+          </div>
           <h3>{artifact.title}</h3>
           {artifact.summary ? <p>{artifact.summary}</p> : null}
+          {artifact.turns && artifact.turns.length > 0 ? (
+            <div className="turn-list">
+              {artifact.turns.slice(0, 3).map((turn) => (
+                <code key={turn}>{turn}</code>
+              ))}
+            </div>
+          ) : null}
+          {artifact.tags && artifact.tags.length > 0 ? (
+            <div className="artifact-tags">
+              {artifact.tags.slice(0, 4).map((tag) => (
+                <em key={tag}>{tag}</em>
+              ))}
+            </div>
+          ) : null}
         </article>
       ))}
     </div>
