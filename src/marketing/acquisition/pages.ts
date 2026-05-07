@@ -24,7 +24,7 @@ const seedSpecs = [
   ["examples", "ProofOfAIWork Examples", "AI Work Sample Examples and Proof Artifacts", "Browse examples of AI-assisted work samples, proof artifacts, workflows, and work receipts.", "Examples index", "ai-work-samples", "Browse examples"],
 ] as const;
 
-export const prioritizedSeoPages: SeoPage[] = seedSpecs.map((spec, index) => ({
+export const priorityAcquisitionPages: SeoPage[] = seedSpecs.map((spec, index) => ({
   priority: index + 1,
   slug: spec[0],
   title: spec[1],
@@ -35,11 +35,11 @@ export const prioritizedSeoPages: SeoPage[] = seedSpecs.map((spec, index) => ({
   intent: "Capture high-intent searchers and route them toward proof artifacts, examples, scorecards, or hiring workflows.",
   audience: index < 9 ? ["Hiring teams", "Candidates", "Operators"] : ["Hiring teams", "Recruiters", "Candidates"],
   commercialValue: index < 6 || index === 9 || index === 10 ? "very-high" : "high",
-  brief: `Create a focused ProofOfAIWork page for ${spec[1]} that explains the search problem, shows what strong evidence looks like, and avoids generic AI advice.`,
+  brief: `${spec[1]} explains the reader's problem, shows what strong evidence looks like, and avoids generic AI advice.`,
   primaryCta: spec[6],
   secondaryCta: "Browse examples",
   internalLinks: ["/ai-capability-proof", "/ai-work-samples", "/examples"],
-  sections: ["Search problem", "What weak evidence misses", "What strong proof includes", "ProofOfAIWork example", "Evaluation checklist", "Next action"],
+  sections: ["Problem", "What weak evidence misses", "What strong proof includes", "ProofOfAIWork example", "Evaluation checklist", "Next action"],
   proofAssets: ["Example work receipt", "Evaluation rubric", "Checklist"],
   avoid: commonAvoid,
 }));
@@ -72,18 +72,18 @@ const nextSpecs = [
   ["verified-ai-work-samples", "Verified AI Work Samples", "Verified AI Work Samples for Hiring"],
 ] as const;
 
-export const nextTwentyFiveSeoPages: SeoPage[] = nextSpecs.map((spec, index) => ({
+export const nextAcquisitionPages: SeoPage[] = nextSpecs.map((spec, index) => ({
   priority: index + 16,
   slug: spec[0],
   title: spec[1],
   seoTitle: spec[2],
-  metaDescription: `${spec[1]} from ProofOfAIWork: a focused page brief for turning AI capability into inspectable evidence.`,
+  metaDescription: `${spec[1]} from ProofOfAIWork: turn AI capability claims into inspectable evidence.`,
   pageType: index < 8 ? "Guide or template" : index < 18 ? "Assessment or hiring page" : "Role or audience page",
   targetCluster: index < 6 ? "ai-capability-proof" : index < 9 ? "ai-assisted-workflow" : index < 18 ? "hiring-ai-capable-talent" : "ai-work-samples",
   intent: "Capture a focused long-tail query with a page that is useful only if it contains proof-backed examples.",
   audience: ["Hiring teams", "Candidates", "Operators"],
   commercialValue: index < 18 ? "high" : "medium-high",
-  brief: `Create a focused page for ${spec[1].toLowerCase()} that uses real or realistic artifacts, a clear rubric, and a conversion path into ProofOfAIWork.`,
+  brief: `${spec[1]} uses real or realistic artifacts, a clear rubric, and a path into ProofOfAIWork.`,
   primaryCta: index < 18 ? "Use the proof framework" : "Browse relevant work samples",
   secondaryCta: "Create proof of AI work",
   internalLinks: ["/ai-capability-proof", "/ai-work-samples", "/examples"],
@@ -92,8 +92,8 @@ export const nextTwentyFiveSeoPages: SeoPage[] = nextSpecs.map((spec, index) => 
   avoid: commonAvoid,
 }));
 
-export const allSeoPages: SeoPage[] = [...prioritizedSeoPages, ...nextTwentyFiveSeoPages];
+export const acquisitionPages: SeoPage[] = [...priorityAcquisitionPages, ...nextAcquisitionPages];
 
-export function getSeoPage(slug: string) {
-  return allSeoPages.find((page) => page.slug === slug);
+export function getAcquisitionPage(slug: string) {
+  return acquisitionPages.find((page) => page.slug === slug);
 }

@@ -1,4 +1,4 @@
-# Your AI-Resume SEO Package
+# Your AI-Resume Acquisition Package
 
 Research verdict: build it, but not as another AI resume builder.
 
@@ -18,5 +18,5 @@ The winning position is sharper: the resume is dead; submit your proof. Your AI-
 - `pages.ts`: live page definitions.
 - `publishingPlan.ts`: 15-day publishing sequence.
 - `internalLinks.ts`: internal linking map.
-- `pagesToAvoid.ts`: low-value resume SEO variants to avoid.
+- `pagesToAvoid.ts`: low-value resume content variants to avoid.
 - `briefs/*.md`: editorial briefs for the suite.

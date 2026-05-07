@@ -52,15 +52,15 @@ import QuizPage from "../marketing/pages/QuizPage";
 import QuizzesPage from "../marketing/pages/QuizzesPage";
 import RoleLeveragePage from "../marketing/pages/RoleLeveragePage";
 import ScoresPage from "../marketing/pages/ScoresPage";
-import SeoOpportunityPage from "../marketing/pages/SeoOpportunityPage";
+import AcquisitionPage from "../marketing/pages/AcquisitionPage";
 import YourAiResumePage from "../marketing/pages/YourAiResumePage";
-import { allSeoPages, yourAiResumePages } from "../marketing/seo-opportunities";
+import { acquisitionPages, yourAiResumePages } from "../marketing/acquisition";
 
-const seoRoutes = allSeoPages
+const acquisitionRoutes = acquisitionPages
   .filter((page) => page.slug !== "examples")
-  .map((page) => ({ path: page.slug, element: <SeoOpportunityPage slug={page.slug} /> }));
+  .map((page) => ({ path: page.slug, element: <AcquisitionPage slug={page.slug} /> }));
 
-const resumeSeoRoutes = yourAiResumePages
+const resumeProofRoutes = yourAiResumePages
   .filter((page) => page.slug !== "your-ai-resume")
   .map((page) => ({ path: page.slug, element: <YourAiResumePage pageSlug={page.slug} /> }));
 
@@ -125,8 +125,8 @@ export const router = createBrowserRouter([
       { path: "proof/:slug", element: <ProofPage /> },
       { path: "scores", element: <ScoresPage /> },
       { path: "examples", element: <ExamplesPage /> },
-      ...seoRoutes,
-      ...resumeSeoRoutes,
+      ...acquisitionRoutes,
+      ...resumeProofRoutes,
       { path: "resume-is-dead", element: <YourAiResumePage /> },
       { path: "your-ai-resume", element: <YourAiResumePage /> },
       { path: "your-ai-resume/:slug", element: <YourAiResumePage /> },

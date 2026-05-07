@@ -1,6 +1,6 @@
-# ProofOfAIWork SEO Opportunity Package
+# ProofOfAIWork Acquisition Content Package
 
-This directory contains the Phase 1 SEO content system for high-intent searches around proving AI capability, AI work samples, hiring AI-capable talent, and workforce AI readiness.
+This directory contains the Phase 1 acquisition content system for high-intent searches around proving AI capability, AI work samples, hiring AI-capable talent, and workforce AI readiness.
 
 It is intentionally isolated from live routing. The files can be imported later by a route generator, sitemap generator, or marketing page template without changing current site behavior.
 
@@ -16,4 +16,4 @@ It is intentionally isolated from live routing. The files can be imported later 
 
 ## Phase 2 Routing Recommendation
 
-Create one reusable marketing SEO page component that accepts a `SeoPage` object, renders the page structure, and calls the existing SEO helper. Add explicit route entries for the first 15 seed pages before generating the remaining 25.
+Create one reusable acquisition page component that accepts a page object, renders the page structure, and calls the existing metadata helper. Add explicit route entries for the first 15 seed pages before generating the remaining 25.

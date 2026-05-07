@@ -2330,7 +2330,7 @@ p {
 }
 
 .resume-proof-page,
-.seo-live-page {
+.acquisition-page {
   --resume-black: #141414;
   --resume-red: #b3261e;
   --resume-paper: #fffdf7;
@@ -2411,9 +2411,9 @@ p {
 .resume-proof-assets,
 .resume-proof-suite,
 .resume-proof-links,
-.seo-live-hero,
-.seo-live-body,
-.seo-live-links {
+.acquisition-hero,
+.acquisition-body,
+.acquisition-links {
   width: min(1180px, calc(100% - 2rem));
   margin-inline: auto;
 }
@@ -2446,9 +2446,9 @@ p {
 .resume-proof-assets h2,
 .resume-proof-suite h2,
 .resume-proof-links h2,
-.seo-live-hero h1,
-.seo-live-body h2,
-.seo-live-links h2 {
+.acquisition-hero h1,
+.acquisition-body h2,
+.acquisition-links h2 {
   color: var(--poaw-ink, #171717);
   font-family: var(--poaw-serif, Georgia, serif);
   font-weight: 500;
@@ -2500,7 +2500,7 @@ p {
 
 .resume-proof-assets > div:last-child,
 .resume-proof-suite > div:last-child,
-.seo-live-list {
+.acquisition-list {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1px;
@@ -2509,7 +2509,7 @@ p {
 }
 
 .resume-proof-assets article,
-.seo-live-list article {
+.acquisition-list article {
   background: var(--resume-paper);
   padding: clamp(1.1rem, 2vw, 1.5rem);
 }
@@ -2567,35 +2567,35 @@ p {
   font-weight: 800;
 }
 
-.seo-live-hero {
+.acquisition-hero {
   padding: clamp(4rem, 8vw, 7rem) 0 clamp(2rem, 5vw, 4rem);
   border-bottom: 1px solid var(--poaw-rule);
 }
 
-.seo-live-hero h1 {
+.acquisition-hero h1 {
   max-width: 12ch;
   font-size: clamp(3.5rem, 9vw, 8rem);
   letter-spacing: -0.04em;
   line-height: 0.88;
 }
 
-.seo-live-hero > p {
+.acquisition-hero > p {
   max-width: 54rem;
   font-size: 1.15rem;
 }
 
-.seo-live-body {
+.acquisition-body {
   display: grid;
   grid-template-columns: minmax(0, 0.42fr) minmax(0, 0.58fr);
   gap: clamp(2rem, 5vw, 4rem);
   padding: clamp(2rem, 6vw, 5rem) 0;
 }
 
-.seo-live-list {
+.acquisition-list {
   grid-template-columns: 1fr;
 }
 
-.seo-live-links {
+.acquisition-links {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1px;
@@ -2604,7 +2604,7 @@ p {
   background: var(--poaw-rule);
 }
 
-.seo-live-links > div {
+.acquisition-links > div {
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
@@ -2613,13 +2613,13 @@ p {
   padding: clamp(1.25rem, 3vw, 2rem);
 }
 
-.seo-live-links h2,
-.seo-live-links .eyebrow {
+.acquisition-links h2,
+.acquisition-links .eyebrow {
   flex-basis: 100%;
 }
 
-.seo-live-links span,
-.seo-live-links a {
+.acquisition-links span,
+.acquisition-links a {
   border: 1px solid var(--poaw-rule);
   padding: 0.48rem 0.62rem;
   color: var(--poaw-green, #0f766e);
@@ -2659,8 +2659,8 @@ p {
   .home-dossier-preview,
   .resume-proof-hero,
   .resume-proof-grid,
-  .seo-live-body,
-  .seo-live-links {
+  .acquisition-body,
+  .acquisition-links {
     grid-template-columns: 1fr;
   }
 
@@ -2766,7 +2766,7 @@ p {
   .resume-proof-strip,
   .resume-proof-assets > div:last-child,
   .resume-proof-suite > div:last-child,
-  .seo-live-list {
+  .acquisition-list {
     grid-template-columns: 1fr;
   }
 

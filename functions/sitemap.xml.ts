@@ -2,7 +2,7 @@ import { BLOG_POSTS } from "../src/app/content/blog";
 import { QUIZ_RESULTS } from "../src/app/content/quiz";
 import { comparisonPages, roleLeveragePages } from "../src/marketing/data/seoExpansion";
 import { archetypes, glossarySeedConcepts } from "../src/marketing/data/taxonomy";
-import { allSeoPages, yourAiResumePages } from "../src/marketing/seo-opportunities";
+import { acquisitionPages, yourAiResumePages } from "../src/marketing/acquisition";
 import { API_BASE, SITE_BASE } from "./_lib/meta";
 
 type PublicIndex = {
@@ -51,7 +51,7 @@ export const onRequestGet: PagesFunction = async () => {
     ...glossarySeedConcepts.map((concept) => xmlUrl(`${SITE_BASE}/glossary/${concept.slug}`)),
     ...roleLeveragePages.map((page) => xmlUrl(`${SITE_BASE}/ai-leverage/${page.slug}`)),
     ...comparisonPages.map((page) => xmlUrl(`${SITE_BASE}/compare/${page.slug}`)),
-    ...allSeoPages.filter((page) => page.slug !== "examples").map((page) => xmlUrl(`${SITE_BASE}/${page.slug}`)),
+    ...acquisitionPages.filter((page) => page.slug !== "examples").map((page) => xmlUrl(`${SITE_BASE}/${page.slug}`)),
     xmlUrl(`${SITE_BASE}/resume-is-dead`),
     ...yourAiResumePages.map((page) => xmlUrl(`${SITE_BASE}/${page.slug}`)),
     ...yourAiResumePages

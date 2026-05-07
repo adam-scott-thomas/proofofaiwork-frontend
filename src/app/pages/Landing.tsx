@@ -498,7 +498,7 @@ turn_01HX4E · user · 2026-04-12T09:20:11Z
                     <strong>What you changed.</strong> 34 constructive revisions with specifics.
                   </li>
                   <li>
-                    <strong>What you shipped.</strong> Lighthouse v2 · hash-chain · SEO rework.
+                    <strong>What you shipped.</strong> Lighthouse v2 · hash-chain · metadata rework.
                   </li>
                 </ul>
               </div>

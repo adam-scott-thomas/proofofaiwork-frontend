@@ -1,15 +1,26 @@
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router";
-import { getSeoPage } from "../seo-opportunities";
+import { getAcquisitionPage } from "../acquisition";
 import { useSeo } from "../hooks/useSeo";
 import { APP_URL } from "../lib/constants";
 
-type SeoOpportunityPageProps = {
+type AcquisitionPageProps = {
   slug: string;
 };
 
-export default function SeoOpportunityPage({ slug }: SeoOpportunityPageProps) {
-  const page = getSeoPage(slug);
+function labelFromPath(path: string) {
+  return path
+    .replace(/^\//, "")
+    .split("/")
+    .pop()
+    ?.split("-")
+    .filter(Boolean)
+    .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
+export default function AcquisitionPage({ slug }: AcquisitionPageProps) {
+  const page = getAcquisitionPage(slug);
 
   if (!page) {
     return null;
@@ -18,11 +29,11 @@ export default function SeoOpportunityPage({ slug }: SeoOpportunityPageProps) {
   useSeo(page.seoTitle, page.metaDescription, `/${page.slug}`);
 
   return (
-    <article className="seo-live-page">
-      <section className="seo-live-hero">
+    <article className="acquisition-page">
+      <section className="acquisition-hero">
         <p className="eyebrow">{page.pageType}</p>
         <h1>{page.title}</h1>
-        <p>{page.brief}</p>
+        <p>{page.metaDescription}</p>
         <div className="cta-row">
           <a className="button primary" href={APP_URL}>
             {page.primaryCta}
@@ -35,38 +46,37 @@ export default function SeoOpportunityPage({ slug }: SeoOpportunityPageProps) {
         </div>
       </section>
 
-      <section className="seo-live-body">
+      <section className="acquisition-body">
         <div>
-          <p className="eyebrow">Search intent</p>
-          <h2>{page.intent}</h2>
-          <p>Audience: {page.audience.join(", ")}.</p>
-          <p>Commercial value: {page.commercialValue}.</p>
+          <p className="eyebrow">Reader context</p>
+          <h2>This page explains {page.title.toLowerCase()} through proof artifacts, review criteria, and next steps.</h2>
+          <p>This guide is written for {page.audience.join(", ").toLowerCase()}.</p>
         </div>
-        <div className="seo-live-list">
+        <div className="acquisition-list">
           {page.sections.map((section) => (
             <article key={section}>
               <CheckCircle2 size={20} />
               <h3>{section}</h3>
-              <p>Keep this section anchored to proof artifacts, examples, scorecards, or hiring workflows.</p>
+              <p>Use this section to move from a claim about AI capability to evidence someone can inspect.</p>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="seo-live-links">
+      <section className="acquisition-links">
         <div>
           <p className="eyebrow">Proof assets</p>
-          <h2>Evidence this page needs</h2>
+          <h2>Evidence to inspect</h2>
           {page.proofAssets.map((asset) => (
             <span key={asset}>{asset}</span>
           ))}
         </div>
         <div>
-          <p className="eyebrow">Internal links</p>
-          <h2>Route readers into proof</h2>
+          <p className="eyebrow">Related paths</p>
+          <h2>Continue into proof</h2>
           {page.internalLinks.map((link) => (
             <Link key={link} to={link}>
-              {link}
+              {labelFromPath(link) ?? link}
             </Link>
           ))}
         </div>

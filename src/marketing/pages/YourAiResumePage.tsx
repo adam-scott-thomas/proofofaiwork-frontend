@@ -1,6 +1,6 @@
 import { ArrowRight, BadgeCheck, FileX2, Link2, SearchCheck } from "lucide-react";
 import { Link, useParams } from "react-router";
-import { yourAiResumePages, yourAiResumeResearchVerdict } from "../seo-opportunities/your-ai-resume";
+import { yourAiResumePages, yourAiResumeResearchVerdict } from "../acquisition/your-ai-resume";
 import { useSeo } from "../hooks/useSeo";
 import { APP_URL } from "../lib/constants";
 
@@ -94,7 +94,7 @@ export default function YourAiResumePage({ pageSlug }: YourAiResumePageProps) {
           </div>
           <div>
             <Link2 size={22} />
-            <h3>Internal links</h3>
+            <h3>Related proof paths</h3>
             {page.internalLinks.map((link) => (
               <Link key={link} to={link}>
                 {link}
@@ -123,8 +123,8 @@ export default function YourAiResumePage({ pageSlug }: YourAiResumePageProps) {
       <section className="resume-proof-suite">
         <div className="section-heading">
           <p className="eyebrow">Published suite</p>
-          <h2>Every AI-resume page now has a route.</h2>
-          <p className="section-lead">The suite avoids generic builder traffic and stays anchored to proof-backed career evidence.</p>
+          <h2>Proof-backed AI-resume guides.</h2>
+          <p className="section-lead">These guides avoid generic builder advice and stay anchored to proof-backed career evidence.</p>
         </div>
         <div>
           {yourAiResumePages.map((suitePage) => (

@@ -60,7 +60,7 @@ export default function GlossaryPage() {
       <Section
         eyebrow="Inventory"
         title="Taxonomy v1 concept inventory"
-        lead="Only the seed concepts are published as SEO pages in this layer. The remaining terms are reserved for future pages once examples exist."
+        lead="Only the seed concepts are published in this first layer. The remaining terms are reserved until examples can support them."
       >
         <div className="artifact-grid">
           {glossaryConceptInventory.map((concept) => (

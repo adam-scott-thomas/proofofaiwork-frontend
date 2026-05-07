@@ -1,6 +1,6 @@
-# AI Resume Pages to Avoid
+# AI Resume Mistakes to Avoid
 
-Intent: prevent drift into generic resume-builder SEO.
+Intent: prevent drift into generic resume-builder advice.
 
 Angle: traffic without proof intent is a distraction.
 
