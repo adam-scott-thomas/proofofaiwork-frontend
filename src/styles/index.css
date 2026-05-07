@@ -66,6 +66,21 @@ button:disabled {
   letter-spacing: 0;
 }
 
+.brand img {
+  display: block;
+  width: clamp(9.5rem, 15vw, 13.5rem);
+  height: auto;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
 .brand-mark {
   display: grid;
   width: 2rem;
