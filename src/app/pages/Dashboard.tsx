@@ -14,6 +14,7 @@ import {
   Sparkles,
   Upload as UploadIcon,
   UserCheck,
+  UserRound,
   UserX,
 } from "lucide-react";
 import { Link } from "react-router";
@@ -89,6 +90,20 @@ const STATUS_STYLE: Record<string, string> = {
   resolved: "bg-[#D3E9D9] text-[#1F6A3F]",
   superseded: "bg-[#EAE3CF] text-[#6B6B66]",
 };
+
+const RUNNING_STATUSES = ["pending", "processing", "in_progress", "retrying"];
+const statusKey = (status: string | null | undefined) => (status ?? "").toLowerCase();
+
+function dossierSlug(value: unknown) {
+  const source = String(value || "operator")
+    .replace(/^@/, "")
+    .toLowerCase()
+    .trim();
+  const slug = source
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "operator";
+}
 
 function StatusPill({ status }: { status: string }) {
   const style = STATUS_STYLE[status] || "bg-[#EAE3CF] text-[#6B6B66]";
@@ -178,6 +193,7 @@ export default function Dashboard() {
 
   const projects = asArray<any>(projectsData);
   const assessments = asArray<any>(assessmentsData);
+  const usableAssessments = assessments.filter((assessment) => statusKey(assessment?.status) !== "failed");
   const proofPages = asArray<any>(proofPagesData);
   const latestProject = [...projects]
     .sort((a, b) => new Date(b.updated_at ?? b.created_at).getTime() - new Date(a.updated_at ?? a.created_at).getTime())[0];
@@ -185,7 +201,7 @@ export default function Dashboard() {
   const totalConversations = poolData?.total ?? 0;
   const unassigned = poolData?.unassigned ?? 0;
   const publishedProofs = proofPages.filter((page) => page?.status === "published");
-  const recentAssessments = [...assessments]
+  const recentAssessments = [...usableAssessments]
     .sort((a, b) => new Date(b.updated_at ?? b.created_at).getTime() - new Date(a.updated_at ?? a.created_at).getTime())
     .slice(0, 4);
   const recentProofPages = [...proofPages]
@@ -197,8 +213,9 @@ export default function Dashboard() {
   const requests = requestsQuery.data ?? [];
   const pendingRequests = requests.filter((r) => r.status === "pending");
   const handle = me?.handle ? `@${String(me.handle).replace(/^@/, "")}` : me?.email ?? "operator";
+  const publicDossierSlug = dossierSlug(me?.handle || me?.name || me?.full_name || me?.display_name || me?.email);
   const pulse = dashboardPulse({
-    assessments: assessments.length,
+    assessments: usableAssessments.length,
     publishedProofs: publishedProofs.length,
     activeDisputes: activeDisputes.length,
     pendingRequests: pendingRequests.length,
@@ -209,7 +226,7 @@ export default function Dashboard() {
   const wins = dashboardWins({
     totalConversations,
     projects: projects.length,
-    assessments: assessments.length,
+    assessments: usableAssessments.length,
     publishedProofs: publishedProofs.length,
     archetype: workProfile?.archetype?.label || null,
     pendingRequests: pendingRequests.length,
@@ -229,7 +246,7 @@ export default function Dashboard() {
   const completeness = profileCompleteness({
     uploads: totalConversations,
     projects: projects.length,
-    assessments: assessments.length,
+    assessments: usableAssessments.length,
     profilesHlsAvailable: workProfile?.human_leadership_score != null,
     proofsPublished: publishedProofs.length,
   });
@@ -265,6 +282,20 @@ export default function Dashboard() {
                   className="bg-[#111114] text-white hover:bg-[#2A2A2E]"
                 />
               </div>
+              <Link to="/app/dossier" className="block">
+                <Button className="h-auto w-full justify-between bg-[#123C36] px-4 py-3 text-left text-white shadow-sm hover:bg-[#0E302B]">
+                  <span className="inline-flex min-w-0 items-center gap-2">
+                    <UserRound className="h-4 w-4 shrink-0" />
+                    <span className="min-w-0">
+                      <span className="block text-[13px]">Open Personal Dossier</span>
+                      <span className="block truncate text-[11px] font-normal text-white/68">
+                        proofofaiwork.com/proof/{publicDossierSlug}
+                      </span>
+                    </span>
+                  </span>
+                  <ArrowRight className="h-4 w-4 shrink-0" />
+                </Button>
+              </Link>
               <PulsePanel pulse={pulse} />
               <CompletenessPanel completeness={completeness} />
             </div>
@@ -291,8 +322,8 @@ export default function Dashboard() {
             />
             <StatCard
               label="Assessments"
-              value={assessments.length}
-              detail={assessments.length === 0 ? "No evaluations yet" : "Results ready for review"}
+              value={usableAssessments.length}
+              detail={usableAssessments.length === 0 ? "No usable evaluations yet" : "Usable runs ready for review"}
               href="/app/assessments"
               tone="violet"
             />
@@ -441,32 +472,37 @@ export default function Dashboard() {
                 <div className="space-y-2">
                   {recentAssessments.map((assessment) => {
                     const status = assessment.status ?? "pending";
-                    const isFinal = status === "complete" || status === "partial";
+                    const normalized = statusKey(status);
+                    const isFinal = normalized === "complete" || normalized === "partial";
+                    const isRunning = RUNNING_STATUSES.includes(normalized);
                     const href = isFinal
                       ? `/app/assessment/${assessment.id}/results`
                       : `/app/assessment/${assessment.id}/processing`;
                     return (
-                      <Link key={assessment.id} to={href}>
-                        <Card className="group border border-[#D8D2C4] bg-white p-4 transition-colors hover:border-[#A88F5F] hover:bg-[#FBF8F1]">
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <StatusPill status={status} />
-                                <div className="truncate text-[14px]">
-                                  {assessment.project_title || assessment.task_context || `Assessment ${String(assessment.id ?? "").slice(0, 8)}`}
-                                </div>
-                              </div>
-                              <div className="mt-1 text-[11px] text-[#6B6B66]">
-                                {assessment.upload_count ?? 0} upload{(assessment.upload_count ?? 0) === 1 ? "" : "s"}
-                                {" · "}
-                                {dateTime(assessment.updated_at || assessment.created_at)}
-                                {assessment.confidence ? <> · <span className="text-[#161616]">{assessment.confidence}</span> confidence</> : null}
+                      <Card key={assessment.id} className="border border-[#D8D2C4] bg-white p-4 transition-colors hover:border-[#A88F5F] hover:bg-[#FBF8F1]">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <StatusPill status={status} />
+                              <div className="truncate text-[14px]">
+                                {assessment.project_title || assessment.task_context || `Assessment ${String(assessment.id ?? "").slice(0, 8)}`}
                               </div>
                             </div>
-                            <ArrowRight className="h-4 w-4 text-[#6B6B66] opacity-0 transition-opacity group-hover:opacity-100" />
+                            <div className="mt-1 text-[11px] text-[#6B6B66]">
+                              {assessment.upload_count ?? 0} upload{(assessment.upload_count ?? 0) === 1 ? "" : "s"}
+                              {" · "}
+                              {dateTime(assessment.updated_at || assessment.created_at)}
+                              {assessment.confidence ? <> · <span className="text-[#161616]">{assessment.confidence}</span> confidence</> : null}
+                            </div>
                           </div>
-                        </Card>
-                      </Link>
+                          <Link to={href} className="shrink-0">
+                            <Button className="w-full bg-[#123C36] text-white shadow-sm hover:bg-[#0E302B] sm:w-auto">
+                              {isRunning ? "Watch progress" : "Open Atlas"}
+                              <ArrowRight className="ml-2 h-3.5 w-3.5" />
+                            </Button>
+                          </Link>
+                        </div>
+                      </Card>
                     );
                   })}
                 </div>
@@ -628,12 +664,18 @@ export default function Dashboard() {
                       ) : null}
                       <div className="mt-3 flex items-center justify-between text-[11px] text-[#6B6B66]">
                         <span>{page.view_count ?? 0} views</span>
-                        {path && page.status === "published" ? (
-                          <a href={path} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[#315D8A] hover:underline">
-                            Open <ArrowUpRight className="h-3 w-3" />
-                          </a>
-                        ) : null}
                       </div>
+                      {path && page.status === "published" ? (
+                        <a
+                          href={path}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#123C36] px-3 py-2 text-[12px] font-medium text-white shadow-sm transition-colors hover:bg-[#0E302B]"
+                        >
+                          Open Atlas
+                          <ArrowUpRight className="h-3.5 w-3.5" />
+                        </a>
+                      ) : null}
                     </Card>
                   );
                 })}

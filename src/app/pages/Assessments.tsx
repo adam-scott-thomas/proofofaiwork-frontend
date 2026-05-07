@@ -9,23 +9,14 @@ import {
   PlayCircle,
   RefreshCw,
   ShieldAlert,
-  Trash2,
 } from "lucide-react";
 import { Link } from "react-router";
 import { toast } from "sonner";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../components/ui/dialog";
 import { useAssessments } from "../../hooks/useApi";
-import { apiDelete, apiPost } from "../../lib/api";
+import { apiPost } from "../../lib/api";
 import { asArray, assessmentTitle, dateTime } from "../lib/poaw";
 
 type Assessment = {
@@ -48,10 +39,13 @@ type Assessment = {
 type FilterKey = "all" | "complete" | "partial" | "failed" | "running";
 
 const FILTER_CONFIG: Array<{ key: FilterKey; label: string; statuses: string[] | null }> = [
-  { key: "all", label: "All", statuses: null },
+  { key: "all", label: "Usable", statuses: null },
   { key: "complete", label: "Complete", statuses: ["complete"] },
   { key: "partial", label: "Partial", statuses: ["partial"] },
   { key: "running", label: "Running", statuses: ["pending", "processing", "in_progress", "retrying"] },
+];
+
+const DEBUG_FILTER_CONFIG: Array<{ key: FilterKey; label: string; statuses: string[] | null }> = [
   { key: "failed", label: "Failed", statuses: ["failed"] },
 ];
 
@@ -71,9 +65,7 @@ const statusKey = (status: string | null | undefined) => (status ?? "").toLowerC
 
 export default function Assessments() {
   const { data, isLoading, refetch } = useAssessments();
-  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<FilterKey>("all");
-  const [deleting, setDeleting] = useState<Assessment | null>(null);
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
 
   const rerun = useMutation({
@@ -85,21 +77,13 @@ export default function Assessments() {
     onError: (error: any) => toast.error(error?.message ?? "Rerun failed"),
   });
 
-  const remove = useMutation({
-    mutationFn: (id: string) => apiDelete(`/assessments/${id}`),
-    onSuccess: () => {
-      toast.success("Assessment deleted");
-      setDeleting(null);
-      queryClient.invalidateQueries({ queryKey: ["assessments"] });
-    },
-    onError: (error: any) => toast.error(error?.message ?? "Delete failed"),
-  });
-
   const assessments = asArray<Assessment>(data);
   const filtered = useMemo(() => {
     const filterConfig = FILTER_CONFIG.find((entry) => entry.key === filter);
-    if (!filterConfig?.statuses) return assessments;
-    return assessments.filter((assessment) => filterConfig.statuses!.includes(statusKey(assessment.status)));
+    const debugConfig = DEBUG_FILTER_CONFIG.find((entry) => entry.key === filter);
+    const activeConfig = filterConfig ?? debugConfig;
+    if (!activeConfig?.statuses) return assessments.filter((assessment) => statusKey(assessment.status) !== "failed");
+    return assessments.filter((assessment) => activeConfig.statuses!.includes(statusKey(assessment.status)));
   }, [assessments, filter]);
 
   const sorted = useMemo(() => {
@@ -112,7 +96,7 @@ export default function Assessments() {
 
   const counts = useMemo(() => {
     const map: Record<FilterKey, number> = { all: 0, complete: 0, partial: 0, failed: 0, running: 0 };
-    map.all = assessments.length;
+    map.all = assessments.filter((assessment) => statusKey(assessment.status) !== "failed").length;
     for (const assessment of assessments) {
       const normalized = statusKey(assessment.status);
       if (normalized === "complete") map.complete++;
@@ -174,6 +158,34 @@ export default function Assessments() {
                 </button>
               );
             })}
+            {counts.failed > 0 ? (
+              <details className="group relative">
+                <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-full border border-[#D8D2C4] bg-white px-3 py-1 text-[12px] text-[#5C5C5C] transition-colors hover:bg-[#FBF8F1]">
+                  Advanced
+                  <span className="rounded-full bg-[#F3EEE2] px-1.5 py-0.5 text-[10px] text-[#6B6B66]">
+                    {counts.failed}
+                  </span>
+                </summary>
+                <div className="absolute left-0 top-8 z-10 w-52 rounded-md border border-[#D8D2C4] bg-white p-2 shadow-lg">
+                  {DEBUG_FILTER_CONFIG.map((filterConfig) => {
+                    const active = filter === filterConfig.key;
+                    return (
+                      <button
+                        key={filterConfig.key}
+                        type="button"
+                        onClick={() => setFilter(filterConfig.key)}
+                        className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-[12px] transition-colors ${
+                          active ? "bg-[#FBEAEA] text-[#8B2F2F]" : "text-[#5C5C5C] hover:bg-[#FBF8F1]"
+                        }`}
+                      >
+                        <span>Show {filterConfig.label.toLowerCase()} attempts</span>
+                        <span>{counts[filterConfig.key]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </details>
+            ) : null}
             {counts.running > 0 ? (
               <span className="inline-flex items-center gap-1 rounded-full border border-[#D8D2C4] bg-white px-3 py-1 text-[12px] text-[#5C5C5C]">
                 <Loader2 className="h-3 w-3 animate-spin text-[#315D8A]" />
@@ -196,7 +208,7 @@ export default function Assessments() {
                   </Link>
                 </>
               ) : (
-                <>Nothing matches this filter.</>
+                <>{filter === "failed" ? "No failed attempts are currently recorded." : "Nothing matches this filter."}</>
               )}
             </Card>
           ) : (
@@ -205,36 +217,12 @@ export default function Assessments() {
                 key={assessment.id}
                 assessment={assessment}
                 onRerun={() => rerun.mutate(assessment.id)}
-                onDelete={() => setDeleting(assessment)}
                 rerunPending={rerun.isPending}
               />
             ))
           )}
         </div>
       </div>
-
-      <Dialog open={!!deleting} onOpenChange={(v) => !v && setDeleting(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete this assessment?</DialogTitle>
-            <DialogDescription>
-              The assessment and its observations are removed. Uploads stay in the pool.
-              Any proof page linked to this assessment will need to point at a different one.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setDeleting(null)}>Cancel</Button>
-            <Button
-              className="bg-[#8B2F2F] hover:bg-[#7A2525]"
-              disabled={remove.isPending}
-              onClick={() => deleting && remove.mutate(deleting.id)}
-            >
-              {remove.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
@@ -242,12 +230,10 @@ export default function Assessments() {
 function AssessmentRow({
   assessment,
   onRerun,
-  onDelete,
   rerunPending,
 }: {
   assessment: Assessment;
   onRerun: () => void;
-  onDelete: () => void;
   rerunPending: boolean;
 }) {
   const normalizedStatus = statusKey(assessment.status);
@@ -319,15 +305,18 @@ function AssessmentRow({
 
         <div className="flex shrink-0 flex-col gap-2">
           <Link to={primaryHref}>
-            <Button variant="outline" size="sm" className="w-full">
+            <Button
+              size="sm"
+              className="w-full bg-[#123C36] px-4 text-white shadow-sm hover:bg-[#0E302B]"
+            >
               {isRunning ? (
                 <>
                   <PlayCircle className="mr-2 h-3.5 w-3.5" />
-                  Watch
+                  Watch progress
                 </>
               ) : (
                 <>
-                  Open
+                  Open Atlas
                   <ArrowRight className="ml-2 h-3.5 w-3.5" />
                 </>
               )}
@@ -343,10 +332,6 @@ function AssessmentRow({
               {isFailed ? "Retry" : "Rerun"}
             </Button>
           ) : null}
-          <Button variant="ghost" size="sm" className="text-[#8B2F2F] hover:bg-[#F3D1D1]/40 hover:text-[#8B2F2F]" onClick={onDelete}>
-            <Trash2 className="mr-2 h-3.5 w-3.5" />
-            Delete
-          </Button>
         </div>
       </div>
     </Card>

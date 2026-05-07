@@ -7,7 +7,7 @@ import { roleLeveragePages } from "../data/seoExpansion";
 import { archetypes, glossarySeedConcepts } from "../data/taxonomy";
 import { useSeo } from "../hooks/useSeo";
 import { APP_URL, siteMetadata } from "../lib/constants";
-import { fetchPublicReceipt, type PublicReceipt } from "../lib/publicReceipts";
+import { fetchPublicDossier, fetchPublicReceipt, type PublicDossier, type PublicReceipt } from "../lib/publicReceipts";
 
 function score(value?: number) {
   return value == null ? "--" : String(value);
@@ -40,16 +40,139 @@ function copyText(receipt: PublicReceipt, url: string) {
   return `${receipt.title}\n${proofDescription(receipt)}\n${url}`;
 }
 
+function PublicProofDossier({
+  dossier,
+  canonical,
+  copied,
+  onCopy,
+}: {
+  dossier: PublicDossier;
+  canonical: string;
+  copied: boolean;
+  onCopy: () => void;
+}) {
+  const featured = dossier.featured_proof ?? dossier.public_proofs[0];
+  const totals = dossier.evidence_totals ?? {};
+  const totalProofs = dossier.public_proofs.length;
+
+  return (
+    <article className="proof-dossier">
+      <div className="proof-utility">
+        <span>Personal capability dossier</span>
+        <span>{dossier.handle}</span>
+        <button type="button" onClick={onCopy}>
+          {copied ? <Check size={14} /> : <Copy size={14} />}
+          {copied ? "Copied" : "Copy"}
+        </button>
+        <button type="button" onClick={() => window.print()}>
+          <Printer size={14} />
+          Print
+        </button>
+      </div>
+
+      <header className="proof-masthead">
+        <span>PROOFOFAIWORK</span>
+        <span>Proof of work, not proof of person</span>
+      </header>
+
+      <section className="proof-dossier-hero">
+        <div className="proof-identity-block">
+          <p className="eyebrow">Operator archive</p>
+          <h1>{dossier.operator_name}</h1>
+          <p className="proof-title-line">Verified AI-work capability dossier</p>
+          <p className="proof-narrative">{dossier.description}</p>
+          <div className="proof-actions">
+            <button className="button primary" type="button" onClick={onCopy}>
+              {copied ? <Check size={18} /> : <Share2 size={18} />}
+              {copied ? "Copied" : "Share Dossier"}
+            </button>
+            <a className="button secondary" href={APP_URL}>
+              Create proof
+              <ExternalLink size={18} />
+            </a>
+          </div>
+        </div>
+
+        <div className="proof-score-event">
+          <p className="eyebrow">Published Artifacts</p>
+          <strong>{totalProofs}</strong>
+          <div className="proof-score-context">
+            <span>Canonical {canonical.replace(/^https?:\/\//, "")}</span>
+            {featured?.archetype_label ? <span>Featured pattern {featured.archetype_label}</span> : null}
+            <span>Send to employers, partners, clients, and reviewers</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="proof-dossier-body">
+        <main className="proof-main-column">
+          <EditorialSection kicker="01 · Featured proof" title={featured?.title ?? "Published work archive"}>
+            {featured ? (
+              <ProofCard receipt={featured} />
+            ) : (
+              <div className="proof-ledger-card">
+                <p>No public proof artifacts are currently attached to this dossier.</p>
+              </div>
+            )}
+          </EditorialSection>
+
+          <EditorialSection kicker="02 · Published topics" title="Public artifacts">
+            {dossier.public_proofs.length > 0 ? (
+              <ArtifactGrid
+                artifacts={dossier.public_proofs.map((proof) => ({
+                  id: proof.slug,
+                  title: proof.title,
+                  summary: proof.summary ?? "Published ProofOfAIWork artifact.",
+                  kind: proof.archetype_label ?? "Proof artifact",
+                  confidence: proof.evidence_confidence,
+                  status: proof.verification_state,
+                  tags: [
+                    proof.ai_leverage_score != null ? `AI leverage ${proof.ai_leverage_score}` : null,
+                    proof.output_multiplier != null ? `${proof.output_multiplier}x output` : null,
+                  ].filter(Boolean) as string[],
+                }))}
+              />
+            ) : (
+              <div className="proof-ledger-card">
+                <p>This dossier is public, but no proof artifacts are available for public inspection yet.</p>
+              </div>
+            )}
+          </EditorialSection>
+        </main>
+
+        <aside className="proof-side-column">
+          <LedgerPanel
+            items={[
+              { label: "Published proofs", value: totalProofs },
+              { label: "Completed actions", value: totals.completed_actions ?? "--" },
+              { label: "Decisions", value: totals.decisions ?? "--" },
+              { label: "Alternatives", value: totals.alternatives ?? "--" },
+              { label: "Turns analyzed", value: totals.turns_analyzed ?? "--" },
+              { label: "Artifacts", value: totals.artifacts ?? "--" },
+            ]}
+          />
+          <VerificationBlock
+            canonical={canonical}
+            hash={dossier.handle}
+            status="Public professional dossier"
+          />
+        </aside>
+      </section>
+    </article>
+  );
+}
+
 export default function ProofPage() {
   const { slug = "" } = useParams();
   const [receipt, setReceipt] = useState<PublicReceipt | null>(null);
+  const [dossier, setDossier] = useState<PublicDossier | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const canonical = receipt?.canonical_url ?? `${siteMetadata.canonical}/proof/${slug}`;
-  const metaTitle = receipt?.title ?? (error ? "Proof private or withdrawn" : "Public proof");
-  const metaDescription = proofDescription(receipt);
+  const canonical = receipt?.canonical_url ?? dossier?.canonical_url ?? `${siteMetadata.canonical}/proof/${slug}`;
+  const metaTitle = receipt?.title ?? dossier?.operator_name ?? (error ? "Proof private or withdrawn" : "Public proof");
+  const metaDescription = receipt ? proofDescription(receipt) : dossier?.description ?? "Public ProofOfAIWork dossier.";
   const jsonLd = receipt
     ? {
         "@context": "https://schema.org",
@@ -78,6 +201,32 @@ export default function ProofPage() {
           },
         ],
       }
+    : dossier
+    ? {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Person",
+            "@id": canonical,
+            name: dossier.operator_name,
+            description: dossier.description,
+            url: canonical,
+          },
+          {
+            "@type": "CreativeWork",
+            name: `${dossier.operator_name} ProofOfAIWork dossier`,
+            description: dossier.description,
+            url: canonical,
+          },
+          {
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Home", item: siteMetadata.canonical },
+              { "@type": "ListItem", position: 2, name: "Proof dossier", item: canonical },
+            ],
+          },
+        ],
+      }
     : undefined;
 
   useSeo(metaTitle, metaDescription, `/proof/${slug}`, receipt?.og_image_url, "article", jsonLd);
@@ -86,14 +235,23 @@ export default function ProofPage() {
     const controller = new AbortController();
     setLoading(true);
     setError(false);
+    setReceipt(null);
+    setDossier(null);
     fetchPublicReceipt(slug, controller.signal)
-      .then((nextReceipt) => {
-        if (!nextReceipt) {
-          setReceipt(null);
-          setError(true);
+      .then(async (nextReceipt) => {
+        if (nextReceipt) {
+          setReceipt(nextReceipt);
           return;
         }
-        setReceipt(nextReceipt);
+        const nextDossier = await fetchPublicDossier(slug, controller.signal);
+        if (nextDossier) {
+          setDossier({
+            ...nextDossier,
+            canonical_url: `${siteMetadata.canonical}/proof/${slug}`,
+          });
+          return;
+        }
+        setError(true);
       })
       .catch((requestError: unknown) => {
         if (requestError instanceof DOMException && requestError.name === "AbortError") return;
@@ -109,9 +267,9 @@ export default function ProofPage() {
   const published = useMemo(() => formatDate(receipt?.published_at), [receipt?.published_at]);
 
   const handleCopy = async () => {
-    if (!receipt) return;
+    if (!receipt && !dossier) return;
     try {
-      await navigator.clipboard.writeText(copyText(receipt, canonical));
+      await navigator.clipboard.writeText(receipt ? copyText(receipt, canonical) : `${dossier!.operator_name}\n${dossier!.description}\n${canonical}`);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch {
@@ -129,6 +287,17 @@ export default function ProofPage() {
   }
 
   if (error || !receipt) {
+    if (dossier) {
+      return (
+        <PublicProofDossier
+          dossier={dossier}
+          canonical={canonical}
+          copied={copied}
+          onCopy={handleCopy}
+        />
+      );
+    }
+
     return (
       <section className="proof-private dossier-surface">
         <p className="eyebrow">Private or withdrawn</p>

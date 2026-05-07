@@ -1,5 +1,30 @@
 import { createBrowserRouter, Navigate } from "react-router";
+import AppLayout from "./components/Layout";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import SiteLayout from "../marketing/components/SiteLayout";
+import Assessments from "./pages/Assessments";
+import AuthCallback from "./pages/AuthCallback";
+import Account from "./pages/Account";
+import Billing from "./pages/Billing";
+import ConversationDetail from "./pages/ConversationDetail";
+import Conversations from "./pages/Conversations";
+import Dashboard from "./pages/Dashboard";
+import KnowledgeMapPage from "./pages/KnowledgeMapPage";
+import PersonalDossier from "./pages/PersonalDossier";
+import PortfolioDetail from "./pages/PortfolioDetail";
+import Portfolios from "./pages/Portfolios";
+import Processing from "./pages/Processing";
+import ProofPages from "./pages/ProofPages";
+import ProjectDetail from "./pages/ProjectDetail";
+import Projects from "./pages/Projects";
+import Results from "./pages/Results";
+import Search from "./pages/Search";
+import Settings from "./pages/Settings";
+import SignIn from "./pages/SignIn";
+import Upload from "./pages/Upload";
+import UploadPool from "./pages/UploadPool";
+import Webhooks from "./pages/Webhooks";
+import WorkProfile from "./pages/WorkProfile";
 import AboutPage from "../marketing/pages/AboutPage";
 import ArchetypePage from "../marketing/pages/ArchetypePage";
 import ArchetypesPage from "../marketing/pages/ArchetypesPage";
@@ -40,6 +65,39 @@ const resumeSeoRoutes = yourAiResumePages
   .map((page) => ({ path: page.slug, element: <YourAiResumePage pageSlug={page.slug} /> }));
 
 export const router = createBrowserRouter([
+  { path: "sign-in", element: <SignIn /> },
+  { path: "auth/callback", element: <AuthCallback /> },
+  {
+    path: "/app",
+    element: (
+      <ProtectedRoute>
+        <AppLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <Dashboard /> },
+      { path: "assessments", element: <Assessments /> },
+      { path: "assessment/:id/results", element: <Results /> },
+      { path: "assessment/:id/processing", element: <Processing /> },
+      { path: "conversations", element: <Conversations /> },
+      { path: "conversations/:id", element: <ConversationDetail /> },
+      { path: "dossier", element: <PersonalDossier /> },
+      { path: "knowledge-map", element: <KnowledgeMapPage /> },
+      { path: "portfolios", element: <Portfolios /> },
+      { path: "portfolios/:id", element: <PortfolioDetail /> },
+      { path: "proof-pages", element: <ProofPages /> },
+      { path: "projects", element: <Projects /> },
+      { path: "projects/:id", element: <ProjectDetail /> },
+      { path: "search", element: <Search /> },
+      { path: "settings", element: <Settings /> },
+      { path: "settings/account", element: <Account /> },
+      { path: "settings/billing", element: <Billing /> },
+      { path: "settings/webhooks", element: <Webhooks /> },
+      { path: "upload", element: <UploadPool /> },
+      { path: "upload/new", element: <Upload /> },
+      { path: "work-profile", element: <WorkProfile /> },
+    ],
+  },
   {
     path: "/",
     element: <SiteLayout />,
