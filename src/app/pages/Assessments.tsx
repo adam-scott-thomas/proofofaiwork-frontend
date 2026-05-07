@@ -303,24 +303,32 @@ function AssessmentRow({
           ) : null}
         </div>
 
-        <div className="flex shrink-0 flex-col gap-2">
-          <Link to={primaryHref}>
-            <Button
-              size="sm"
-              className="w-full bg-[#123C36] px-4 text-white shadow-sm hover:bg-[#0E302B]"
-            >
+        <div className="flex w-full shrink-0 flex-col gap-2 sm:w-60">
+          <Link
+            to={primaryHref}
+            className="group flex min-h-20 w-full items-center justify-between gap-4 rounded-md border border-[#123C36] bg-[#123C36] px-4 py-3 text-white shadow-sm transition-colors hover:bg-[#0E302B]"
+          >
+            <span className="min-w-0 text-left">
               {isRunning ? (
                 <>
-                  <PlayCircle className="mr-2 h-3.5 w-3.5" />
-                  Watch progress
+                  <span className="flex items-center gap-2 text-[15px] font-semibold leading-tight">
+                    <PlayCircle className="h-4 w-4" />
+                    Watch progress
+                  </span>
+                  <span className="mt-1 block text-[11px] font-normal uppercase tracking-[0.12em] text-white/68">
+                    Run in progress
+                  </span>
                 </>
               ) : (
                 <>
-                  Open Atlas
-                  <ArrowRight className="ml-2 h-3.5 w-3.5" />
+                  <span className="block text-[16px] font-semibold leading-tight">Open Atlas</span>
+                  <span className="mt-1 block text-[11px] font-normal uppercase tracking-[0.12em] text-white/68">
+                    View verified run
+                  </span>
                 </>
               )}
-            </Button>
+            </span>
+            <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
           </Link>
           {(isFinal || isFailed) ? (
             <Button variant="ghost" size="sm" onClick={onRerun} disabled={rerunPending}>
